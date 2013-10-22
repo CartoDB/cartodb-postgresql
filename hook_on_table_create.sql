@@ -16,4 +16,6 @@ alter table c.t3 rename column the_geom_webmercator to webmerc2;
 select * from c.t3;
 alter table c.t3 drop column the_geom_webmercator;
 select * from c.t3;
+alter table c.t3 add column id2 int;
+select * from c.t3;
 drop schema c cascade;
