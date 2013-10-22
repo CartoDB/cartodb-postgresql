@@ -29,6 +29,31 @@ BEGIN
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
   PERFORM public.CDB_CartodbfyTable(event_info.relation);
 
+  -- Add entry to CDB_TableMetadata (should CartodbfyTable do this?)
+  INSERT INTO public.CDB_TableMetadata(tabname,updated_at) 
+  VALUES (event_info.relation, now());
+
+END; $$;
+-- }
+
+-- Table drop
+-- {
+CREATE OR REPLACE FUNCTION cdb_handle_drop_table ()
+RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
+DECLARE
+  event_info RECORD;
+BEGIN
+  event_info := schema_triggers.get_relation_drop_eventinfo();
+
+  -- We're only interested in real relations
+  IF (event_info.old).relkind != 'r' THEN RETURN; END IF;
+
+  RAISE DEBUG 'Relation % of kind % dropped from namespace oid %',
+	 event_info.old_relation_oid, (event_info.old).relkind, (event_info.old).relnamespace;
+
+  -- delete record from CDB_TableMetadata (should invalidate varnish)
+  DELETE FROM public.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
+
 END; $$;
 -- }
 
@@ -62,7 +87,7 @@ BEGIN
 
   PERFORM cdb_enable_ddl_hooks();
 
-  -- TODO: invalidate varnish 
+  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
 
 END; $$;
 -- }
@@ -97,7 +122,7 @@ BEGIN
 
   PERFORM cdb_enable_ddl_hooks();
 
-  -- TODO: invalidate varnish 
+  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
 
 END; $$;
 -- }
@@ -126,13 +151,14 @@ BEGIN
     RETURN;
   END IF;
 
-  -- TODO: invalidate varnish
+  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
 
 END; $$;
 -- }
 
 CREATE OR REPLACE FUNCTION cdb_disable_ddl_hooks() returns void AS $$
  DROP EVENT TRIGGER IF EXISTS cdb_on_relation_create;
+ DROP EVENT TRIGGER IF EXISTS cdb_on_relation_drop;
  DROP EVENT TRIGGER IF EXISTS cdb_on_alter_column;
  DROP EVENT TRIGGER IF EXISTS cdb_on_drop_column;
  DROP EVENT TRIGGER IF EXISTS cdb_on_add_column;
@@ -141,6 +167,7 @@ $$ LANGUAGE sql;
 CREATE OR REPLACE FUNCTION cdb_enable_ddl_hooks() returns void AS $$
  SELECT cdb_disable_ddl_hooks();
  CREATE EVENT TRIGGER cdb_on_relation_create ON "relation_create" EXECUTE PROCEDURE cdb_handle_create_table();
+ CREATE EVENT TRIGGER cdb_on_relation_drop ON "relation_drop" EXECUTE PROCEDURE cdb_handle_drop_table();
  CREATE EVENT TRIGGER cdb_on_alter_column ON "column_alter" EXECUTE PROCEDURE cdb_handle_alter_column();
  CREATE EVENT TRIGGER cdb_on_drop_column ON "column_drop" EXECUTE PROCEDURE cdb_handle_drop_column();
  CREATE EVENT TRIGGER cdb_on_add_column ON "column_add" EXECUTE PROCEDURE cdb_handle_add_column();
