@@ -1,13 +1,13 @@
-LOAD 'schema_triggers.so';
-CREATE EXTENSION IF NOT EXISTS schema_triggers;
+--LOAD 'schema_triggers.so';
+--CREATE EXTENSION IF NOT EXISTS schema_triggers;
 
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA schema_triggers TO public;
+--GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA schema_triggers TO public;
 
 BEGIN;
 
 -- Table creation
 -- {
-CREATE OR REPLACE FUNCTION cdb_handle_create_table ()
+CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
@@ -38,7 +38,7 @@ END; $$;
 
 -- Table drop
 -- {
-CREATE OR REPLACE FUNCTION cdb_handle_drop_table ()
+CREATE OR REPLACE FUNCTION cartodb.cdb_handle_drop_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
@@ -59,7 +59,7 @@ END; $$;
 
 -- Column alter
 -- {
-CREATE OR REPLACE FUNCTION cdb_handle_alter_column ()
+CREATE OR REPLACE FUNCTION cartodb.cdb_handle_alter_column ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
@@ -81,11 +81,11 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM cdb_disable_ddl_hooks();
+  PERFORM cartodb.cdb_disable_ddl_hooks();
 
   PERFORM public.CDB_CartodbfyTable(event_info.relation);
 
-  PERFORM cdb_enable_ddl_hooks();
+  PERFORM cartodb.cdb_enable_ddl_hooks();
 
   -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
 
@@ -94,7 +94,7 @@ END; $$;
 
 -- Column drop
 -- {
-CREATE OR REPLACE FUNCTION cdb_handle_drop_column ()
+CREATE OR REPLACE FUNCTION cartodb.cdb_handle_drop_column ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
@@ -116,11 +116,11 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM cdb_disable_ddl_hooks();
+  PERFORM cartodb.cdb_disable_ddl_hooks();
 
   PERFORM public.CDB_CartodbfyTable(event_info.relation);
 
-  PERFORM cdb_enable_ddl_hooks();
+  PERFORM cartodb.cdb_enable_ddl_hooks();
 
   -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
 
@@ -129,7 +129,7 @@ END; $$;
 
 -- Column add
 -- {
-CREATE OR REPLACE FUNCTION cdb_handle_add_column ()
+CREATE OR REPLACE FUNCTION cartodb.cdb_handle_add_column ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
@@ -156,7 +156,7 @@ BEGIN
 END; $$;
 -- }
 
-CREATE OR REPLACE FUNCTION cdb_disable_ddl_hooks() returns void AS $$
+CREATE OR REPLACE FUNCTION cartodb.cdb_disable_ddl_hooks() returns void AS $$
  DROP EVENT TRIGGER IF EXISTS cdb_on_relation_create;
  DROP EVENT TRIGGER IF EXISTS cdb_on_relation_drop;
  DROP EVENT TRIGGER IF EXISTS cdb_on_alter_column;
@@ -164,16 +164,21 @@ CREATE OR REPLACE FUNCTION cdb_disable_ddl_hooks() returns void AS $$
  DROP EVENT TRIGGER IF EXISTS cdb_on_add_column;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION cdb_enable_ddl_hooks() returns void AS $$
+CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
  SELECT cdb_disable_ddl_hooks();
- CREATE EVENT TRIGGER cdb_on_relation_create ON "relation_create" EXECUTE PROCEDURE cdb_handle_create_table();
- CREATE EVENT TRIGGER cdb_on_relation_drop ON "relation_drop" EXECUTE PROCEDURE cdb_handle_drop_table();
- CREATE EVENT TRIGGER cdb_on_alter_column ON "column_alter" EXECUTE PROCEDURE cdb_handle_alter_column();
- CREATE EVENT TRIGGER cdb_on_drop_column ON "column_drop" EXECUTE PROCEDURE cdb_handle_drop_column();
- CREATE EVENT TRIGGER cdb_on_add_column ON "column_add" EXECUTE PROCEDURE cdb_handle_add_column();
+ CREATE EVENT TRIGGER cdb_on_relation_create
+    ON "relation_create" EXECUTE PROCEDURE cartodb.cdb_handle_create_table();
+ CREATE EVENT TRIGGER cdb_on_relation_drop
+    ON "relation_drop" EXECUTE PROCEDURE cartodb.cdb_handle_drop_table();
+ CREATE EVENT TRIGGER cdb_on_alter_column
+    ON "column_alter" EXECUTE PROCEDURE cartodb.cdb_handle_alter_column();
+ CREATE EVENT TRIGGER cdb_on_drop_column
+    ON "column_drop" EXECUTE PROCEDURE cartodb.cdb_handle_drop_column();
+ CREATE EVENT TRIGGER cdb_on_add_column
+    ON "column_add" EXECUTE PROCEDURE cartodb.cdb_handle_add_column();
 $$ LANGUAGE sql;
 
-SELECT cdb_enable_ddl_hooks();
+SELECT cartodb.cdb_enable_ddl_hooks();
 
 END;
 

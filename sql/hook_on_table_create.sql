@@ -1,9 +1,7 @@
-\i cartodb_hooks.sql
-\set VERBOSITY terse
-
+--\i cartodb_hooks.sql
+--\set VERBOSITY terse
 SET SESSION AUTHORIZATION 'development_cartodb_user_1';
-
-SELECT session_user, current_user;
+--SELECT session_user, current_user;
 
 
 create schema c;
