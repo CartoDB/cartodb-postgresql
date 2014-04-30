@@ -1,4 +1,3 @@
 cartodb--*.sql
 results/
-expected/
 regression.*

@@ -1,0 +1,59 @@
+--\i cartodb_hooks.sql
+--\set VERBOSITY terse
+CREATE TABLE IF NOT EXISTS
+  public.CDB_TableMetadata (
+    tabname regclass not null primary key,
+    updated_at timestamp with time zone not null default now()
+  );
+CREATE USER cartodb_postgresql_unpriv_user;
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
+--SELECT session_user, current_user;
+create schema c;
+ERROR:  permission denied for database contrib_regression
+--create table c.t3(a int);
+select 1 as i INTO c.t3;
+ERROR:  schema "c" does not exist
+select * from c.t3;
+ERROR:  relation "c.t3" does not exist
+LINE 1: select * from c.t3;
+                      ^
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+alter table c.t3 rename column the_geom_webmercator to webmerc;
+ERROR:  schema "c" does not exist
+select * from c.t3;
+ERROR:  relation "c.t3" does not exist
+LINE 1: select * from c.t3;
+                      ^
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+alter table c.t3 rename column the_geom_webmercator to webmerc2;
+ERROR:  schema "c" does not exist
+select * from c.t3;
+ERROR:  relation "c.t3" does not exist
+LINE 1: select * from c.t3;
+                      ^
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+alter table c.t3 drop column the_geom_webmercator;
+ERROR:  schema "c" does not exist
+select * from c.t3;
+ERROR:  relation "c.t3" does not exist
+LINE 1: select * from c.t3;
+                      ^
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+alter table c.t3 add column id2 int;
+ERROR:  schema "c" does not exist
+select * from c.t3;
+ERROR:  relation "c.t3" does not exist
+LINE 1: select * from c.t3;
+                      ^
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+drop schema c cascade;
+ERROR:  schema "c" does not exist
+select tabname::text, updated_at from CDB_TableMetadata;
+ERROR:  permission denied for relation cdb_tablemetadata
+DROP USER cartodb_postgresql_unpriv_user;
+ERROR:  permission denied to drop role

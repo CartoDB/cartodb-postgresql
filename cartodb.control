@@ -4,3 +4,4 @@ superuser = true
 relocatable = false
 schema = cartodb
 requires = schema_triggers
+requires = postgis

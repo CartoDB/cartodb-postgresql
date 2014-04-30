@@ -3,8 +3,6 @@
 
 --GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA schema_triggers TO public;
 
-BEGIN;
-
 -- Table creation
 -- {
 CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
@@ -27,10 +25,10 @@ BEGIN
   END IF;
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
-  PERFORM public.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
 
   -- Add entry to CDB_TableMetadata (should CartodbfyTable do this?)
-  INSERT INTO public.CDB_TableMetadata(tabname,updated_at) 
+  INSERT INTO cartodb.CDB_TableMetadata(tabname,updated_at) 
   VALUES (event_info.relation, now());
 
 END; $$;
@@ -58,7 +56,7 @@ BEGIN
   END IF;
 
   -- delete record from CDB_TableMetadata (should invalidate varnish)
-  DELETE FROM public.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
+  DELETE FROM cartodb.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
 
 END; $$;
 -- }
@@ -89,7 +87,7 @@ BEGIN
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM public.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -124,7 +122,7 @@ BEGIN
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM public.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -186,5 +184,23 @@ $$ LANGUAGE sql;
 
 SELECT cartodb.cdb_enable_ddl_hooks();
 
-END;
+---- Make sure 'cartodb' is in database search path ?
+--DO
+--$$
+--DECLARE
+--  var_result text;
+--  var_cur_search_path text;
+--BEGIN
+--  SELECT reset_val INTO var_cur_search_path
+--  FROM pg_settings WHERE name = 'search_path';
+--
+--  IF var_cur_search_path LIKE '%cartodb%' THEN
+--    RAISE DEBUG '"cartodb" already in database search_path';
+--  ELSE
+--    EXECUTE 'ALTER DATABASE ' || quote_ident(current_database()) ||
+--            ' SET search_path = ' || var_cur_search_path || ', "cartodb"';
+--    RAISE DEBUG '"cartodb" has been added to end of database search_path';
+--  END IF;
+--END
+--$$ LANGUAGE 'plpgsql';
 
