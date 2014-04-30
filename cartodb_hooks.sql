@@ -51,6 +51,12 @@ BEGIN
   RAISE DEBUG 'Relation % of kind % dropped from namespace oid %',
 	 event_info.old_relation_oid, (event_info.old).relkind, (event_info.old).relnamespace;
 
+  -- We don't want to react to alters triggered by superuser,
+  IF current_setting('is_superuser') = 'on' THEN
+    RAISE DEBUG 'no ddl trigger for superuser';
+    RETURN;
+  END IF;
+
   -- delete record from CDB_TableMetadata (should invalidate varnish)
   DELETE FROM public.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
 
