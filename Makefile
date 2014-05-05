@@ -16,6 +16,9 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql Makefile 
-	cat $(CDBSCRIPTS) | sed 's/\<public\./cartodb./g' > $@
+	echo "SET search_path TO cartodb,public,pg_catalog;" > $@
+	cat $(CDBSCRIPTS) | \
+    sed -e 's/\<public\./cartodb./g' \
+        -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_hooks.sql >> $@
