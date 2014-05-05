@@ -49,12 +49,6 @@ BEGIN
   RAISE DEBUG 'Relation % of kind % dropped from namespace oid %',
 	 event_info.old_relation_oid, (event_info.old).relkind, (event_info.old).relnamespace;
 
-  -- We don't want to react to alters triggered by superuser,
-  IF current_setting('is_superuser') = 'on' THEN
-    RAISE DEBUG 'no ddl trigger for superuser';
-    RETURN;
-  END IF;
-
   -- delete record from CDB_TableMetadata (should invalidate varnish)
   DELETE FROM cartodb.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
 
@@ -91,7 +85,9 @@ BEGIN
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
-  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
+  -- update CDB_TableMetadata.updated_at (should invalidate varnish)
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
+  WHERE tabname = event_info.relation; 
 
 END; $$;
 -- }
@@ -126,7 +122,9 @@ BEGIN
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
-  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
+  -- update CDB_TableMetadata.updated_at (should invalidate varnish)
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
+  WHERE tabname = event_info.relation; 
 
 END; $$;
 -- }
@@ -155,7 +153,9 @@ BEGIN
     RETURN;
   END IF;
 
-  -- TODO: update CDB_TableMetadata.updated_at (should invalidate varnish)
+  -- update CDB_TableMetadata.updated_at (should invalidate varnish)
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
+  WHERE tabname = event_info.relation; 
 
 END; $$;
 -- }

@@ -20,4 +20,5 @@ include $(PGXS)
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql Makefile 
 	cat $(CDBSCRIPTS) | sed 's/\<public\./cartodb./g' > $@
+	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_hooks.sql >> $@
