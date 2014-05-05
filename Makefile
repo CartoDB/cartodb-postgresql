@@ -4,10 +4,7 @@ EXTENSION = cartodb
 EXTVERSION = 0.1
 
 CDBSCRIPTS = \
-  scripts-available/CDB_TableMetadata.sql \
-  scripts-available/CDB_Quota.sql \
-  scripts-available/CDB_TransformToWebmercator.sql \
-  scripts-available/CDB_CartodbfyTable.sql \
+  scripts-enabled/*.sql \
   $(END)
 
 DATA_built = $(EXTENSION)--$(EXTVERSION).sql 
