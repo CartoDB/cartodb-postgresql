@@ -9,7 +9,9 @@ CDBSCRIPTS = \
 
 DATA_built = $(EXTENSION)--$(EXTVERSION).sql 
 DOCS = README.md
-REGRESS = test_ddl_triggers
+REGRESS_EXTENSION = test_ddl_triggers
+REGRESS_LEGACY = test/CDB_DigitSeparatorTest
+REGRESS = $(REGRESS_EXTENSION)
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)

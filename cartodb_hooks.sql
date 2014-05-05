@@ -183,24 +183,3 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
 $$ LANGUAGE sql;
 
 SELECT cartodb.cdb_enable_ddl_hooks();
-
----- Make sure 'cartodb' is in database search path ?
---DO
---$$
---DECLARE
---  var_result text;
---  var_cur_search_path text;
---BEGIN
---  SELECT reset_val INTO var_cur_search_path
---  FROM pg_settings WHERE name = 'search_path';
---
---  IF var_cur_search_path LIKE '%cartodb%' THEN
---    RAISE DEBUG '"cartodb" already in database search_path';
---  ELSE
---    EXECUTE 'ALTER DATABASE ' || quote_ident(current_database()) ||
---            ' SET search_path = ' || var_cur_search_path || ', "cartodb"';
---    RAISE DEBUG '"cartodb" has been added to end of database search_path';
---  END IF;
---END
---$$ LANGUAGE 'plpgsql';
-
