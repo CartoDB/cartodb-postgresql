@@ -1,5 +1,7 @@
 before_install:
-  - sudo apt-cache search postgis
+  - sudo apt-get install -q postgresql-server-dev-9.3
+  - sudo apt-get install -q postgresql-9.3-postgis-2.1
+  - # HOW TO INSTALL schema_triggers ?
 
 script:
   - make installcheck
