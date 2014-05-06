@@ -27,6 +27,8 @@ BEGIN
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
   PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
 
+  RAISE DEBUG 'Inserting into cartodb.CDB_TableMetadata';
+
   -- Add entry to CDB_TableMetadata (should CartodbfyTable do this?)
   INSERT INTO cartodb.CDB_TableMetadata(tabname,updated_at) 
   VALUES (event_info.relation, now());
