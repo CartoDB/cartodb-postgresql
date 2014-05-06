@@ -1,0 +1,5 @@
+before_install:
+  - sudo apt-cache search postgis
+
+script:
+  - make installcheck
