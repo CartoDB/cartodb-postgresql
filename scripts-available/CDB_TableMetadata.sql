@@ -82,7 +82,11 @@ BEGIN
   --
   --  LISTEN cdb_tabledata_update;
   --
-  PERFORM cdb_invalidate_varnish(tabname);
+  BEGIN
+    PERFORM cdb_invalidate_varnish(tabname);
+  EXCEPTION WHEN undefined_function THEN
+    RAISE WARNING 'Missing cdb_invalidate_varnish()';
+  END;
 
   RETURN NULL;
 END;

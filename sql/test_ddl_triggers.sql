@@ -1,10 +1,4 @@
-CREATE EXTENSION postgis;
-CREATE EXTENSION schema_triggers;
-CREATE EXTENSION cartodb;
-
-set search_path to public,cartodb,schema_triggers;
-
---set client_min_messages to debug;
+\set VERBOSITY terse
 
 -- Create a stub cdb_invalidate_varnish function if not available
 --CREATE FUNCTION tmp() returns void AS $$

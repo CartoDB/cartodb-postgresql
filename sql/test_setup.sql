@@ -1,0 +1,3 @@
+CREATE EXTENSION postgis;
+CREATE EXTENSION schema_triggers;
+CREATE EXTENSION cartodb;

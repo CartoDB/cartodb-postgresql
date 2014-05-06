@@ -35,7 +35,12 @@ BEGIN
 
   IF dice < pbfact THEN
     RAISE DEBUG 'Checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
-    qmax := public._CDB_UserQuotaInBytes();
+    BEGIN
+      qmax := public._CDB_UserQuotaInBytes();
+    EXCEPTION WHEN undefined_function THEN
+      RAISE WARNING 'Missing _CDB_UserQuotaInBytes(), assuming no quota';
+      RETURN NEW;
+    END;
     SELECT CDB_UserDataSize() INTO quota;
     IF quota > qmax THEN
         RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
