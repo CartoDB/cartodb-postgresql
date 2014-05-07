@@ -7,7 +7,8 @@ CDBSCRIPTS = \
   scripts-enabled/*.sql \
   $(END)
 
-DATA_built = $(EXTENSION)--$(EXTVERSION).sql 
+DATA_built = $(EXTENSION)--$(EXTVERSION).sql \
+  $(EXTENSION)--unpackaged--$(EXTVERSION).sql
 DOCS = README.md
 REGRESS_NEW = test_ddl_triggers
 REGRESS_OLD = $(wildcard test/*.sql)
@@ -25,6 +26,9 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql Makefile
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_hooks.sql >> $@
+
+$(EXTENSION)--unpackaged--0.1.sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
+	./util/create_from_unpackaged.sh cartodb--unpackaged--0.1.sql
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
