@@ -26,14 +26,28 @@ NOTE: if ``test_ddl_triggers`` fails it's likely due to an incomplete
       installation of schema_triggers: you need to add ``schema_triggers.so``
       to the ``shared_preload_libraries`` setting in postgresql.conf !
 
-Usage
------
+Enable database
+---------------
 
-In a database that needs to beturned into a "cartodb" user database, run:
+In a database that needs to be turned into a "cartodb" user database, run:
 
 ```sql
-  CREATE EXTENSION postgis;
-  CREATE EXTENSION schema_triggers;
-  CREATE EXTENSION cartodb;
+CREATE EXTENSION postgis;
+CREATE EXTENSION schema_triggers;
+CREATE EXTENSION cartodb;
+```
+
+Migrate existing cartodb database
+---------------------------------
+
+When upgrading an existing cartodb user database, the cartodb extension
+can be migrated from the "unpackaged" version. The procedure will copy
+the data from ``public.CDB_TableMetada`` to ``cartodb.CDB_TableMetadata``,
+re-cartodbfy all tables using old functions in triggers and drop the
+cartodb functions from the 'public' schema. All new cartodb objects will
+be in the "cartodb" schema.
+
+```sql
+CREATE EXTENSION cartodb FROM unpackaged;
 ```
 
