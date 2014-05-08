@@ -44,6 +44,7 @@ cartodb_version.sql: cartodb_version.sql.in
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
 	mkdir -p expected/test/
+	mkdir -p results/test/
 	for f in $(REGRESS_OLD); do \
     tn=`basename $${f} .sql`; \
     of=sql/test/$${tn}.sql; \
