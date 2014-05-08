@@ -1,0 +1,5 @@
+CREATE OR REPLACE FUNCTION cartodb.CDB_version()
+RETURNS text AS $$
+  SELECT '@@VERSION@@'::text;
+$$ language 'sql' IMMUTABLE STRICT;
+

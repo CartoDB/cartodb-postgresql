@@ -10,7 +10,8 @@ CDBSCRIPTS = \
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
   $(EXTENSION)--unpackaged--$(EXTVERSION).sql \
-  $(EXTENSION).control
+  $(EXTENSION).control \
+  cartodb_version.sql.in
 
 DOCS = README.md
 REGRESS_NEW = test_ddl_triggers
@@ -22,18 +23,22 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql Makefile 
+$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version.sql Makefile 
 	: > $@
 	cat $(CDBSCRIPTS) | \
     sed -e 's/\<public\./cartodb./g' \
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_hooks.sql >> $@
+	cat cartodb_version.sql >> $@
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
 
 $(EXTENSION).control: $(EXTENSION).control.in
+	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+
+cartodb_version.sql: cartodb_version.sql.in
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile

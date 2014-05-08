@@ -1,4 +1,5 @@
 cartodb--*.sql
+cartodb_version.sql
 cartodb.control
 results/
 regression.*
