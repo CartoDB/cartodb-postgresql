@@ -6,4 +6,4 @@ before_install:
     cd pg_schema_triggers && make && sudo make install && cd -
 
 script:
-  - make installcheck || cat regression.diff
+  - make installcheck || cat regression.diffs
