@@ -3,7 +3,7 @@ before_install:
   - sudo apt-get install -q postgresql-9.3-postgis-2.1
   - # Install schema_triggers
   - hg clone https://bitbucket.org/malloclabs/pg_schema_triggers &&
-    cd pg_schema_triggers && make && sudo make install
+    cd pg_schema_triggers && make && sudo make install && cd -
 
 script:
-  - make installcheck
+  - make installcheck || cat regression.diff
