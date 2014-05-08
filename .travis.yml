@@ -12,7 +12,7 @@ before_install:
     cd pg_schema_triggers && make && sudo make install && cd -
   # Preload schema_triggers module
   # NOTE: might change if we make it part of the installcheck instead
-  - echo "local_preload_libraries = 'schema_triggers.so'" |
+  - echo "shared_preload_libraries = 'schema_triggers.so'" |
     sudo tee -a /etc/postgresql/9.3/main/postgresql.conf &&
     sudo service postgresql restart
 
