@@ -6,7 +6,6 @@ addons:
 before_install:
   #- sudo apt-get install -q postgresql-9.3-postgis-2.1
   - sudo apt-get install -q postgresql-server-dev-9.3
-  - ls /etc/init /etc/init.d | grep postgres
   # Install schema_triggers
   - hg clone https://bitbucket.org/malloclabs/pg_schema_triggers &&
     cd pg_schema_triggers && make && sudo make install && cd -
@@ -15,8 +14,10 @@ before_install:
   - echo "shared_preload_libraries = 'schema_triggers.so'" |
     sudo tee -a /etc/postgresql/9.3/main/postgresql.conf &&
     sudo service postgresql restart
+  - env | grep PG # see if there's anything we should change
 
 script:
   - make
   - sudo make install
-  - make installcheck || { cat regression.diffs; false; }
+  - PGOPTIONS='-c client_min_messages=NOTICE' make installcheck ||
+    { cat regression.diffs; false; }
