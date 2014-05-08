@@ -1,4 +1,7 @@
+language: c
+
 before_install:
+  - lsb_release -a
   - sudo apt-get purge postgresql-9.1 postgresql-9.2
   - sudo apt-get install -q postgresql-server-dev-9.3
   - sudo apt-get install -q postgresql-9.3-postgis-2.1
