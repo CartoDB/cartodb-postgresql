@@ -51,6 +51,8 @@ cartodb functions from the 'public' schema. All new cartodb objects will
 be in the "cartodb" schema.
 
 ```sql
+CREATE EXTENSION postgis FROM unpackaged;
+CREATE EXTENSION schema_triggers;
 CREATE EXTENSION cartodb FROM unpackaged;
 ```
 
