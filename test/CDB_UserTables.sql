@@ -1,7 +1,7 @@
 create table pub(a int);
 create table prv(a int);
-GRANT SELECT ON TABLE pub TO publicuser;
-REVOKE SELECT ON TABLE prv FROM publicuser;
+GRANT SELECT ON TABLE pub TO public;
+REVOKE SELECT ON TABLE prv FROM public;
 SELECT CDB_UserTables() ORDER BY 1;
 SELECT 'all',CDB_UserTables('all') ORDER BY 2;
 SELECT 'public',CDB_UserTables('public') ORDER BY 2;
