@@ -36,11 +36,16 @@ BEGIN
   IF dice < pbfact THEN
     RAISE DEBUG 'Checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
     BEGIN
-      qmax := public._CDB_UserQuotaInBytes();
+      qmax := cartodb._CDB_UserQuotaInBytes();
     EXCEPTION WHEN undefined_function THEN
       RAISE WARNING 'Missing _CDB_UserQuotaInBytes(), assuming no quota';
-      RETURN NEW;
+      qmax := 0;
     END;
+
+    IF qmax = 0 THEN
+      RETURN NEW;
+    END IF;
+
     SELECT CDB_UserDataSize() INTO quota;
     IF quota > qmax THEN
         RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
@@ -53,3 +58,27 @@ BEGIN
 END;
 $$
 LANGUAGE 'plpgsql' VOLATILE;
+
+CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8)
+RETURNS int8 AS
+$$
+DECLARE
+  current_quota int8;
+  sql text;
+BEGIN
+  BEGIN
+    current_quota := cartodb._CDB_UserQuotaInBytes();
+  EXCEPTION WHEN undefined_function THEN
+    current_quota := 0;
+  END;
+
+  sql := 'CREATE OR REPLACE FUNCTION cartodb._CDB_UserQuotaInBytes() '
+    || 'RETURNS int8 AS $X$ SELECT ' || bytes
+    || '::int8 $X$ LANGUAGE sql IMMUTABLE';
+  EXECUTE sql;
+
+  return current_quota;
+
+END
+$$
+LANGUAGE 'plpgsql' VOLATILE STRICT;
