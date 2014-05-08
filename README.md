@@ -1,6 +1,9 @@
 cartodb-postgresql
 ==================
 
+[![Build Status](http://travis-ci.org/CartoDB/cartodb-postgresql.png)]
+(http://travis-ci.org/CartoDB/cartodb-postgresql)
+
 PostgreSQL extension for CartoDB
 
 See https://github.com/CartoDB/cartodb/wiki/CartoDB-PostgreSQL-extension
