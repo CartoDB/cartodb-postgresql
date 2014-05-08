@@ -4,7 +4,8 @@ addons:
   postgresql: 9.3
 
 before_install:
-  - sudo apt-get install -q postgresql-9.3-postgis-2.1
+  #- sudo apt-get install -q postgresql-9.3-postgis-2.1
+  - sudo apt-get install -q postgresql-server-dev-9.3
   - # Install schema_triggers
   - hg clone https://bitbucket.org/malloclabs/pg_schema_triggers &&
     cd pg_schema_triggers && make && sudo make install && cd -
