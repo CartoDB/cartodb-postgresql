@@ -6,7 +6,7 @@ before_install:
   - sudo apt-get install -q postgresql-server-dev-9.3
   - sudo apt-get install -q postgresql-9.3-postgis-2.1
   - sudo apt-get install -q postgresql-9.3
-  - sudo apt-get install -q postgresql-9.3-client
+  - sudo apt-cache search postgresql | grep 9.3
   - dpkg -l | grep postgresql
   - # Install schema_triggers
   - hg clone https://bitbucket.org/malloclabs/pg_schema_triggers &&
