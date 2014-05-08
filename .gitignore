@@ -1,4 +1,5 @@
 cartodb--*.sql
+cartodb.control
 results/
 regression.*
 expected/test

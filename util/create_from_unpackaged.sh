@@ -1,7 +1,8 @@
 #!/bin/sh
 
-input=cartodb--0.1.sql
-output=cartodb--unpackaged--0.1.sql
+ver=$1
+input=cartodb--${ver}.sql
+output=cartodb--unpackaged--${ver}.sql
 
 cat ${input} > ${output}
 
