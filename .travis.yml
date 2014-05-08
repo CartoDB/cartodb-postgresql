@@ -14,7 +14,6 @@ before_install:
   - echo "shared_preload_libraries = 'schema_triggers.so'" |
     sudo tee -a /etc/postgresql/9.3/main/postgresql.conf &&
     sudo service postgresql restart
-  - env | grep PG # see if there's anything we should change
 
 script:
   - make
