@@ -35,12 +35,17 @@ BEGIN
 
   IF dice < pbfact THEN
     RAISE DEBUG 'Checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
-    BEGIN
-      qmax := public._CDB_UserQuotaInBytes();
-    EXCEPTION WHEN undefined_function THEN
-      RAISE WARNING 'Missing _CDB_UserQuotaInBytes(), assuming no quota';
-      qmax := 0;
-    END;
+    IF TG_NARGS > 1 THEN
+      RAISE NOTICE 'Using quota specified via trigger parameter';
+      qmax := TG_ARGV[1];
+    ELSE
+      BEGIN
+        qmax := public._CDB_UserQuotaInBytes();
+      EXCEPTION WHEN undefined_function THEN
+        RAISE WARNING 'Missing _CDB_UserQuotaInBytes(), assuming no quota';
+        qmax := 0;
+      END;
+    END IF;
 
     IF qmax = 0 THEN
       RETURN NEW;
