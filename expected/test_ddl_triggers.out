@@ -25,6 +25,7 @@ NOTICE:  trigger "update_the_geom_webmercator_trigger" for table "c.t3" does not
 NOTICE:  trigger "update_updated_at_trigger" for table "c.t3" does not exist, skipping
 NOTICE:  trigger "test_quota" for table "c.t3" does not exist, skipping
 NOTICE:  trigger "test_quota_per_row" for table "c.t3" does not exist, skipping
+NOTICE:  cdb_invalidate_varnish(c.t3) called
 select
  cartodb_id, created_at=updated_at as "c=u",
  NOW() - updated_at < '1 secs' as "u<1s",
@@ -64,6 +65,7 @@ NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
+NOTICE:  cdb_invalidate_varnish(c.t3) called
 select
  cartodb_id, created_at=updated_at as "c=u",
  NOW() - updated_at < '1 secs' as "u<1s",
@@ -100,6 +102,7 @@ NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
+NOTICE:  cdb_invalidate_varnish(c.t3) called
 select
  cartodb_id, created_at=updated_at as "c=u",
  NOW() - updated_at < '1 secs' as "u<1s",
@@ -139,6 +142,7 @@ NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
+NOTICE:  cdb_invalidate_varnish(c.t3) called
 select
  cartodb_id, created_at=updated_at as "c=u",
  NOW() - updated_at < '1 secs' as "u<1s",
@@ -169,6 +173,7 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 add column id2 int;
+NOTICE:  cdb_invalidate_varnish(c.t3) called
 select
  cartodb_id, created_at=updated_at as "c=u",
  NOW() - updated_at < '1 secs' as "u<1s",

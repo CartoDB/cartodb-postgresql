@@ -94,7 +94,9 @@ $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS table_modified ON CDB_TableMetadata;
-CREATE TRIGGER table_modified AFTER INSERT OR UPDATE OR DELETE
+-- NOTE: on DELETE we would be unable to convert the table
+--       oid (regclass) to its name
+CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
 ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
 
