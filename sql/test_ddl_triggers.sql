@@ -44,7 +44,7 @@ FROM CDB_TableMetadata;
 -- ALTER TABLE RENAME COLUMN
 ----------------------------
 
-select pg_sleep(1);
+select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc;
 
 select
@@ -56,10 +56,10 @@ from c.t3;
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
 
-select pg_sleep(1);
+select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
 
 select
@@ -71,14 +71,14 @@ from c.t3;
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
 
 ----------------------------
 -- ALTER TABLE DROP COLUMN
 ----------------------------
 
-select pg_sleep(1);
+select pg_sleep(.1);
 alter table c.t3 drop column the_geom_webmercator;
 
 select
@@ -90,14 +90,14 @@ from c.t3;
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
 
 ----------------------------
 -- ALTER TABLE ADD COLUMN
 ----------------------------
 
-select pg_sleep(1);
+select pg_sleep(.1);
 alter table c.t3 add column id2 int;
 
 select
@@ -109,7 +109,7 @@ from c.t3;
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
 
 ----------------------------

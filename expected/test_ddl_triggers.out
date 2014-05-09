@@ -48,7 +48,7 @@ FROM CDB_TableMetadata;
 ----------------------------
 -- ALTER TABLE RENAME COLUMN
 ----------------------------
-select pg_sleep(1);
+select pg_sleep(.1);
  pg_sleep 
 ----------
  
@@ -72,19 +72,19 @@ select
 from c.t3;
  cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc 
 ------------+-----+------+----------+----------------------+---+---------
-          1 | t   | f    |          |                      | 1 | 
+          1 | t   | t    |          |                      | 1 | 
 (1 row)
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
- tabname | age 
----------+-----
- c.t3    |   0
+ tabname | agecs 
+---------+-------
+ c.t3    |     0
 (1 row)
 
-select pg_sleep(1);
+select pg_sleep(.1);
  pg_sleep 
 ----------
  
@@ -108,22 +108,22 @@ select
 from c.t3;
  cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 
 ------------+-----+------+----------+----------------------+---+---------+----------
-          1 | t   | f    |          |                      | 1 |         | 
+          1 | t   | t    |          |                      | 1 |         | 
 (1 row)
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
- tabname | age 
----------+-----
- c.t3    |   0
+ tabname | agecs 
+---------+-------
+ c.t3    |     0
 (1 row)
 
 ----------------------------
 -- ALTER TABLE DROP COLUMN
 ----------------------------
-select pg_sleep(1);
+select pg_sleep(.1);
  pg_sleep 
 ----------
  
@@ -147,22 +147,22 @@ select
 from c.t3;
  cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 
 ------------+-----+------+----------+----------------------+---+---------+----------
-          1 | t   | f    |          |                      | 1 |         | 
+          1 | t   | t    |          |                      | 1 |         | 
 (1 row)
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
- tabname | age 
----------+-----
- c.t3    |   0
+ tabname | agecs 
+---------+-------
+ c.t3    |     0
 (1 row)
 
 ----------------------------
 -- ALTER TABLE ADD COLUMN
 ----------------------------
-select pg_sleep(1);
+select pg_sleep(.1);
  pg_sleep 
 ----------
  
@@ -177,16 +177,16 @@ select
 from c.t3;
  cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 | id2 
 ------------+-----+------+----------+----------------------+---+---------+----------+-----
-          1 | t   | f    |          |                      | 1 |         |          |    
+          1 | t   | t    |          |                      | 1 |         |          |    
 (1 row)
 
 select
  tabname::text,
- round(extract('secs' from now()  - updated_at)) as age
+ round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata;
- tabname | age 
----------+-----
- c.t3    |   0
+ tabname | agecs 
+---------+-------
+ c.t3    |     0
 (1 row)
 
 ----------------------------
