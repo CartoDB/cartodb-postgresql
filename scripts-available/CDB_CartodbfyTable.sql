@@ -40,6 +40,13 @@ DECLARE
   exists_geom_cols BOOLEAN[];
 BEGIN
 
+  -- TODO: Check that user quota is set ?
+  BEGIN
+    PERFORM public._CDB_UserQuotaInBytes();
+  EXCEPTION WHEN undefined_function THEN
+    RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
+  END;
+
   -- Drop cartodb triggers (might prevent changing columns)
 
   -- "track_updates"

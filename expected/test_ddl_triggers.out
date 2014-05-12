@@ -10,7 +10,13 @@ EXCEPTION
     RETURNS void AS '' LANGUAGE 'sql';
 END;
 $$ LANGUAGE 'plpgsql';
---SELECT tmp();
+-- Set user quota to infinite
+SELECT CDB_SetUserQuotaInBytes(0);
+ cdb_setuserquotainbytes 
+-------------------------
+                       0
+(1 row)
+
 create schema c;
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
@@ -207,3 +213,4 @@ select count(*) from CDB_TableMetadata;
 (1 row)
 
 DROP USER cartodb_postgresql_unpriv_user;
+DROP FUNCTION _CDB_UserQuotaInBytes();

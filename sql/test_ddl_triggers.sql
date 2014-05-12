@@ -12,8 +12,8 @@ EXCEPTION
 END;
 $$ LANGUAGE 'plpgsql';
 
---SELECT tmp();
-
+-- Set user quota to infinite
+SELECT CDB_SetUserQuotaInBytes(0);
 
 create schema c;
 
@@ -121,3 +121,4 @@ drop schema c cascade;
 select count(*) from CDB_TableMetadata; 
 
 DROP USER cartodb_postgresql_unpriv_user;
+DROP FUNCTION _CDB_UserQuotaInBytes();

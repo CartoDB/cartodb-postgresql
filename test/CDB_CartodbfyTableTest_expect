@@ -1,6 +1,8 @@
 SET
 CREATE FUNCTION
 SELECT 1
+ERROR:  Please set user quota before cartodbfying tables.
+0
 single non-geometrical column cartodbfied fine
 DROP TABLE
 SELECT 1
@@ -23,4 +25,5 @@ CREATE TRIGGER
 trigger-protected the_geom cartodbfied fine
 extent|BOX(1 1,2 2)
 DROP TABLE
+DROP FUNCTION
 DROP FUNCTION
