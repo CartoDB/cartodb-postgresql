@@ -7,11 +7,28 @@ output=cartodb--unpackaged--${ver}.sql
 cat ${input} > ${output}
 
 # Migrate CDB_TableMetadata
-cat >> ${output} <<EOF
+cat >> ${output} <<'EOF'
 ALTER TABLE cartodb.CDB_TableMetadata DISABLE TRIGGER ALL;
 INSERT INTO cartodb.CDB_TableMetadata SELECT * FROM public.CDB_TableMetadata;
 ALTER TABLE cartodb.CDB_TableMetadata ENABLE TRIGGER ALL;
 DROP TABLE public.CDB_TableMetadata;
+
+-- Set user quota
+-- NOTE: will fail if user quota wasn't set at database level, see
+--       http://github.com/CartoDB/cartodb-postgresql/issues/18
+DO $$
+DECLARE
+  qmax int8;
+BEGIN
+  BEGIN
+    qmax := public._CDB_UserQuotaInBytes();
+  EXCEPTION WHEN undefined_function THEN
+    RAISE EXCEPTION 'Please set user quota before switching to cartodb extension';
+  END;
+  PERFORM cartodb.CDB_SetUserQuotaInBytes(qmax);
+  DROP FUNCTION public._CDB_UserQuotaInBytes();
+END;
+$$ LANGUAGE 'plpgsql';
 
 -- Cartodbfy tables with a trigger using 'CDB_CheckQuota' or
 -- 'CDB_TableMetadata_Trigger' from the 'public' schema
