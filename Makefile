@@ -25,7 +25,7 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version.sql Makefile 
-	: > $@
+	echo '\echo Use "CREATE EXTENSION cartodb" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
     sed -e 's/\<public\./cartodb./g' \
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
