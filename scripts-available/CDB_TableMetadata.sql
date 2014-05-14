@@ -62,6 +62,8 @@ RETURNS trigger AS
 $$
 DECLARE
   tabname TEXT;
+  rec RECORD;
+  found BOOL;
 BEGIN
 
   IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
@@ -82,11 +84,27 @@ BEGIN
   --
   --  LISTEN cdb_tabledata_update;
   --
-  BEGIN
-    PERFORM cdb_invalidate_varnish(tabname);
-  EXCEPTION WHEN undefined_function THEN
-    RAISE WARNING 'Missing cdb_invalidate_varnish()';
-  END;
+
+  -- Call the first varnish invalidation function owned
+  -- by a superuser found in cartodb or public schema
+  -- (in that order)
+  found := false;
+  FOR rec IN SELECT u.usesuper, u.usename, n.nspname, p.proname
+             FROM pg_proc p, pg_namespace n, pg_user u
+             WHERE p.proname = 'cdb_invalidate_varnish'
+               AND p.pronamespace = n.oid
+               AND n.nspname IN ('public', 'cartodb')
+               AND u.usesysid = p.proowner
+               AND u.usesuper
+             ORDER BY n.nspname
+  LOOP
+    EXECUTE 'SELECT ' || quote_ident(rec.nspname) || '.'
+            || quote_ident(rec.proname)
+            || '(' || quote_literal(tabname) || ')';
+    found := true;
+    EXIT;
+  END LOOP;
+  IF NOT found THEN RAISE WARNING 'Missing cdb_invalidate_varnish()'; END IF;
 
   RETURN NULL;
 END;

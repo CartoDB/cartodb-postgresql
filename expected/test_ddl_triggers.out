@@ -1,15 +1,4 @@
 \set VERBOSITY terse
--- Create a stub cdb_invalidate_varnish function if not available
---CREATE FUNCTION tmp() returns void AS $$
-DO $$
-BEGIN
-  PERFORM cdb_invalidate_varnish(0);
-EXCEPTION
-  WHEN undefined_function THEN
-    CREATE OR REPLACE FUNCTION cartodb.cdb_invalidate_varnish(tabname text)
-    RETURNS void AS '' LANGUAGE 'sql';
-END;
-$$ LANGUAGE 'plpgsql';
 -- Set user quota to infinite
 SELECT CDB_SetUserQuotaInBytes(0);
  cdb_setuserquotainbytes 
