@@ -4,7 +4,7 @@ ver=$1
 input=cartodb--${ver}.sql
 output=cartodb--unpackaged--${ver}.sql
 
-cat ${input} > ${output}
+cat ${input} | grep -v 'duplicated extension$' > ${output}
 
 # Migrate CDB_TableMetadata
 cat >> ${output} <<'EOF'
