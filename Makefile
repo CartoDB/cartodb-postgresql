@@ -6,6 +6,7 @@ EXTVERSION = 0.1dev
 CDBSCRIPTS = \
   scripts-available/CDB_Roles.sql \
   scripts-enabled/*.sql \
+  scripts-available/CDB_SearchPath.sql \
   $(END)
 
 DATA_built = \
