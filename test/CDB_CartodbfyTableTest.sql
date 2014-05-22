@@ -175,7 +175,8 @@ CREATE TABLE t AS SELECT NOW()::text as created_at,
                          NOW()::text as updated_at,
                          NOW() as reftime;
 SELECT CDB_CartodbfyTableCheck('t', 'text timestamps');
-SELECT reftime-created_at, reftime-updated_at FROM t;
+SELECT extract(secs from reftime-created_at),
+       extract(secs from reftime-updated_at) FROM t;
 DROP TABLE t;
 
 -- table with existing cartodb_id field ot type text
