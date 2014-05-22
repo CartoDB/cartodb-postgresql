@@ -25,5 +25,9 @@ CREATE TRIGGER
 trigger-protected the_geom cartodbfied fine
 extent|BOX(1 1,2 2)
 DROP TABLE
+SELECT 1
+text timestamps cartodbfied fine
+@ 0|@ 0
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

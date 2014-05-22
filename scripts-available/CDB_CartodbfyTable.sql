@@ -163,27 +163,26 @@ BEGIN
 
       IF had_column THEN
 
-        -- Check data type is a TIMESTAMP WITH TIMEZONE
-        SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
-         WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped
-           AND a.attname = rec.cname
-        INTO STRICT rec2;
-        IF rec2.oid NOT IN (1184) THEN -- timestamptz {
-          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.cname, rec2.typname;
-        ELSE -- }{
-          sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
-            || ' SET NOT NULL, ALTER ' || rec.cname || ' SET DEFAULT now()';
-          BEGIN
-            RAISE DEBUG 'Running %', sql;
-            EXECUTE sql;
-            EXIT column_setup;
-          EXCEPTION
-          WHEN not_null_violation THEN
-            RAISE NOTICE '%, renaming', SQLERRM;
-          WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
-          END;
-        END IF; -- }
+        -- Ensure data type is a TIMESTAMP WITH TIMEZONE
+        sql := 'ALTER TABLE ' || reloid::text
+          || ' ALTER ' || rec.cname
+          || ' SET NOT NULL,'
+          || ' ALTER ' || rec.cname
+          || ' TYPE timestamptz USING ' || rec.cname || '::timestamptz,'
+          || ' ALTER ' || rec.cname
+          || ' SET DEFAULT now()';
+        BEGIN
+          RAISE DEBUG 'Running %', sql;
+          EXECUTE sql;
+          EXIT column_setup;
+        EXCEPTION
+        WHEN not_null_violation THEN -- failed not-null
+          RAISE NOTICE '%, renaming', SQLERRM;
+        WHEN cannot_coerce THEN -- failed cast
+          RAISE NOTICE '%, renaming', SQLERRM;
+        WHEN others THEN
+          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+        END;
 
         -- invalid column, need rename and re-create it
         i := 0;

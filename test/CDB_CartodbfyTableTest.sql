@@ -170,6 +170,14 @@ SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
 SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
 DROP TABLE t;
 
+-- table with existing updated_at and created_at fields ot type text
+CREATE TABLE t AS SELECT NOW()::text as created_at,
+                         NOW()::text as updated_at,
+                         NOW() as reftime;
+SELECT CDB_CartodbfyTableCheck('t', 'text timestamps');
+SELECT reftime-created_at, reftime-updated_at FROM t;
+DROP TABLE t;
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);
