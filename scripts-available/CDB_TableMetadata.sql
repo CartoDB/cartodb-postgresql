@@ -1,16 +1,12 @@
 
 CREATE TABLE IF NOT EXISTS
-  public.CDB_TableMetadata (
+  public.CDB_TableMetadataShadow (
     tabname regclass not null primary key,
     updated_at timestamp with time zone not null default now()
   );
 
--- Anyone can see this, but updates are only possible trough
--- the security definer trigger
-GRANT SELECT ON public.CDB_TableMetadata TO public;
-
 --
--- Trigger logging updated_at in the CDB_TableMetadata
+-- Trigger logging updated_at in the CDB_TableMetadataShadow
 -- and notifying cdb_tabledata_update with table name as payload.
 --
 -- Attach to tables like this:
@@ -20,19 +16,19 @@ GRANT SELECT ON public.CDB_TableMetadata TO public;
 --    FOR EACH STATEMENT
 --    EXECUTE PROCEDURE cdb_tablemetadata_trigger(); 
 --
--- NOTE: _never_ attach to CDB_TableMetadata ...
+-- NOTE: _never_ attach to CDB_TableMetadataShadow ...
 --
 CREATE OR REPLACE FUNCTION CDB_TableMetadata_Trigger()
 RETURNS trigger AS
 $$
 BEGIN
   -- Guard against infinite loop
-  IF TG_RELID = 'public.CDB_TableMetadata'::regclass::oid THEN
+  IF TG_RELID = 'public.CDB_TableMetadataShadow'::regclass::oid THEN
     RETURN NULL;
   END IF;
 
   -- Cleanup stale entries
-  DELETE FROM public.CDB_TableMetadata
+  DELETE FROM public.CDB_TableMetadataShadow
    WHERE NOT EXISTS (
     SELECT oid FROM pg_class WHERE oid = tabname
   );
@@ -40,11 +36,11 @@ BEGIN
   WITH nv as (
     SELECT TG_RELID as tabname, NOW() as t
   ), updated as (
-    UPDATE public.CDB_TableMetadata x SET updated_at = nv.t
+    UPDATE public.CDB_TableMetadataShadow x SET updated_at = nv.t
     FROM nv WHERE x.tabname = nv.tabname
     RETURNING x.tabname
   )
-  INSERT INTO public.CDB_TableMetadata SELECT nv.*
+  INSERT INTO public.CDB_TableMetadataShadow SELECT nv.*
   FROM nv LEFT JOIN updated USING(tabname)
   WHERE updated.tabname IS NULL;
 
@@ -54,7 +50,7 @@ $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
 --
--- Trigger invalidating varnish whenever CDB_TableMetadata
+-- Trigger invalidating varnish whenever CDB_TableMetadataShadow
 -- record change.
 --
 CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Updated()
@@ -111,10 +107,28 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS table_modified ON CDB_TableMetadata;
+DROP TRIGGER IF EXISTS table_modified ON CDB_TableMetadataShadow;
 -- NOTE: on DELETE we would be unable to convert the table
 --       oid (regclass) to its name
 CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
-ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
+ON CDB_TableMetadataShadow FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
+
+DO $$
+  BEGIN
+    INSERT INTO public.CDB_TableMetadataShadow
+    SELECT * FROM public.CDB_TableMetadata;
+    DROP TABLE public.CDB_TableMetadata;
+  EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Got % (%)', SQLERRM, SQLSTATE;
+  END;
+$$ LANGUAGE 'plpgsql';
+
+-- Anyone can see this, but updates are only possible trough
+-- the security definer trigger
+CREATE OR REPLACE VIEW public.CDB_TableMetadata AS                              
+  SELECT * FROM CDB_TableMetadataShadow                                         
+  WHERE has_table_privilege(tabname, 'SELECT'); 
+GRANT SELECT ON public.CDB_TableMetadata TO public;
 

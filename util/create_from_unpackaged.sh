@@ -6,12 +6,12 @@ output=cartodb--unpackaged--${ver}.sql
 
 cat ${input} | grep -v 'duplicated extension$' > ${output}
 
-# Migrate CDB_TableMetadata
+# Migrate CDB_TableMetadataShadow
 cat >> ${output} <<'EOF'
-ALTER TABLE cartodb.CDB_TableMetadata DISABLE TRIGGER ALL;
-INSERT INTO cartodb.CDB_TableMetadata SELECT * FROM public.CDB_TableMetadata;
-ALTER TABLE cartodb.CDB_TableMetadata ENABLE TRIGGER ALL;
-DROP TABLE public.CDB_TableMetadata;
+ALTER TABLE cartodb.CDB_TableMetadataShadow DISABLE TRIGGER ALL;
+INSERT INTO cartodb.CDB_TableMetadataShadow SELECT * FROM public.CDB_TableMetadataShadow;
+ALTER TABLE cartodb.CDB_TableMetadataShadow ENABLE TRIGGER ALL;
+DROP TABLE public.CDB_TableMetadataShadow;
 
 -- Set user quota
 -- NOTE: will fail if user quota wasn't set at database level, see
