@@ -142,6 +142,43 @@ BEGIN
     END IF;
   END LOOP; -- }
 
+  -- Try to copy data from new name if possible
+  IF new_name IS NOT NULL THEN
+    RAISE NOTICE 'Trying to recover data from % coumn', new_name;
+    BEGIN
+      -- Copy existing values to new field
+      sql := 'UPDATE ' || reloid::text || ' SET cartodb_id = '
+          || new_name || '::int4';
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+      -- Find max value
+      sql := 'SELECT max(cartodb_id) FROM ' || reloid::text;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql INTO rec;
+
+      -- Find sequence name
+      SELECT pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id')
+        AS seq INTO rec2;
+
+      -- Reset sequence name
+      sql := 'ALTER SEQUENCE ' || rec2.seq::text
+          || ' RESTART WITH ' || rec.max + 1;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+      -- Drop old column (all went find if we got here)
+      sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+    EXCEPTION
+    WHEN others THEN
+      RAISE NOTICE 'Could not initialize cartodb_id with existing values: % (%)',
+        SQLERRM, SQLSTATE;
+    END;
+  END IF;
+
   -- We need created_at and updated_at
   FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname) LOOP --{
     << column_setup >>
