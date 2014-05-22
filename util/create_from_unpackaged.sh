@@ -11,6 +11,7 @@ cat >> ${output} <<'EOF'
 ALTER TABLE cartodb.CDB_TableMetadataShadow DISABLE TRIGGER ALL;
 INSERT INTO cartodb.CDB_TableMetadataShadow SELECT * FROM public.CDB_TableMetadataShadow;
 ALTER TABLE cartodb.CDB_TableMetadataShadow ENABLE TRIGGER ALL;
+DROP VIEW public.CDB_TableMetadata;
 DROP TABLE public.CDB_TableMetadataShadow;
 
 -- Set user quota
