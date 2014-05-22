@@ -3,6 +3,9 @@
 -- Set user quota to infinite
 SELECT CDB_SetUserQuotaInBytes(0);
 
+-- Enable ddl triggers
+SELECT cartodb.cdb_enable_ddl_hooks();
+
 create schema c;
 
 CREATE USER cartodb_postgresql_unpriv_user;

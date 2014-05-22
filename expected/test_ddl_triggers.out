@@ -6,6 +6,18 @@ SELECT CDB_SetUserQuotaInBytes(0);
                        0
 (1 row)
 
+-- Enable ddl triggers
+SELECT cartodb.cdb_enable_ddl_hooks();
+NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
+NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
+NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
+NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
+NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
+ cdb_enable_ddl_hooks 
+----------------------
+ 
+(1 row)
+
 create schema c;
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;

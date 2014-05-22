@@ -184,4 +184,5 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
     ON "column_add" EXECUTE PROCEDURE cartodb.cdb_handle_add_column();
 $$ LANGUAGE sql;
 
-SELECT cartodb.cdb_enable_ddl_hooks();
+-- Do not enable hooks by default
+--SELECT cartodb.cdb_enable_ddl_hooks();
