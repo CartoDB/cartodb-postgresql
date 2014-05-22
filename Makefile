@@ -25,7 +25,7 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version.sql Makefile 
+$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version.sql cartodb_config_dump.sql Makefile 
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
     sed -e 's/\<public\./cartodb./g' \
@@ -33,6 +33,7 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_hooks.sql >> $@
 	cat cartodb_version.sql >> $@
+	cat cartodb_config_dump.sql >> $@
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
