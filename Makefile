@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.1.0
+EXTVERSION = 0.1.0dev
 
 CDBSCRIPTS = \
   scripts-available/CDB_Roles.sql \
