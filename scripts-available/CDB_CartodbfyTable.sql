@@ -83,7 +83,8 @@ BEGIN
       RAISE NOTICE 'Column cartodb_id already exists';
       had_column := TRUE;
     WHEN others THEN
-      RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+      RAISE EXCEPTION 'Cartodbfying % (cartodb_id): % (%)',
+        reloid, SQLERRM, SQLSTATE;
     END;
 
     IF had_column THEN
@@ -114,7 +115,8 @@ BEGIN
         WHEN unique_violation OR not_null_violation THEN
           RAISE NOTICE '%, renaming', SQLERRM;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (cartodb_id): % (%)',
+            reloid, SQLERRM, SQLSTATE;
         END;
       END IF; -- }
 
@@ -133,7 +135,8 @@ BEGIN
           i := i+1;
           CONTINUE rename_column;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (renaming cartodb_id): % (%)',
+            reloid, SQLERRM, SQLSTATE;
         END;
         EXIT rename_column;
       END LOOP; --}
@@ -195,7 +198,8 @@ BEGIN
         RAISE NOTICE 'Column % already exists', rec.cname;
         had_column := TRUE;
       WHEN others THEN
-        RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+        RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+          reloid, rec.cname, SQLERRM, SQLSTATE;
       END;
 
       IF had_column THEN
@@ -218,7 +222,8 @@ BEGIN
         WHEN cannot_coerce THEN -- failed cast
           RAISE NOTICE '%, renaming', SQLERRM;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+            reloid, rec.cname, SQLERRM, SQLSTATE;
         END;
 
         -- invalid column, need rename and re-create it
@@ -235,7 +240,8 @@ BEGIN
             i := i+1;
             CONTINUE rename_column;
           WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+            RAISE EXCEPTION 'Cartodbfying % (renaming %): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
           END;
           EXIT rename_column;
         END LOOP; --}
@@ -264,7 +270,8 @@ BEGIN
         exists_geom_cols := array_append(exists_geom_cols, true);
         RAISE NOTICE 'Column % already exists', rec.cname;
       WHEN others THEN
-        RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+        RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+          reloid, rec.cname, SQLERRM, SQLSTATE;
       END;
 
       << column_fixup >>
@@ -316,7 +323,8 @@ BEGIN
             EXECUTE sql;
           EXCEPTION
           WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+            RAISE EXCEPTION 'Cartodbfying % (% index): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
           END;
         END IF; -- }
 
@@ -339,7 +347,8 @@ BEGIN
           i := i+1;
           CONTINUE rename_column;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (rename %): % (%)',
+            reloid, rec.cname, SQLERRM, SQLSTATE;
         END;
         EXIT rename_column;
       END LOOP; --}
