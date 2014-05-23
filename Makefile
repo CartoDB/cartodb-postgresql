@@ -41,7 +41,7 @@ $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql uti
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
-cartodb_version.sql: cartodb_version.sql.in
+cartodb_version.sql: cartodb_version.sql.in Makefile
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
