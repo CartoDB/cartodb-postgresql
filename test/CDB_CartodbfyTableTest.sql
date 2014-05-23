@@ -177,6 +177,9 @@ CREATE TABLE t AS SELECT NOW()::text as created_at,
 SELECT CDB_CartodbfyTableCheck('t', 'text timestamps');
 SELECT extract(secs from reftime-created_at),
        extract(secs from reftime-updated_at) FROM t;
+CREATE VIEW v AS SELECT * FROM t;
+SELECT CDB_CartodbfyTableCheck('t', 'cartodbfied with view');
+DROP VIEW v;
 DROP TABLE t;
 
 -- table with existing cartodb_id field ot type text

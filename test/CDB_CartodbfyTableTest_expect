@@ -28,6 +28,9 @@ DROP TABLE
 SELECT 1
 text timestamps cartodbfied fine
 0|0
+CREATE VIEW
+cartodbfied with view cartodbfied fine
+DROP VIEW
 DROP TABLE
 SELECT 1
 text cartodb_id cartodbfied fine

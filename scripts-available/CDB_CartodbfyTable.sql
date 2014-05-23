@@ -184,6 +184,7 @@ BEGIN
 
   -- We need created_at and updated_at
   FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname) LOOP --{
+    new_name := null;
     << column_setup >>
     LOOP --{
       had_column := FALSE;
@@ -204,27 +205,35 @@ BEGIN
 
       IF had_column THEN
 
-        -- Ensure data type is a TIMESTAMP WITH TIMEZONE
-        sql := 'ALTER TABLE ' || reloid::text
-          || ' ALTER ' || rec.cname
-          || ' SET NOT NULL,'
-          || ' ALTER ' || rec.cname
-          || ' TYPE timestamptz USING ' || rec.cname || '::timestamptz,'
-          || ' ALTER ' || rec.cname
-          || ' SET DEFAULT now()';
-        BEGIN
-          RAISE DEBUG 'Running %', sql;
-          EXECUTE sql;
-          EXIT column_setup;
-        EXCEPTION
-        WHEN not_null_violation THEN -- failed not-null
-          RAISE NOTICE '%, renaming', SQLERRM;
-        WHEN cannot_coerce THEN -- failed cast
-          RAISE NOTICE '%, renaming', SQLERRM;
-        WHEN others THEN
-          RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
-            reloid, rec.cname, SQLERRM, SQLSTATE;
-        END;
+        -- Check data type is a TIMESTAMP WITH TIMEZONE
+        SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
+         WHERE a.atttypid = t.oid AND a.attrelid = reloid
+           AND NOT a.attisdropped AND a.attname = rec.cname
+        INTO STRICT rec2;
+        IF rec2.oid NOT IN (1184) THEN -- timestamptz {
+          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.
+cname, rec2.typname;
+        ELSE -- }{
+          -- Ensure data type is a TIMESTAMP WITH TIMEZONE
+          sql := 'ALTER TABLE ' || reloid::text
+            || ' ALTER ' || rec.cname
+            || ' SET NOT NULL,'
+            || ' ALTER ' || rec.cname
+            || ' SET DEFAULT now()';
+          BEGIN
+            RAISE DEBUG 'Running %', sql;
+            EXECUTE sql;
+            EXIT column_setup;
+          EXCEPTION
+          WHEN not_null_violation THEN -- failed not-null
+            RAISE NOTICE '%, renaming', SQLERRM;
+          WHEN cannot_coerce THEN -- failed cast
+            RAISE NOTICE '%, renaming', SQLERRM;
+          WHEN others THEN
+            RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
+          END;
+        END IF; -- }
 
         -- invalid column, need rename and re-create it
         i := 0;
@@ -249,6 +258,28 @@ BEGIN
 
       END IF;
     END LOOP; -- }
+
+    -- Try to copy data from new name if possible
+    IF new_name IS NOT NULL THEN -- {
+      RAISE NOTICE 'Trying to recover data from % coumn', new_name;
+      BEGIN
+        -- Copy existing values to new field
+        sql := 'UPDATE ' || reloid::text || ' SET ' || rec.cname || ' = '
+            || new_name || '::timestamptz';
+        RAISE DEBUG 'Running %', sql;
+        EXECUTE sql;
+
+        -- Drop old column (all went find if we got here)
+        sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
+        RAISE DEBUG 'Running %', sql;
+        EXECUTE sql;
+
+      EXCEPTION
+      WHEN others THEN
+        RAISE NOTICE 'Could not initialize % with existing values: % (%)',
+          rec.cname, SQLERRM, SQLSTATE;
+      END;
+    END IF; -- }
 
   END LOOP; -- }
 
