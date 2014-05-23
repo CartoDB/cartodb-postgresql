@@ -38,7 +38,7 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
 
-$(EXTENSION).control: $(EXTENSION).control.in
+$(EXTENSION).control: $(EXTENSION).control.in Makefile
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in
