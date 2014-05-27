@@ -14,8 +14,9 @@ CDBSCRIPTS = \
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
   $(EXTENSION)--unpackaged--$(EXTVERSION).sql \
-  $(EXTENSION).control \
-  cartodb_version.sql
+  $(EXTENSION).control
+
+EXTRA_CLEAN = cartodb_version.sql
 
 DOCS = README.md
 REGRESS_NEW = test_ddl_triggers
