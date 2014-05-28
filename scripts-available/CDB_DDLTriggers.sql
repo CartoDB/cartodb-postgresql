@@ -175,7 +175,7 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_disable_ddl_hooks() returns void AS $$
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
- SELECT cdb_disable_ddl_hooks();
+ SELECT cartodb.cdb_disable_ddl_hooks();
  CREATE EVENT TRIGGER cdb_on_relation_create
     ON "relation_create" EXECUTE PROCEDURE cartodb.cdb_handle_create_table();
  CREATE EVENT TRIGGER cdb_on_relation_drop
