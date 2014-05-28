@@ -11,9 +11,23 @@ CDBSCRIPTS = \
   scripts-available/CDB_ExtensionPost.sql \
   $(END)
 
+UPGRADABLE = \
+  unpackaged \
+  0.1.0 \
+  0.1.1 \
+  $(EXTVERSION)next \
+  $(END)
+
+UPGRADES = \
+  $(shell echo $(UPGRADABLE) | \
+     sed 's/^/$(EXTENSION)--/' | \
+     sed 's/$$/--$(EXTVERSION).sql/' | \
+     sed 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
+
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
-  $(EXTENSION)--unpackaged--$(EXTVERSION).sql \
+  $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql \
+  $(UPGRADES) \
   $(EXTENSION).control
 
 EXTRA_CLEAN = cartodb_version.sql
@@ -38,6 +52,12 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
+
+$(EXTENSION)--%--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql
+	cp $< $@
+
+$(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).sql
+	cp $< $@
 
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
