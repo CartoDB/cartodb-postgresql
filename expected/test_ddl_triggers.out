@@ -67,6 +67,8 @@ NOTICE:  trigger "update_updated_at_trigger" for table "c.t4" does not exist, sk
 NOTICE:  trigger "test_quota" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "test_quota_per_row" for table "c.t4" does not exist, skipping
 NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
+NOTICE:  Trying to recover data from _cartodb_id0 coumn
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
