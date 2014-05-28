@@ -89,13 +89,21 @@ BEGIN
 
     IF had_column THEN
 
+      SELECT pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id')
+        AS seq INTO rec2;
+
       -- Check data type is an integer
-      SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
+      SELECT
+        pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id') as seq,
+        t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
        WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped
          AND a.attname = 'cartodb_id'
       INTO STRICT rec;
-      IF rec.oid NOT IN (20,21,23) THEN -- int2, int4, int8 {
+      -- 20=int2, 21=int4, 23=int8
+      IF rec.oid NOT IN (20,21,23) THEN
         RAISE NOTICE 'Existing cartodb_id field is of invalid type % (need int2, int4 or int8), renaming', rec.typname;
+      ELSIF rec.seq IS NULL THEN
+        RAISE NOTICE 'Existing cartodb_id field does not have an associated sequence, renaming';
       ELSE -- }{
         sql := 'ALTER TABLE ' || reloid::text || ' ALTER COLUMN cartodb_id SET NOT NULL';
         IF NOT EXISTS ( SELECT c.conname FROM pg_constraint c, pg_attribute a

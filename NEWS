@@ -4,6 +4,7 @@
 Bug fixes:
 
  - Fix recursive trigger on create table (#32)
+ - Ensure cartodb_id uses an associated sequence (#33)
 
 0.1.0 - 2014-05-23
 ------------------

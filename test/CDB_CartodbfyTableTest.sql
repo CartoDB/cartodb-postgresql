@@ -182,16 +182,22 @@ SELECT CDB_CartodbfyTableCheck('t', 'cartodbfied with view');
 DROP VIEW v;
 DROP TABLE t;
 
--- table with existing cartodb_id field ot type text
+-- table with existing cartodb_id field of type text
 CREATE TABLE t AS SELECT 10::text as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
 select cartodb_id/2 FROM t; 
 DROP TABLE t;
 
--- table with existing cartodb_id field ot type text not casting
+-- table with existing cartodb_id field of type text not casting
 CREATE TABLE t AS SELECT 'nan' as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
 select cartodb_id,_cartodb_id0 FROM t; 
+DROP TABLE t;
+
+-- table with existing cartodb_id field of type int4 not sequenced
+CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
+select cartodb_id FROM t; 
 DROP TABLE t;
 
 -- TODO: table with existing custom-triggered the_geom
