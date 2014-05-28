@@ -24,8 +24,12 @@ BEGIN
     RETURN;
   END IF;
 
+  PERFORM cartodb.cdb_disable_ddl_hooks();
+
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
   PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
+
+  PERFORM cartodb.cdb_enable_ddl_hooks();
 
   RAISE DEBUG 'Inserting into cartodb.CDB_TableMetadata';
 
