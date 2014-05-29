@@ -24,6 +24,16 @@ BEGIN
     RETURN;
   END IF;
 
+  -- We don't want to react to alters triggered on tables
+  -- which are in the "cdb_importer" schema
+  IF EXISTS ( SELECT * FROM pg_catalog.pg_namespace
+              WHERE oid = (event_info.new).relnamespace
+                AND nspname = 'cdb_importer' )
+  THEN
+    RAISE DEBUG 'no ddl trigger for tables in cdb_importer schema';
+    RETURN;
+  END IF;
+
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
@@ -55,6 +65,17 @@ BEGIN
   RAISE DEBUG 'Relation % of kind % dropped from namespace oid %',
 	 event_info.old_relation_oid, (event_info.old).relkind, (event_info.old).relnamespace;
 
+  -- We don't want to react to alters triggered on tables
+  -- which are in the "cdb_importer" schema
+  IF EXISTS ( SELECT * FROM pg_catalog.pg_namespace
+              WHERE oid = (event_info.old).relnamespace
+                AND nspname = 'cdb_importer' )
+  THEN
+    RAISE DEBUG 'no ddl trigger for tables in cdb_importer schema';
+    RETURN;
+  END IF;
+
+
   -- delete record from CDB_TableMetadata (should invalidate varnish)
   DELETE FROM cartodb.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
 
@@ -84,6 +105,18 @@ BEGIN
     RAISE DEBUG 'no ddl trigger for superuser';
     RETURN;
   END IF;
+
+  -- We don't want to react to alters triggered on tables
+  -- which are in the "cdb_importer" schema
+  IF EXISTS ( SELECT n.* FROM pg_catalog.pg_namespace n, pg_catalog.pg_class c
+              WHERE n.oid = c.relnamespace
+                AND c.oid = event_info.relation
+                AND nspname = 'cdb_importer' )
+  THEN
+    RAISE DEBUG 'no ddl trigger for tables in cdb_importer schema';
+    RETURN;
+  END IF;
+
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
@@ -122,6 +155,17 @@ BEGIN
     RETURN;
   END IF;
 
+  -- We don't want to react to alters triggered on tables
+  -- which are in the "cdb_importer" schema
+  IF EXISTS ( SELECT n.* FROM pg_catalog.pg_namespace n, pg_catalog.pg_class c
+              WHERE n.oid = c.relnamespace
+                AND c.oid = event_info.relation
+                AND nspname = 'cdb_importer' )
+  THEN
+    RAISE DEBUG 'no ddl trigger for tables in cdb_importer schema';
+    RETURN;
+  END IF;
+
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
@@ -156,6 +200,17 @@ BEGIN
   -- We don't want to react to drops triggered by superuser,
   IF current_setting('is_superuser') = 'on' THEN
     RAISE DEBUG 'no ddl trigger for superuser';
+    RETURN;
+  END IF;
+
+  -- We don't want to react to alters triggered on tables
+  -- which are in the "cdb_importer" schema
+  IF EXISTS ( SELECT n.* FROM pg_catalog.pg_namespace n, pg_catalog.pg_class c
+              WHERE n.oid = c.relnamespace
+                AND c.oid = event_info.relation
+                AND nspname = 'cdb_importer' )
+  THEN
+    RAISE DEBUG 'no ddl trigger for tables in cdb_importer schema';
     RETURN;
   END IF;
 
