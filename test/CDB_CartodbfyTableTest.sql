@@ -200,6 +200,22 @@ SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
 select cartodb_id FROM t; 
 DROP TABLE t;
 
+-- table with existing the_geom and created_at and containing null values
+-- Really, a test for surviving an longstanding PostgreSQL bug:
+-- http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+CREATE TABLE t (
+    the_geom geometry(Geometry,4326),
+    created_at timestamptz,
+    updated_at timestamptz
+);
+COPY t (the_geom, created_at, updated_at) FROM stdin;
+0106000020E610000001000000010300000001000000050000009EB8244146435BC017B65E062AD343409EB8244146435BC0F51AF6E2708044400B99891683765AC0F51AF6E2708044400B99891683765AC017B65E062AD343409EB8244146435BC017B65E062AD34340	2012-06-06 21:59:08	2013-06-10 20:17:20
+0106000020E61000000100000001030000000100000005000000DA7763431A1A5CC0FBCEE869313C3A40DA7763431A1A5CC09C1B8F55BC494440F9F4A9C7993356C09C1B8F55BC494440F9F4A9C7993356C0FBCEE869313C3A40DA7763431A1A5CC0FBCEE869313C3A40	2012-06-06 21:59:08	2013-06-10 20:17:20
+\N	\N	\N
+\.
+SELECT CDB_CartodbfyTableCheck('t', 'null geom and timestamp values');
+DROP TABLE t;
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);

@@ -44,5 +44,8 @@ SELECT 1
 unsequenced cartodb_id cartodbfied fine
 1
 DROP TABLE
+CREATE TABLE
+null geom and timestamp values cartodbfied fine
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

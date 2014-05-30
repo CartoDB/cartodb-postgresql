@@ -7,6 +7,7 @@ Bug fixes:
  - Ensure cartodb_id uses an associated sequence (#33)
  - Fully qualify call to cdb_disable_ddl_hooks from cdb_enable_ddl_hooks
  - Fully qualify call to CDB_UserDataSize from quota trigger
+ - Fix potential infinite loop in CDB_CartodbfyTable
 
 
 0.1.0 - 2014-05-23

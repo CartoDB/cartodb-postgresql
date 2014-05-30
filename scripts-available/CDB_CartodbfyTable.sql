@@ -158,7 +158,11 @@ BEGIN
     RAISE NOTICE 'Trying to recover data from % column', new_name;
     BEGIN
       -- Copy existing values to new field
-      sql := 'UPDATE ' || reloid::text || ' SET cartodb_id = '
+      -- NOTE: using ALTER is a workaround to a PostgreSQL bug and
+      --       is also known to be faster for tables with many rows
+      -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+      sql := 'ALTER TABLE ' || reloid::text
+          || ' ALTER cartodb_id TYPE int USING '
           || new_name || '::int4';
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
@@ -273,7 +277,11 @@ cname, rec2.typname;
       RAISE NOTICE 'Trying to recover data from % coumn', new_name;
       BEGIN
         -- Copy existing values to new field
-        sql := 'UPDATE ' || reloid::text || ' SET ' || rec.cname || ' = '
+        -- NOTE: using ALTER is a workaround to a PostgreSQL bug and
+        --       is also known to be faster for tables with many rows
+        -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+        sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
+            || ' TYPE TIMESTAMPTZ USING '
             || new_name || '::timestamptz';
         RAISE DEBUG 'Running %', sql;
         EXECUTE sql;
