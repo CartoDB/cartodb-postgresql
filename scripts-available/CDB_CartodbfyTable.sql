@@ -100,9 +100,9 @@ BEGIN
          AND a.attname = 'cartodb_id'
       INTO STRICT rec;
       -- 20=int2, 21=int4, 23=int8
-      IF rec.oid NOT IN (20,21,23) THEN
+      IF rec.oid NOT IN (20,21,23) THEN -- {
         RAISE NOTICE 'Existing cartodb_id field is of invalid type % (need int2, int4 or int8), renaming', rec.typname;
-      ELSIF rec.seq IS NULL THEN
+      ELSIF rec.seq IS NULL THEN -- }{
         RAISE NOTICE 'Existing cartodb_id field does not have an associated sequence, renaming';
       ELSE -- }{
         sql := 'ALTER TABLE ' || reloid::text || ' ALTER COLUMN cartodb_id SET NOT NULL';
@@ -191,7 +191,8 @@ BEGIN
   END IF;
 
   -- We need created_at and updated_at
-  FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname) LOOP --{
+  FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname)
+  LOOP --{
     new_name := null;
     << column_setup >>
     LOOP --{
