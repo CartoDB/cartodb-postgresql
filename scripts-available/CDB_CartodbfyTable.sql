@@ -155,7 +155,7 @@ BEGIN
 
   -- Try to copy data from new name if possible
   IF new_name IS NOT NULL THEN
-    RAISE NOTICE 'Trying to recover data from % coumn', new_name;
+    RAISE NOTICE 'Trying to recover data from % column', new_name;
     BEGIN
       -- Copy existing values to new field
       sql := 'UPDATE ' || reloid::text || ' SET cartodb_id = '
