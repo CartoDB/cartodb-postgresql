@@ -9,6 +9,7 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
+  table_sync RECORD;
 BEGIN
   event_info := schema_triggers.get_relation_create_eventinfo();
 
@@ -37,6 +38,10 @@ BEGIN
   INSERT INTO cartodb.CDB_TableMetadata(tabname,updated_at) 
   VALUES (event_info.relation, now());
 
+  -- Notify table sync service about table creation
+  table_sync := public._CDB_UserDomain();
+  PERFORM public.cdb_table_sync_created(table_sync.host, table_sync.port, table_sync.secure, (event_info.new).relnamespace, event_info.relation);
+
 END; $$;
 -- }
 
@@ -46,6 +51,7 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_handle_drop_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
+  table_sync RECORD;
 BEGIN
   event_info := schema_triggers.get_relation_drop_eventinfo();
 
@@ -57,6 +63,10 @@ BEGIN
 
   -- delete record from CDB_TableMetadata (should invalidate varnish)
   DELETE FROM cartodb.CDB_TableMetadata WHERE tabname = event_info.old_relation_oid;
+
+  -- Notify table sync service about table deletion
+  table_sync := public._CDB_UserDomain();
+  PERFORM public.cdb_table_sync_created(table_sync.host, table_sync.port, table_sync.secure, (event_info.old).relnamespace, event_info.old_relation_oid);
 
 END; $$;
 -- }
