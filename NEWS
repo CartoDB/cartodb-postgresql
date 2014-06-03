@@ -9,6 +9,10 @@ Bug fixes:
  - Fully qualify call to CDB_UserDataSize from quota trigger
  - Fix potential infinite loop in CDB_CartodbfyTable
 
+Enhancements:
+
+ - Include revision info in cdb_version() output (#34)
+
 
 0.1.0 - 2014-05-23
 ------------------

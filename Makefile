@@ -24,6 +24,8 @@ UPGRADES = \
      sed 's/$$/--$(EXTVERSION).sql/' | \
      sed 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
 
+REV=$(shell git describe)
+
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
   $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql \
@@ -63,7 +65,7 @@ $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile
-	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+	sed -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
