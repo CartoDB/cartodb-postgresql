@@ -14,6 +14,7 @@ Dependencies
  * PostgreSQL 9.3+ 
  * [Schema triggers extension]
    (https://bitbucket.org/malloclabs/pg_schema_triggers)
+   (or [fork](https://github.com/CartoDB/pg_schema_triggers))
 
 Install
 -------
