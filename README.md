@@ -57,3 +57,38 @@ CREATE EXTENSION schema_triggers;
 CREATE EXTENSION cartodb FROM unpackaged;
 ```
 
+Update cartodb extension
+------------------------
+
+Updating the version of cartodb extension installed in a database
+is done using ALTER EXTENSION.
+
+```sql
+ALTER EXTENSION cartodb UPDATE TO '0.1.1';
+```
+
+If the "TO 'x.y.z'" part is omitted, the extension will be updated to the
+latest installed version, which you can find with the following command:
+
+```sh
+grep default_version `pg_config --sharedir`/extension/cartodb.control
+```
+
+Updates are performed by PostgreSQL by loading one or more migration scripts
+as needed to go from the installed version S to the target version T.
+All migration scripts are in the "extension" directory of PostgreSQL:
+
+```sh
+ls `pg_config --sharedir`/extension/cartodb*
+```
+
+During development the cartodb extension version doesn't change with
+every commit, so testing latest change requires cheating with PostgreSQL
+so to enforce re-load of the scripts. To help with cheating, "make install"
+also installs migration scripts to go from "V" to "V"next and from "V"next
+to "V". Example to upgrade a 0.2.0dev version:
+
+```sql
+ALTER EXTENSION cartodb UPDATE TO '0.2.0devnext';
+ALTER EXTENSION cartodb UPDATE TO '0.2.0dev';
+```
