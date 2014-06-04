@@ -67,6 +67,9 @@ is done using ALTER EXTENSION.
 ALTER EXTENSION cartodb UPDATE TO '0.1.1';
 ```
 
+The target version needs to be installed on the system first
+(see Install section).
+
 If the "TO 'x.y.z'" part is omitted, the extension will be updated to the
 latest installed version, which you can find with the following command:
 
