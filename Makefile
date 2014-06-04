@@ -9,6 +9,7 @@ CDBSCRIPTS = \
   scripts-available/CDB_SearchPath.sql \
   scripts-available/CDB_DDLTriggers.sql \
   scripts-available/CDB_ExtensionPost.sql \
+  scripts-available/CDB_ExtensionUtils.sql \
   $(END)
 
 UPGRADABLE = \
