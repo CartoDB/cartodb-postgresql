@@ -3,6 +3,8 @@
 EXTENSION = cartodb
 EXTVERSION = 0.2.0dev
 
+SED = sed
+
 CDBSCRIPTS = \
   scripts-available/CDB_Roles.sql \
   scripts-enabled/*.sql \
@@ -21,9 +23,9 @@ UPGRADABLE = \
 
 UPGRADES = \
   $(shell echo $(UPGRADABLE) | \
-     sed 's/^/$(EXTENSION)--/' | \
-     sed 's/$$/--$(EXTVERSION).sql/' | \
-     sed 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
+     $(SED) 's/^/$(EXTENSION)--/' | \
+     $(SED) 's/$$/--$(EXTVERSION).sql/' | \
+     $(SED) 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
 
 REV=$(shell git describe)
 
@@ -48,7 +50,7 @@ include $(PGXS)
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile 
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
-    sed -e 's/\<public\./cartodb./g' \
+    $(SED) -e 's/\<public\./cartodb./g' \
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_version.sql >> $@
@@ -63,10 +65,10 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 	cp $< $@
 
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
-	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile
-	sed -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
@@ -80,7 +82,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
     echo '\\t' >> $${of}; \
     echo '\\set QUIET off' >> $${of}; \
     cat $${f} | \
-      sed -e 's/\<public\./cartodb./g' >> $${of}; \
+      $(SED) -e 's/\<public\./cartodb./g' >> $${of}; \
     exp=expected/test/$${tn}.out; \
     echo '\\set ECHO off' > $${exp}; \
     cat test/$${tn}_expect >> $${exp}; \
