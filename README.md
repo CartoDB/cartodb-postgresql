@@ -104,8 +104,13 @@ SELECT cartodb.cdb_extension_reload();
 
 Troubleshooting
 ---------------
+
 ### Mac OS X sed
-Mac OS X comes with sed from FreeBSD, some scripting in Makefile is incompatible with that version of sed so we recommend you to install GNU sed. The easiest way is via [Homebrew](http://brew.sh/) like in:
+
+Mac OS X comes with sed from FreeBSD, some scripting in Makefile is
+incompatible with that version of sed so we recommend you to install
+GNU sed. The easiest way is via [Homebrew](http://brew.sh/) like in:
+
 ```sh
 brew install gnu-sed --default-names
 ```
