@@ -165,7 +165,7 @@ DROP TABLE t;
 -- table with existing triggered the_geom
 CREATE TABLE t AS SELECT 'SRID=4326;LINESTRING(1 1,2 2)'::geometry(geometry) as the_geom;
 CREATE TRIGGER update_the_geom_webmercator_trigger BEFORE UPDATE OF the_geom ON t
- FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator();
+ FOR EACH ROW EXECUTE PROCEDURE _CDB_update_the_geom_webmercator();
 SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
 SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
 DROP TABLE t;
