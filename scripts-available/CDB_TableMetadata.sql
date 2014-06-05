@@ -118,3 +118,64 @@ CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
 ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
 
+
+
+--
+-- Trigger invalidating varnish whenever CDB_TableMetadata
+-- record change.
+--
+CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Table_Sync()
+    RETURNS trigger AS
+    $$
+    DECLARE
+        tabid INTEGER;
+        tabname TEXT;
+        func TEXT;
+        rec RECORD;
+        found BOOL;
+    BEGIN
+
+        IF TG_OP = 'INSERT' THEN
+            tabid = NEW.tabname::OID;
+            tabname = NEW.tabname;
+            func = 'cdb_table_sync_created';
+        ELSIF TG_OP = 'UPDATE' THEN
+            tabid = NEW.tabname::OID;
+            tabname = NEW.tabname;
+            func = 'cdb_table_sync_updated';
+        ELSE
+            tabid = OLD.tabname::OID;
+            tabname = OLD.tabname;
+            func = 'cdb_table_sync_deleted';
+        END IF;
+
+        found := false;
+        FOR rec IN SELECT u.usesuper, u.usename, n.nspname, p.proname
+                   FROM pg_proc p, pg_namespace n, pg_user u
+                   WHERE p.proname = func
+                         AND p.pronamespace = n.oid
+                         AND n.nspname IN ('public', 'cartodb')
+                         AND u.usesysid = p.proowner
+                         AND u.usesuper
+                   ORDER BY n.nspname
+        LOOP
+            EXECUTE 'SELECT ' || quote_ident(rec.nspname) || '.'
+                    || quote_ident(rec.proname)
+                    || '(' || quote_literal(tabid) || ',' || quote_literal(tabname) || ')';
+            found := true;
+            EXIT;
+        END LOOP;
+        IF NOT found THEN RAISE WARNING 'Missing Table Sync function()'; END IF;
+
+        RETURN NULL;
+    END;
+    $$
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS table_sync ON CDB_TableMetadata;
+-- NOTE: on DELETE we would be unable to convert the table
+--       oid (regclass) to its name
+CREATE TRIGGER table_sync AFTER INSERT OR UPDATE OR DELETE
+ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
+    _CDB_TableMetadata_Table_Sync();
+
