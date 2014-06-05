@@ -3,4 +3,4 @@ comment = 'Turn a database into a cartodb user database.'
 superuser = true
 relocatable = false
 schema = cartodb
-requires = 'schema_triggers, postgis'
+requires = 'schema_triggers, postgis, plpythonu'

@@ -1,6 +1,10 @@
 0.2.0dev - 2014-MM-DD
 ------------------
 
+Important changes:
+
+ - This release adds dependency on "plpythonu" extension
+
 Bug fixes:
 
  - Fix recursive trigger on create table (#32)
@@ -8,6 +12,7 @@ Bug fixes:
  - Fully qualify call to cdb_disable_ddl_hooks from cdb_enable_ddl_hooks
  - Fully qualify call to CDB_UserDataSize from quota trigger
  - Fix potential infinite loop in CDB_CartodbfyTable
+ - Fix potential infinite loop in CDB_QueryStatements
 
 Enhancements:
 
