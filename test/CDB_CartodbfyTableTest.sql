@@ -146,7 +146,7 @@ DROP TABLE t;
 CREATE TABLE t AS SELECT ST_SetSRID(ST_MakePoint(-1,-1),4326) as the_geom
 UNION ALL SELECT ST_SetSRID(ST_MakePoint(0,0),3857);
 SELECT CDB_CartodbfyTableCheck('t', 'mixed-srid the_geom');
-SELECT 'extent',ST_Extent(the_geom) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
 -- table with wrong srid-constrained the_geom values
@@ -159,7 +159,7 @@ DROP TABLE t;
 CREATE TABLE t AS SELECT 'SRID=4326;LINESTRING(1 1,2 2)'::geometry(geometry,4326) as the_geom_webmercator;
 SELECT CDB_CartodbfyTableCheck('t', 'wrong srid-constrained the_geom_webmercator');
 -- expect the_geom to be populated from the_geom_webmercator
-SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
 -- table with existing triggered the_geom
@@ -167,7 +167,7 @@ CREATE TABLE t AS SELECT 'SRID=4326;LINESTRING(1 1,2 2)'::geometry(geometry) as 
 CREATE TRIGGER update_the_geom_webmercator_trigger BEFORE UPDATE OF the_geom ON t
  FOR EACH ROW EXECUTE PROCEDURE _CDB_update_the_geom_webmercator();
 SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
-SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
 -- table with existing updated_at and created_at fields ot type text
