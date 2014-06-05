@@ -4,6 +4,7 @@
 New features:
 
  - Added CDB_UserDomain
+ - Adds table_sync trigger on CDB_TableMetadata to call cdb_table_sync_* functions
 
 0.2.0dev - 2014-MM-DD
 ------------------
