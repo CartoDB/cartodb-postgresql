@@ -50,7 +50,7 @@ BEGIN
       RETURN NEW;
     END IF;
 
-    SELECT CDB_UserDataSize() INTO quota;
+    SELECT public.CDB_UserDataSize() INTO quota;
     IF quota > qmax THEN
         RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
     ELSE RAISE DEBUG 'User quota in bytes: % < % (max allowed)', quota, qmax;

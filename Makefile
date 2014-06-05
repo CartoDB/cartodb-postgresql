@@ -1,19 +1,41 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.1dev
+EXTVERSION = 0.2.0dev
+
+SED = sed
 
 CDBSCRIPTS = \
   scripts-available/CDB_Roles.sql \
   scripts-enabled/*.sql \
   scripts-available/CDB_SearchPath.sql \
+  scripts-available/CDB_DDLTriggers.sql \
+  scripts-available/CDB_ExtensionPost.sql \
+  scripts-available/CDB_ExtensionUtils.sql \
   $(END)
+
+UPGRADABLE = \
+  unpackaged \
+  0.1.0 \
+  0.1.1 \
+  $(EXTVERSION)next \
+  $(END)
+
+UPGRADES = \
+  $(shell echo $(UPGRADABLE) | \
+     $(SED) 's/^/$(EXTENSION)--/' | \
+     $(SED) 's/$$/--$(EXTVERSION).sql/' | \
+     $(SED) 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
+
+REV=$(shell git describe)
 
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
-  $(EXTENSION)--unpackaged--$(EXTVERSION).sql \
-  $(EXTENSION).control \
-  cartodb_version.sql
+  $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql \
+  $(UPGRADES) \
+  $(EXTENSION).control
+
+EXTRA_CLEAN = cartodb_version.sql
 
 DOCS = README.md
 REGRESS_NEW = test_ddl_triggers
@@ -25,23 +47,28 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_hooks.sql cartodb_version.sql Makefile 
+$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile 
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
-    sed -e 's/\<public\./cartodb./g' \
+    $(SED) -e 's/public\./cartodb./g' \
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
-	cat cartodb_hooks.sql >> $@
 	cat cartodb_version.sql >> $@
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
 
-$(EXTENSION).control: $(EXTENSION).control.in
-	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+$(EXTENSION)--%--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql
+	cp $< $@
 
-cartodb_version.sql: cartodb_version.sql.in
-	sed -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+$(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).sql
+	cp $< $@
+
+$(EXTENSION).control: $(EXTENSION).control.in Makefile
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+
+cartodb_version.sql: cartodb_version.sql.in Makefile
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
@@ -55,7 +82,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
     echo '\\t' >> $${of}; \
     echo '\\set QUIET off' >> $${of}; \
     cat $${f} | \
-      sed -e 's/\<public\./cartodb./g' >> $${of}; \
+      $(SED) -e 's/public\./cartodb./g' >> $${of}; \
     exp=expected/test/$${tn}.out; \
     echo '\\set ECHO off' > $${exp}; \
     cat test/$${tn}_expect >> $${exp}; \

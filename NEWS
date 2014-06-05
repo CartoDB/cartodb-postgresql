@@ -5,10 +5,12 @@ New features:
 
  - Added CDB_UserDomain
 
-
-
 0.2.0dev - 2014-MM-DD
 ------------------
+
+Important changes:
+
+ - This release adds dependency on "plpythonu" extension
 
 Bug fixes:
 
@@ -17,6 +19,15 @@ Bug fixes:
  - Fully qualify call to cdb_disable_ddl_hooks from cdb_enable_ddl_hooks
  - Fully qualify call to CDB_UserDataSize from quota trigger
  - Fix potential infinite loop in CDB_CartodbfyTable
+ - Fix potential infinite loop in CDB_QueryStatements
+
+Enhancements:
+
+ - Include revision info in cdb_version() output (#34)
+
+New features:
+
+ - Add a cdb_extension_reload() function
 
 
 0.1.0 - 2014-05-23

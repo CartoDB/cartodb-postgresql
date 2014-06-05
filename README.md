@@ -11,9 +11,11 @@ See https://github.com/CartoDB/cartodb/wiki/CartoDB-PostgreSQL-extension
 Dependencies
 ------------
 
- * PostgreSQL 9.3+ 
+ * PostgreSQL 9.3+ (with plpythonu extension)
+ * [PostGIS extension](http://postgis.net) 
  * [Schema triggers extension]
    (https://bitbucket.org/malloclabs/pg_schema_triggers)
+   (or [fork](https://github.com/CartoDB/pg_schema_triggers))
 
 Install
 -------
@@ -54,5 +56,50 @@ be in the "cartodb" schema.
 CREATE EXTENSION postgis FROM unpackaged;
 CREATE EXTENSION schema_triggers;
 CREATE EXTENSION cartodb FROM unpackaged;
+```
+
+Update cartodb extension
+------------------------
+
+Updating the version of cartodb extension installed in a database
+is done using ALTER EXTENSION.
+
+```sql
+ALTER EXTENSION cartodb UPDATE TO '0.1.1';
+```
+
+The target version needs to be installed on the system first
+(see Install section).
+
+If the "TO 'x.y.z'" part is omitted, the extension will be updated to the
+latest installed version, which you can find with the following command:
+
+```sh
+grep default_version `pg_config --sharedir`/extension/cartodb.control
+```
+
+Updates are performed by PostgreSQL by loading one or more migration scripts
+as needed to go from the installed version S to the target version T.
+All migration scripts are in the "extension" directory of PostgreSQL:
+
+```sh
+ls `pg_config --sharedir`/extension/cartodb*
+```
+
+During development the cartodb extension version doesn't change with
+every commit, so testing latest change requires cheating with PostgreSQL
+so to enforce re-load of the scripts. To help with cheating, "make install"
+also installs migration scripts to go from "V" to "V"next and from "V"next
+to "V". Example to upgrade a 0.2.0dev version:
+
+```sql
+ALTER EXTENSION cartodb UPDATE TO '0.2.0devnext';
+ALTER EXTENSION cartodb UPDATE TO '0.2.0dev';
+```
+
+Starting with 0.2.0, the in-place reload can be done with an ad-hoc function:
+
+```sql
+SELECT cartodb.cdb_extension_reload();
 ```
 

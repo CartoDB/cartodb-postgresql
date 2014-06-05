@@ -5,7 +5,7 @@
 --
 -- Currently accepted permissions are: 'public', 'private' or 'all'
 --
-DROP FUNCTION IF EXISTS CDB_UserTables(); -- replaced by:
+-- DROP FUNCTION IF EXISTS CDB_UserTables(); -- replaced by:
 CREATE OR REPLACE FUNCTION CDB_UserTables(perm text DEFAULT 'all')
 RETURNS SETOF information_schema.sql_identifier
 AS $$
