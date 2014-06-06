@@ -10,7 +10,7 @@
 CREATE OR REPLACE FUNCTION _CDB_update_the_geom_webmercator()
 RETURNS trigger AS $$
 BEGIN
-  NEW.the_geom_webmercator := CDB_TransformToWebmercator(NEW.the_geom);
+  NEW.the_geom_webmercator := public.CDB_TransformToWebmercator(NEW.the_geom);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
