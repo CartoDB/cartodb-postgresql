@@ -66,7 +66,7 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
-cartodb_version.sql: cartodb_version.sql.in Makefile
+cartodb_version.sql: cartodb_version.sql.in Makefile .git/index
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
