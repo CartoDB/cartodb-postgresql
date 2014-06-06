@@ -140,9 +140,11 @@ CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Table_Sync()
             tabname = NEW.tabname;
             func = 'cdb_table_sync_created';
         ELSIF TG_OP = 'UPDATE' THEN
-            tabid = NEW.tabname::OID;
-            tabname = NEW.tabname;
-            func = 'cdb_table_sync_updated';
+            RETURN NULL;
+--             SEE CDB-3148
+--             tabid = NEW.tabname::OID;
+--             tabname = NEW.tabname;
+--             func = 'cdb_table_sync_updated';
         ELSE
             tabid = OLD.tabname::OID;
             tabname = OLD.tabname;
