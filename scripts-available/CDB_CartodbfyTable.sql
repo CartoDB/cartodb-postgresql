@@ -418,7 +418,7 @@ cname, rec2.typname;
   -- do this only if the_geom was found (not created)
   -- _and_ the_geom_webmercator was NOT found.
   IF exists_geom_cols[1] AND NOT exists_geom_cols[2] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = CDB_TransformToWebmercator(the_geom) ';
+    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = public.CDB_TransformToWebmercator(the_geom) ';
     EXECUTE sql;
   END IF;
 
