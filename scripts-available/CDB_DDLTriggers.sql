@@ -1,8 +1,3 @@
---LOAD 'schema_triggers.so';
---CREATE EXTENSION IF NOT EXISTS schema_triggers;
-
---GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA schema_triggers TO public;
-
 -- Table creation
 -- {
 CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()

@@ -26,14 +26,14 @@ AS $$
     FROM usertables
   )
   SELECT t FROM perms
-  WHERE p = CASE WHEN $1 = 'private' THEN false
+  WHERE (
+    p = CASE WHEN $1 = 'private' THEN false
                  WHEN $1 = 'public' THEN true
                  ELSE not p -- none
             END
     OR $1 = 'all'
+  )
+  AND has_table_privilege('public'||'.'||t, 'SELECT')
    ;
 $$ LANGUAGE 'sql';
 
--- This is a private function, so only the db owner need privileges
-REVOKE ALL ON FUNCTION CDB_UserTables(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION CDB_UserTables(text) TO ":DATABASE_USERNAME";

@@ -4,6 +4,10 @@
 Important changes:
 
  - This release adds dependency on "plpythonu" extension
+ - Roles are not created anymore, previously private functions
+   for table information extraction will now be callable by
+   anyone while only returning information about tables over
+   which the calling user has SELECT privilege (#36)
 
 Bug fixes:
 

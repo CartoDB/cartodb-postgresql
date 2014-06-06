@@ -6,7 +6,6 @@ EXTVERSION = 0.2.0dev
 SED = sed
 
 CDBSCRIPTS = \
-  scripts-available/CDB_Roles.sql \
   scripts-enabled/*.sql \
   scripts-available/CDB_SearchPath.sql \
   scripts-available/CDB_DDLTriggers.sql \
