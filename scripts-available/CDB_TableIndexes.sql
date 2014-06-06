@@ -22,3 +22,6 @@ AS $$
 
 $$ LANGUAGE SQL;
 
+-- This is to migrate from pre-0.2.0 version
+-- See http://github.com/CartoDB/cartodb-postgresql/issues/36
+GRANT EXECUTE ON FUNCTION CDB_TableIndexes(REGCLASS) TO public;

@@ -5,7 +5,6 @@
 --
 -- Currently accepted permissions are: 'public', 'private' or 'all'
 --
--- DROP FUNCTION IF EXISTS CDB_UserTables(); -- replaced by:
 CREATE OR REPLACE FUNCTION CDB_UserTables(perm text DEFAULT 'all')
 RETURNS SETOF information_schema.sql_identifier
 AS $$
@@ -37,3 +36,6 @@ AS $$
    ;
 $$ LANGUAGE 'sql';
 
+-- This is to migrate from pre-0.2.0 version
+-- See http://github.com/CartoDB/cartodb-postgresql/issues/36
+GRANT EXECUTE ON FUNCTION CDB_UserTables(text) TO public;
