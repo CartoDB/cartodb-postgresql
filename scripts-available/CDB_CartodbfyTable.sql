@@ -111,7 +111,7 @@ BEGIN
                         AND a.attrelid = reloid
                         AND NOT a.attisdropped
                         AND a.attname = 'cartodb_id'
-                        AND c.contype = 'u' ) -- unique
+                        AND c.contype IN ( 'u', 'p' ) ) -- unique or pkey 
         THEN
           sql := sql || ', ADD unique(cartodb_id)';
         END IF;

@@ -7,6 +7,10 @@ Enhancements:
  - Drop useless DEFAULT specification in plpgsql variable declarations
  - List plpythonu requirement first, so get pg_catalog scanned before public
 
+Bug fixes:
+
+ - Do not add unique index on cartodb_id if already a primary key (#38)
+
 0.2.0 - 2014-06-09
 ------------------
 

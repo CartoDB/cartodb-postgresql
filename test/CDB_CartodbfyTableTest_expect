@@ -45,6 +45,10 @@ unsequenced cartodb_id cartodbfied fine
 1
 DROP TABLE
 CREATE TABLE
+cartodb_id serial primary key cartodbfied fine
+t_pkey|cartodb_id
+DROP TABLE
+CREATE TABLE
 null geom and timestamp values cartodbfied fine
 DROP TABLE
 DROP FUNCTION

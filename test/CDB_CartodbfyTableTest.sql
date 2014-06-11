@@ -200,6 +200,14 @@ SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
 select cartodb_id FROM t; 
 DROP TABLE t;
 
+-- table with existing cartodb_id serial primary key
+CREATE TABLE t ( cartodb_id serial primary key );
+SELECT CDB_CartodbfyTableCheck('t', 'cartodb_id serial primary key');
+SELECT c.conname, a.attname FROM pg_constraint c, pg_attribute a
+WHERE c.conrelid = 't'::regclass and a.attrelid = c.conrelid
+AND c.conkey[1] = a.attnum AND NOT a.attisdropped;
+DROP TABLE t;
+
 -- table with existing the_geom and created_at and containing null values
 -- Really, a test for surviving an longstanding PostgreSQL bug:
 -- http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
