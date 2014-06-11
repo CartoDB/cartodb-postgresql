@@ -1,3 +1,10 @@
+0.2.1dev - 2014-MM-DD
+------------------
+
+Enhancements:
+
+ - Do not force re-cartodbfication on CREATE FROM unpackaged
+
 0.2.0 - 2014-06-09
 ------------------
 
