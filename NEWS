@@ -4,6 +4,7 @@
 Enhancements:
 
  - Do not force re-cartodbfication on CREATE FROM unpackaged
+ - Drop useless DEFAULT specification in plpgsql variable declarations
 
 0.2.0 - 2014-06-09
 ------------------
