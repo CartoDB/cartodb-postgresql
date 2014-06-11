@@ -2,7 +2,7 @@
 --
 CREATE OR REPLACE FUNCTION CDB_StringToDate(input character varying)
 RETURNS date AS $$
-DECLARE output DATE DEFAULT NULL;
+DECLARE output DATE;
 BEGIN
     BEGIN
         output := input::date;

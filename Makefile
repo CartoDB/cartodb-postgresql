@@ -18,7 +18,7 @@ UPGRADABLE = \
   0.1.0 \
   0.1.1 \
   0.2.0 \
-  0.2.0dev \
+  0.2.1 \
   $(EXTVERSION)next \
   $(END)
 
