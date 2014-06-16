@@ -62,7 +62,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
   done
 
 test_organization:
-	sh test/organization/test.sh
+	bash test/organization/test.sh
 
 legacy_tests: legacy_regress 
 
