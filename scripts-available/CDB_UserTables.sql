@@ -5,7 +5,6 @@
 --
 -- Currently accepted permissions are: 'public', 'private' or 'all'
 --
-DROP FUNCTION IF EXISTS CDB_UserTables(); -- replaced by:
 CREATE OR REPLACE FUNCTION CDB_UserTables(perm text DEFAULT 'all')
 RETURNS SETOF information_schema.sql_identifier
 AS $$
@@ -26,14 +25,17 @@ AS $$
     FROM usertables
   )
   SELECT t FROM perms
-  WHERE p = CASE WHEN $1 = 'private' THEN false
+  WHERE (
+    p = CASE WHEN $1 = 'private' THEN false
                  WHEN $1 = 'public' THEN true
                  ELSE not p -- none
             END
     OR $1 = 'all'
+  )
+  AND has_table_privilege('public'||'.'||t, 'SELECT')
    ;
 $$ LANGUAGE 'sql';
 
--- This is a private function, so only the db owner need privileges
-REVOKE ALL ON FUNCTION CDB_UserTables(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION CDB_UserTables(text) TO ":DATABASE_USERNAME";
+-- This is to migrate from pre-0.2.0 version
+-- See http://github.com/CartoDB/cartodb-postgresql/issues/36
+GRANT EXECUTE ON FUNCTION CDB_UserTables(text) TO public;

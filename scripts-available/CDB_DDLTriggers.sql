@@ -1,8 +1,3 @@
---LOAD 'schema_triggers.so';
---CREATE EXTENSION IF NOT EXISTS schema_triggers;
-
---GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA schema_triggers TO public;
-
 -- Table creation
 -- {
 CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
@@ -24,8 +19,12 @@ BEGIN
     RETURN;
   END IF;
 
+  PERFORM cartodb.cdb_disable_ddl_hooks();
+
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
   PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
+
+  PERFORM cartodb.cdb_enable_ddl_hooks();
 
   RAISE DEBUG 'Inserting into cartodb.CDB_TableMetadata';
 
@@ -171,7 +170,7 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_disable_ddl_hooks() returns void AS $$
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
- SELECT cdb_disable_ddl_hooks();
+ SELECT cartodb.cdb_disable_ddl_hooks();
  CREATE EVENT TRIGGER cdb_on_relation_create
     ON "relation_create" EXECUTE PROCEDURE cartodb.cdb_handle_create_table();
  CREATE EVENT TRIGGER cdb_on_relation_drop
@@ -184,4 +183,5 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_enable_ddl_hooks() returns void AS $$
     ON "column_add" EXECUTE PROCEDURE cartodb.cdb_handle_add_column();
 $$ LANGUAGE sql;
 
-SELECT cartodb.cdb_enable_ddl_hooks();
+-- Do not enable hooks by default
+--SELECT cartodb.cdb_enable_ddl_hooks();

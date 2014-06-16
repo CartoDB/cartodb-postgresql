@@ -1,0 +1,15 @@
+Adding tests consists in adding 2 files in this directory: one file
+containing the sql code and another containing the expected output.
+
+Example, to add a test for CDB_Something function, you'd add:
+
+ - CDB_SomethingTest.sql
+ - CDB_SomethingTest_expect
+
+To easy the generation of the expected file you can initially omit it,
+then run "make -C .. installcheck" from the top-level dir and copy
+../results/test/CDB_SomethingTest.out to CDB_SomethingTest_expect chopping
+off the first line:
+
+ make -C .. installcheck
+ tail -n +2 ../results/test/CDB_SomethingTest.out > CDB_SomethingTest_expect

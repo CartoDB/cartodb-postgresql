@@ -10,7 +10,7 @@
 CREATE OR REPLACE FUNCTION _CDB_update_the_geom_webmercator()
 RETURNS trigger AS $$
 BEGIN
-  NEW.the_geom_webmercator := CDB_TransformToWebmercator(NEW.the_geom);
+  NEW.the_geom_webmercator := public.CDB_TransformToWebmercator(NEW.the_geom);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
@@ -83,18 +83,27 @@ BEGIN
       RAISE NOTICE 'Column cartodb_id already exists';
       had_column := TRUE;
     WHEN others THEN
-      RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+      RAISE EXCEPTION 'Cartodbfying % (cartodb_id): % (%)',
+        reloid, SQLERRM, SQLSTATE;
     END;
 
     IF had_column THEN
 
+      SELECT pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id')
+        AS seq INTO rec2;
+
       -- Check data type is an integer
-      SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
+      SELECT
+        pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id') as seq,
+        t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
        WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped
          AND a.attname = 'cartodb_id'
       INTO STRICT rec;
-      IF rec.oid NOT IN (20,21,23) THEN -- int2, int4, int8 {
+      -- 20=int2, 21=int4, 23=int8
+      IF rec.oid NOT IN (20,21,23) THEN -- {
         RAISE NOTICE 'Existing cartodb_id field is of invalid type % (need int2, int4 or int8), renaming', rec.typname;
+      ELSIF rec.seq IS NULL THEN -- }{
+        RAISE NOTICE 'Existing cartodb_id field does not have an associated sequence, renaming';
       ELSE -- }{
         sql := 'ALTER TABLE ' || reloid::text || ' ALTER COLUMN cartodb_id SET NOT NULL';
         IF NOT EXISTS ( SELECT c.conname FROM pg_constraint c, pg_attribute a
@@ -102,7 +111,7 @@ BEGIN
                         AND a.attrelid = reloid
                         AND NOT a.attisdropped
                         AND a.attname = 'cartodb_id'
-                        AND c.contype = 'u' ) -- unique
+                        AND c.contype IN ( 'u', 'p' ) ) -- unique or pkey 
         THEN
           sql := sql || ', ADD unique(cartodb_id)';
         END IF;
@@ -114,7 +123,8 @@ BEGIN
         WHEN unique_violation OR not_null_violation THEN
           RAISE NOTICE '%, renaming', SQLERRM;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (cartodb_id): % (%)',
+            reloid, SQLERRM, SQLSTATE;
         END;
       END IF; -- }
 
@@ -133,7 +143,8 @@ BEGIN
           i := i+1;
           CONTINUE rename_column;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (renaming cartodb_id): % (%)',
+            reloid, SQLERRM, SQLSTATE;
         END;
         EXIT rename_column;
       END LOOP; --}
@@ -142,8 +153,51 @@ BEGIN
     END IF;
   END LOOP; -- }
 
+  -- Try to copy data from new name if possible
+  IF new_name IS NOT NULL THEN
+    RAISE NOTICE 'Trying to recover data from % column', new_name;
+    BEGIN
+      -- Copy existing values to new field
+      -- NOTE: using ALTER is a workaround to a PostgreSQL bug and
+      --       is also known to be faster for tables with many rows
+      -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+      sql := 'ALTER TABLE ' || reloid::text
+          || ' ALTER cartodb_id TYPE int USING '
+          || new_name || '::int4';
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+      -- Find max value
+      sql := 'SELECT max(cartodb_id) FROM ' || reloid::text;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql INTO rec;
+
+      -- Find sequence name
+      SELECT pg_catalog.pg_get_serial_sequence(reloid::text, 'cartodb_id')
+        AS seq INTO rec2;
+
+      -- Reset sequence name
+      sql := 'ALTER SEQUENCE ' || rec2.seq::text
+          || ' RESTART WITH ' || rec.max + 1;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+      -- Drop old column (all went find if we got here)
+      sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
+      RAISE DEBUG 'Running %', sql;
+      EXECUTE sql;
+
+    EXCEPTION
+    WHEN others THEN
+      RAISE NOTICE 'Could not initialize cartodb_id with existing values: % (%)',
+        SQLERRM, SQLSTATE;
+    END;
+  END IF;
+
   -- We need created_at and updated_at
-  FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname) LOOP --{
+  FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname)
+  LOOP --{
+    new_name := null;
     << column_setup >>
     LOOP --{
       had_column := FALSE;
@@ -158,30 +212,39 @@ BEGIN
         RAISE NOTICE 'Column % already exists', rec.cname;
         had_column := TRUE;
       WHEN others THEN
-        RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+        RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+          reloid, rec.cname, SQLERRM, SQLSTATE;
       END;
 
       IF had_column THEN
 
         -- Check data type is a TIMESTAMP WITH TIMEZONE
         SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
-         WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped
-           AND a.attname = rec.cname
+         WHERE a.atttypid = t.oid AND a.attrelid = reloid
+           AND NOT a.attisdropped AND a.attname = rec.cname
         INTO STRICT rec2;
         IF rec2.oid NOT IN (1184) THEN -- timestamptz {
-          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.cname, rec2.typname;
+          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.
+cname, rec2.typname;
         ELSE -- }{
-          sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
-            || ' SET NOT NULL, ALTER ' || rec.cname || ' SET DEFAULT now()';
+          -- Ensure data type is a TIMESTAMP WITH TIMEZONE
+          sql := 'ALTER TABLE ' || reloid::text
+            || ' ALTER ' || rec.cname
+            || ' SET NOT NULL,'
+            || ' ALTER ' || rec.cname
+            || ' SET DEFAULT now()';
           BEGIN
             RAISE DEBUG 'Running %', sql;
             EXECUTE sql;
             EXIT column_setup;
           EXCEPTION
-          WHEN not_null_violation THEN
+          WHEN not_null_violation THEN -- failed not-null
+            RAISE NOTICE '%, renaming', SQLERRM;
+          WHEN cannot_coerce THEN -- failed cast
             RAISE NOTICE '%, renaming', SQLERRM;
           WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+            RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
           END;
         END IF; -- }
 
@@ -199,7 +262,8 @@ BEGIN
             i := i+1;
             CONTINUE rename_column;
           WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+            RAISE EXCEPTION 'Cartodbfying % (renaming %): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
           END;
           EXIT rename_column;
         END LOOP; --}
@@ -207,6 +271,32 @@ BEGIN
 
       END IF;
     END LOOP; -- }
+
+    -- Try to copy data from new name if possible
+    IF new_name IS NOT NULL THEN -- {
+      RAISE NOTICE 'Trying to recover data from % coumn', new_name;
+      BEGIN
+        -- Copy existing values to new field
+        -- NOTE: using ALTER is a workaround to a PostgreSQL bug and
+        --       is also known to be faster for tables with many rows
+        -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+        sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
+            || ' TYPE TIMESTAMPTZ USING '
+            || new_name || '::timestamptz';
+        RAISE DEBUG 'Running %', sql;
+        EXECUTE sql;
+
+        -- Drop old column (all went find if we got here)
+        sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
+        RAISE DEBUG 'Running %', sql;
+        EXECUTE sql;
+
+      EXCEPTION
+      WHEN others THEN
+        RAISE NOTICE 'Could not initialize % with existing values: % (%)',
+          rec.cname, SQLERRM, SQLSTATE;
+      END;
+    END IF; -- }
 
   END LOOP; -- }
 
@@ -228,7 +318,8 @@ BEGIN
         exists_geom_cols := array_append(exists_geom_cols, true);
         RAISE NOTICE 'Column % already exists', rec.cname;
       WHEN others THEN
-        RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+        RAISE EXCEPTION 'Cartodbfying % (%): % (%)',
+          reloid, rec.cname, SQLERRM, SQLSTATE;
       END;
 
       << column_fixup >>
@@ -280,7 +371,8 @@ BEGIN
             EXECUTE sql;
           EXCEPTION
           WHEN others THEN
-            RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+            RAISE EXCEPTION 'Cartodbfying % (% index): % (%)',
+              reloid, rec.cname, SQLERRM, SQLSTATE;
           END;
         END IF; -- }
 
@@ -303,7 +395,8 @@ BEGIN
           i := i+1;
           CONTINUE rename_column;
         WHEN others THEN
-          RAISE EXCEPTION 'Got % (%)', SQLERRM, SQLSTATE;
+          RAISE EXCEPTION 'Cartodbfying % (rename %): % (%)',
+            reloid, rec.cname, SQLERRM, SQLSTATE;
         END;
         EXIT rename_column;
       END LOOP; --}
@@ -325,7 +418,7 @@ BEGIN
   -- do this only if the_geom was found (not created)
   -- _and_ the_geom_webmercator was NOT found.
   IF exists_geom_cols[1] AND NOT exists_geom_cols[2] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = CDB_TransformToWebmercator(the_geom) ';
+    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = public.CDB_TransformToWebmercator(the_geom) ';
     EXECUTE sql;
   END IF;
 

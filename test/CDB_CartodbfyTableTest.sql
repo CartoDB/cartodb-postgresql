@@ -146,28 +146,82 @@ DROP TABLE t;
 CREATE TABLE t AS SELECT ST_SetSRID(ST_MakePoint(-1,-1),4326) as the_geom
 UNION ALL SELECT ST_SetSRID(ST_MakePoint(0,0),3857);
 SELECT CDB_CartodbfyTableCheck('t', 'mixed-srid the_geom');
-SELECT 'extent',ST_Extent(the_geom) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
 -- table with wrong srid-constrained the_geom values
 CREATE TABLE t AS SELECT 'SRID=3857;LINESTRING(222638.981586547 222684.208505545, 111319.490793274 111325.142866385)'::geometry(geometry,3857) as the_geom;
 SELECT CDB_CartodbfyTableCheck('t', 'wrong srid-constrained the_geom');
-SELECT 'extent',ST_Extent(the_geom),ST_Extent(ST_SnapToGrid(the_geom_webmercator,1)) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)),ST_Extent(ST_SnapToGrid(the_geom_webmercator,1)) FROM t;
 DROP TABLE t;
 
 -- table with wrong srid-constrained the_geom_webmercator values (and no the_geom!)
 CREATE TABLE t AS SELECT 'SRID=4326;LINESTRING(1 1,2 2)'::geometry(geometry,4326) as the_geom_webmercator;
 SELECT CDB_CartodbfyTableCheck('t', 'wrong srid-constrained the_geom_webmercator');
 -- expect the_geom to be populated from the_geom_webmercator
-SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
 -- table with existing triggered the_geom
 CREATE TABLE t AS SELECT 'SRID=4326;LINESTRING(1 1,2 2)'::geometry(geometry) as the_geom;
 CREATE TRIGGER update_the_geom_webmercator_trigger BEFORE UPDATE OF the_geom ON t
- FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator();
+ FOR EACH ROW EXECUTE PROCEDURE _CDB_update_the_geom_webmercator();
 SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
-SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.1)) FROM t;
+SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
+DROP TABLE t;
+
+-- table with existing updated_at and created_at fields ot type text
+CREATE TABLE t AS SELECT NOW()::text as created_at,
+                         NOW()::text as updated_at,
+                         NOW() as reftime;
+SELECT CDB_CartodbfyTableCheck('t', 'text timestamps');
+SELECT extract(secs from reftime-created_at),
+       extract(secs from reftime-updated_at) FROM t;
+CREATE VIEW v AS SELECT * FROM t;
+SELECT CDB_CartodbfyTableCheck('t', 'cartodbfied with view');
+DROP VIEW v;
+DROP TABLE t;
+
+-- table with existing cartodb_id field of type text
+CREATE TABLE t AS SELECT 10::text as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
+select cartodb_id/2 FROM t; 
+DROP TABLE t;
+
+-- table with existing cartodb_id field of type text not casting
+CREATE TABLE t AS SELECT 'nan' as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
+select cartodb_id,_cartodb_id0 FROM t; 
+DROP TABLE t;
+
+-- table with existing cartodb_id field of type int4 not sequenced
+CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
+select cartodb_id FROM t; 
+DROP TABLE t;
+
+-- table with existing cartodb_id serial primary key
+CREATE TABLE t ( cartodb_id serial primary key );
+SELECT CDB_CartodbfyTableCheck('t', 'cartodb_id serial primary key');
+SELECT c.conname, a.attname FROM pg_constraint c, pg_attribute a
+WHERE c.conrelid = 't'::regclass and a.attrelid = c.conrelid
+AND c.conkey[1] = a.attnum AND NOT a.attisdropped;
+DROP TABLE t;
+
+-- table with existing the_geom and created_at and containing null values
+-- Really, a test for surviving an longstanding PostgreSQL bug:
+-- http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
+CREATE TABLE t (
+    the_geom geometry(Geometry,4326),
+    created_at timestamptz,
+    updated_at timestamptz
+);
+COPY t (the_geom, created_at, updated_at) FROM stdin;
+0106000020E610000001000000010300000001000000050000009EB8244146435BC017B65E062AD343409EB8244146435BC0F51AF6E2708044400B99891683765AC0F51AF6E2708044400B99891683765AC017B65E062AD343409EB8244146435BC017B65E062AD34340	2012-06-06 21:59:08	2013-06-10 20:17:20
+0106000020E61000000100000001030000000100000005000000DA7763431A1A5CC0FBCEE869313C3A40DA7763431A1A5CC09C1B8F55BC494440F9F4A9C7993356C09C1B8F55BC494440F9F4A9C7993356C0FBCEE869313C3A40DA7763431A1A5CC0FBCEE869313C3A40	2012-06-06 21:59:08	2013-06-10 20:17:20
+\N	\N	\N
+\.
+SELECT CDB_CartodbfyTableCheck('t', 'null geom and timestamp values');
 DROP TABLE t;
 
 -- TODO: table with existing custom-triggered the_geom

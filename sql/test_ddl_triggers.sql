@@ -3,6 +3,9 @@
 -- Set user quota to infinite
 SELECT CDB_SetUserQuotaInBytes(0);
 
+-- Enable ddl triggers
+SELECT cartodb.cdb_enable_ddl_hooks();
+
 create schema c;
 
 CREATE USER cartodb_postgresql_unpriv_user;
@@ -26,7 +29,20 @@ from c.t3;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)) as age
-FROM CDB_TableMetadata;
+FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
+
+-- Table with cartodb_id field, see
+-- http://github.com/CartoDB/cartodb-postgresql/issues/32
+select 1 as cartodb_id INTO c.t4;
+select
+ cartodb_id, created_at=updated_at as "c=u",
+ NOW() - updated_at < '1 secs' as "u<1s",
+ the_geom, the_geom_webmercator
+from c.t4;
+select
+ tabname::text,
+ round(extract('secs' from now() - updated_at)) as age
+FROM CDB_TableMetadata WHERE tabname = 'c.t4'::regclass;
 
 ----------------------------
 -- ALTER TABLE RENAME COLUMN
@@ -45,7 +61,7 @@ from c.t3;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
-FROM CDB_TableMetadata;
+FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
 select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
@@ -60,7 +76,7 @@ from c.t3;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
-FROM CDB_TableMetadata;
+FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
 ----------------------------
 -- ALTER TABLE DROP COLUMN
@@ -79,7 +95,7 @@ from c.t3;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
-FROM CDB_TableMetadata;
+FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
 ----------------------------
 -- ALTER TABLE ADD COLUMN
@@ -98,7 +114,7 @@ from c.t3;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
-FROM CDB_TableMetadata;
+FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
 ----------------------------
 -- DROP TABLE
@@ -106,7 +122,7 @@ FROM CDB_TableMetadata;
 
 RESET SESSION AUTHORIZATION;
 drop schema c cascade;
-select count(*) from CDB_TableMetadata; 
+select count(*) from CDB_TableMetadata;
 
 DROP USER cartodb_postgresql_unpriv_user;
 DROP FUNCTION _CDB_UserQuotaInBytes();

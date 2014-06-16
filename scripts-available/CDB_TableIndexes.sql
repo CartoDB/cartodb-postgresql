@@ -17,10 +17,11 @@ AS $$
   ON pg_class.oid = idx.indexrelid 
   WHERE pg_indexes.tablename = '' || $1 || ''
   AND '' || $1 || '' IN (SELECT CDB_UserTables())
-  AND pg_class.relname=pg_indexes.indexname;
+  AND pg_class.relname=pg_indexes.indexname
+  ;
 
 $$ LANGUAGE SQL;
 
--- This is a private function, so only the db owner need privileges
-REVOKE ALL ON FUNCTION CDB_TableIndexes(REGCLASS) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION CDB_TableIndexes(REGCLASS) TO ":DATABASE_USERNAME";
+-- This is to migrate from pre-0.2.0 version
+-- See http://github.com/CartoDB/cartodb-postgresql/issues/36
+GRANT EXECUTE ON FUNCTION CDB_TableIndexes(REGCLASS) TO public;

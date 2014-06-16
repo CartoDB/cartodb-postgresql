@@ -2,7 +2,7 @@
 --
 CREATE OR REPLACE FUNCTION CDB_DateToNumber(input timestamp)
 RETURNS double precision AS $$
-DECLARE output double precision DEFAULT NULL;
+DECLARE output double precision;
 BEGIN
     BEGIN
         SELECT extract (EPOCH FROM input) INTO output;

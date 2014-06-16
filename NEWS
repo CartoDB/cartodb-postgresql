@@ -1,4 +1,51 @@
-0.1 - 2014-MM-DD
-----------------
+0.3.0dev - 2014-MM-DD
+------------------
+
+0.2.1 - 2014-06-11
+------------------
+
+Enhancements:
+
+ - Do not force re-cartodbfication on CREATE FROM unpackaged
+ - Drop useless DEFAULT specification in plpgsql variable declarations
+ - List plpythonu requirement first, to get pg_catalog scanned before public
+
+Bug fixes:
+
+ - Do not add unique index on cartodb_id if already a primary key (#38)
+
+0.2.0 - 2014-06-09
+------------------
+
+Important changes:
+
+ - This release adds dependency on "plpythonu" extension
+ - Roles are not created anymore, previously private functions
+   for table information extraction (CDB_UserTables, CDB_TableIndexes,
+   CDB_ColumnNames, CDB_ColumnType) will now be callable by anyone while
+   only returning information about tables over which the calling user
+   has SELECT privilege (#36)
+
+Bug fixes:
+
+ - Fix recursive trigger on create table (#32)
+ - Ensure cartodb_id uses an associated sequence (#33)
+ - Fully qualify call to cdb_disable_ddl_hooks from cdb_enable_ddl_hooks
+ - Fully qualify call to CDB_UserDataSize from quota trigger
+ - Fully qualify call to CDB_TransformToWebmercator from CDB_CartodbfyTable
+ - Fix potential infinite loop in CDB_CartodbfyTable
+ - Fix potential infinite loop in CDB_QueryStatements
+
+Enhancements:
+
+ - Include revision info in cdb_version() output (#34)
+
+New features:
+
+ - Add a cdb_extension_reload() function
+
+
+0.1.0 - 2014-05-23
+------------------
 
 Initial release
