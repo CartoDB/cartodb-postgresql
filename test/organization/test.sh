@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DATABASE=cartodb_dev_user_96d0b13a-f67c-4a0a-b79c-0d6256ac39fd_db
+DATABASE=test_organizations
 CMD='echo psql'
 CMD=psql
 
@@ -28,7 +28,7 @@ function sql() {
 
     if [[ ${CODERESULT} -ne 0 ]]
     then
-        echo "FAILED TO EXECUTE QUERY: \033[0;33m${QUERY}\033[0m"
+        echo -e "FAILED TO EXECUTE QUERY: \033[0;33m${QUERY}\033[0m"
         if [[ "$3" != "fails" ]]
         then
             OK=1
@@ -36,7 +36,7 @@ function sql() {
     else
         if [[ "$3" == "fails" ]]
         then
-            echo "QUERY: \033[0;33m${QUERY}\033[0m was expected to fail and it did not fail"
+            echo -e "QUERY: \033[0;33m${QUERY}\033[0m was expected to fail and it did not fail"
             OK=1
         fi
     fi
@@ -69,7 +69,7 @@ function log_debug() {
 }
 
 function _log() {
-    echo "\033[$1$2\033[0m"
+    echo -e "\033[$1$2\033[0m"
 }
 
 # '############################ HELPERS #############################'
@@ -93,6 +93,10 @@ function create_table() {
 
 
 function setup() {
+    ${CMD} -U postgres -c "CREATE DATABASE ${DATABASE}"
+    sql "CREATE SCHEMA cartodb AUTHORIZATION postgres;"
+    sql "GRANT USAGE ON SCHEMA cartodb TO public;"
+
     log_info "########################### BOOTSTRAP ###########################"
     ${CMD} -U postgres -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
 
@@ -118,14 +122,18 @@ function tear_down() {
     sql member_1 'DROP TABLE member_1.foo;'
     sql member_2 'DROP TABLE member_2.bar;'
 
+    sql "DROP SCHEMA cartodb CASCADE"
+
     log_info "########################### TEAR DOWN ###########################"
     sql 'DROP SCHEMA member_1;'
-    sql 'REVOKE CONNECT ON DATABASE "cartodb_dev_user_96d0b13a-f67c-4a0a-b79c-0d6256ac39fd_db" FROM member_1;'
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM member_1;"
     sql 'DROP ROLE member_1;'
 
     sql 'DROP SCHEMA member_2;'
-    sql 'REVOKE CONNECT ON DATABASE "cartodb_dev_user_96d0b13a-f67c-4a0a-b79c-0d6256ac39fd_db" FROM member_2;'
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM member_2;"
     sql 'DROP ROLE member_2;'
+
+    ${CMD} -U postgres -c "DROP DATABASE ${DATABASE}"
 }
 
 function run_tests() {
