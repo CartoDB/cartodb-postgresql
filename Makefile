@@ -61,7 +61,10 @@ legacy_regress: $(REGRESS_OLD) Makefile
     cat test/$${tn}_expect >> $${exp}; \
   done
 
+test_organization:
+	sh test/organization/test.sh
+
 legacy_tests: legacy_regress 
 
-installcheck: legacy_tests
+installcheck: legacy_tests test_organization
 
