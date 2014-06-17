@@ -87,19 +87,5 @@ ls `pg_config --sharedir`/extension/cartodb*
 ```
 
 During development the cartodb extension version doesn't change with
-every commit, so testing latest change requires cheating with PostgreSQL
-so to enforce re-load of the scripts. To help with cheating, "make install"
-also installs migration scripts to go from "V" to "V"next and from "V"next
-to "V". Example to upgrade a 0.2.0dev version:
-
-```sql
-ALTER EXTENSION cartodb UPDATE TO '0.2.0devnext';
-ALTER EXTENSION cartodb UPDATE TO '0.2.0dev';
-```
-
-Starting with 0.2.0, the in-place reload can be done with an ad-hoc function:
-
-```sql
-SELECT cartodb.cdb_extension_reload();
-```
-
+every commit, so testing latest change requires special steps documented
+in the CONTRIBUTING document, under "Testing changes live".
