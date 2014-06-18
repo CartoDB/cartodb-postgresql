@@ -31,6 +31,9 @@ NOTE: if ``test_ddl_triggers`` fails it's likely due to an incomplete
       installation of schema_triggers: you need to add ``schema_triggers.so``
       to the ``shared_preload_libraries`` setting in postgresql.conf !
 
+NOTE: you need to run the installcheck as a superuser, use PGUSER
+      env variable if needed, like: PGUSER=postgres make installcheck
+
 Enable database
 ---------------
 
