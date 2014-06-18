@@ -19,5 +19,5 @@ before_install:
 script:
   - make
   - sudo make install
-  - PGOPTIONS='-c client_min_messages=NOTICE' make installcheck ||
+  - PGOPTIONS='-c client_min_messages=NOTICE' PGUSER=postgres make installcheck ||
     { cat regression.diffs; false; }
