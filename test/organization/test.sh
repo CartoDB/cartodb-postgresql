@@ -1,5 +1,12 @@
 #!/bin/sh
 
+#
+# It is expected that you run this script
+# as a PostgreSQL superuser, for example:
+#
+#   PGUSER=postgres bash ./test.sh
+#
+
 DATABASE=test_organizations
 CMD='echo psql'
 CMD=psql
@@ -14,13 +21,16 @@ function sql() {
         ROLE="$1"
         QUERY="$2"
     else
-        ROLE="postgres"
         QUERY="$1"
     fi
 
-    log_debug "Executing query '${QUERY}' as ${ROLE}"
-
-    RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
+    if [ -n "${ROLE}" ]; then
+      log_debug "Executing query '${QUERY}' as ${ROLE}"
+      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
+    else
+      log_debug "Executing query '${QUERY}'"
+      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t`
+    fi
     CODERESULT=$?
 
     echo ${RESULT}
@@ -93,12 +103,12 @@ function create_table() {
 
 
 function setup() {
-    ${CMD} -U postgres -c "CREATE DATABASE ${DATABASE}"
-    sql "CREATE SCHEMA cartodb AUTHORIZATION postgres;"
+    ${CMD} -c "CREATE DATABASE ${DATABASE}"
+    sql "CREATE SCHEMA cartodb;"
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
 
     log_info "########################### BOOTSTRAP ###########################"
-    ${CMD} -U postgres -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
 
 
     log_info "############################# SETUP #############################"
@@ -133,7 +143,7 @@ function tear_down() {
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM member_2;"
     sql 'DROP ROLE member_2;'
 
-    ${CMD} -U postgres -c "DROP DATABASE ${DATABASE}"
+    ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
 
 function run_tests() {
