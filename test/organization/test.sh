@@ -41,12 +41,13 @@ function sql() {
         echo -e "FAILED TO EXECUTE QUERY: \033[0;33m${QUERY}\033[0m"
         if [[ "$3" != "fails" ]]
         then
+            log_error "${QUERY}"
             OK=1
         fi
     else
         if [[ "$3" == "fails" ]]
         then
-            echo -e "QUERY: \033[0;33m${QUERY}\033[0m was expected to fail and it did not fail"
+            log_error "QUERY: '${QUERY}' was expected to fail and it did not fail"
             OK=1
         fi
     fi
@@ -126,8 +127,8 @@ function setup() {
 
 function tear_down() {
     log_info "########################### USER TEAR DOWN ###########################"
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('foo', 'cdb_testmember_2');"
-    sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('bar', 'cdb_testmember_1');"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2');"
+    sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_2', 'bar', 'cdb_testmember_1');"
 
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo;'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.bar;'
@@ -136,11 +137,12 @@ function tear_down() {
 
     log_info "########################### TEAR DOWN ###########################"
     sql 'DROP SCHEMA cdb_testmember_1;'
-    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
-    sql 'DROP ROLE cdb_testmember_1;'
-
     sql 'DROP SCHEMA cdb_testmember_2;'
+
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
+
+    sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
@@ -176,20 +178,24 @@ function test_member_2_cannot_read_without_permission() {
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
 }
 
+function test_member_1_cannot_grant_read_permission_to_other_schema_than_its_one() {
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_2', 'foo', 'cdb_testmember_2')" fails
+}
+
 function test_member_1_grants_read_permission_and_member_2_can_read() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.bar;' fails
 }
 
 function test_member_2_cannot_add_table_to_member_1_schema_after_table_permission_added() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 "CREATE TABLE cdb_testmember_1.bar ( a int );" fails
 }
 
 function test_grant_read_permission_between_two_members() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('foo', 'cdb_testmember_2')"
-    sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('bar', 'cdb_testmember_1')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_2', 'bar', 'cdb_testmember_1')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.bar;' should 5
 }
@@ -198,25 +204,56 @@ function test_member_2_cannot_write_to_member_1_table() {
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);' fails
 }
 
+function test_member_1_cannot_grant_read_write_permission_to_other_schema_than_its_one() {
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_2', 'foo', 'cdb_testmember_2')" fails
+}
+
 function test_member_2_can_write_to_member_1_table_after_write_permission_is_added() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
 }
 
 function test_member_1_removes_access_and_member_2_can_no_longer_query_the_table() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_1.foo;' fails
 }
 
 function test_member_1_removes_access_and_member_2_can_no_longer_write_to_the_table() {
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
-    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);' fails
+}
+
+function test_giving_permissions_to_two_tables_and_removing_from_first_table_should_not_remove_from_second() {
+    #### test setup
+    # create an extra table for cdb_testmember_1
+    create_table cdb_testmember_1 foo_2
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo_2 VALUES (1), (2), (3), (4), (5);'
+    sql cdb_testmember_1 'SELECT * FROM cdb_testmember_1.foo_2;'
+
+    # gives read permission to both tables
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo_2', 'cdb_testmember_2')"
+
+    # cdb_testmember_2 has access to both tables
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo_2;' should 5
+
+    # cdb_testmember_1 removes access to foo table
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+
+    # cdb_testmember_2 should have access to foo_2 table but not to table foo
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo_2;' should 5
+
+
+    #### test tear down
+    sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo_2;'
 }
 
 #################################################### TESTS END HERE ####################################################
