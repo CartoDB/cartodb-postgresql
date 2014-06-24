@@ -89,7 +89,17 @@ function create_role_and_schema() {
     sql "CREATE ROLE ${ROLE} LOGIN;"
     sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO ${ROLE};"
     sql "CREATE SCHEMA ${ROLE} AUTHORIZATION ${ROLE};"
+    sql "SELECT cartodb.CDB_Organization_Create_Member('${ROLE}')"
 }
+
+
+function drop_role_and_schema() {
+    local ROLE=$1
+    sql "DROP SCHEMA \"${ROLE}\";"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM \"${ROLE}\";"
+    sql "DROP ROLE \"${ROLE}\";"
+}
+
 
 function create_table() {
     if [[ $# -ne 2 ]]
@@ -254,6 +264,33 @@ function test_giving_permissions_to_two_tables_and_removing_from_first_table_sho
 
     #### test tear down
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo_2;'
+}
+
+function test_cdb_org_member_role_allows_reading_to_all_users_without_explicit_permission() {
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Add_Table_Organization_Read_Permission('cdb_testmember_1', 'foo');"
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+}
+
+function test_user_can_read_when_it_has_permission_after_organization_permission_is_removed() {
+    create_role_and_schema cdb_testmember_3
+
+    # shares with cdb_testmember_2 and can read but cdb_testmember_3 cannot
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
+
+    # granting to organization allows to read to both: cdb_testmember_2 and cdb_testmember_3
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Add_Table_Organization_Read_Permission('cdb_testmember_1', 'foo');"
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+
+    # removing access from organization should keep permission on cdb_testmember_2 but drop it to cdb_testmember_3
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Remove_Organization_Access_Permission('cdb_testmember_1', 'foo');"
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
+
+    drop_role_and_schema cdb_testmember_3
 }
 
 #################################################### TESTS END HERE ####################################################
