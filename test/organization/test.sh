@@ -50,7 +50,8 @@ function sql() {
 
     if [[ ${CODERESULT} -ne 0 ]]
     then
-        echo -e "FAILED TO EXECUTE QUERY: \033[0;33m${QUERY}\033[0m"
+        echo -n "FAILED TO EXECUTE QUERY: "
+        log_warning "${QUERY}"
         if [[ "$3" != "fails" ]]
         then
             log_error "${QUERY}"
@@ -89,6 +90,10 @@ function log_error() {
 
 function log_debug() {
     _log "1;32m" "> $1"
+}
+
+function log_warning() {
+    _log "0;33m" "$1"
 }
 
 function _log() {
