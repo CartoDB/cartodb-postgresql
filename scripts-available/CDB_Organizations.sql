@@ -1,8 +1,17 @@
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Organization_Member_Group_Role_Member_Name()
+    RETURNS TEXT
+AS 'SELECT ''cdb_org_member''::text || ''_'' || md5(current_database());'
+LANGUAGE SQL IMMUTABLE;
+
 DO LANGUAGE 'plpgsql' $$
+DECLARE
+    cdb_org_member_role_name TEXT;
 BEGIN
-  IF NOT EXISTS ( SELECT * FROM pg_roles WHERE rolname= 'cdb_org_member' )
+    cdb_org_member_role_name := cartodb.CDB_Organization_Member_Group_Role_Member_Name();
+  IF NOT EXISTS ( SELECT * FROM pg_roles WHERE rolname= cdb_org_member_role_name )
   THEN
-    CREATE ROLE cdb_org_member NOLOGIN;
+    EXECUTE 'CREATE ROLE "' || cdb_org_member_role_name || '" NOLOGIN;';
   END IF;
 END
 $$;
@@ -12,7 +21,7 @@ FUNCTION cartodb.CDB_Organization_Create_Member(role_name text)
     RETURNS void
 AS $$
 BEGIN
-    EXECUTE 'GRANT cdb_org_member TO "' || role_name || '"';
+    EXECUTE 'GRANT "' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || '" TO "' || role_name || '"';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -35,7 +44,7 @@ FUNCTION cartodb.CDB_Organization_Add_Table_Organization_Read_Permission(from_sc
     RETURNS void
 AS $$
 BEGIN
-    EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Permission(''' || from_schema || ''', ''' || table_name || ''', ''cdb_org_member'');';
+    EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -54,7 +63,7 @@ FUNCTION cartodb.CDB_Organization_Add_Table_Organization_Read_Write_Permission(f
     RETURNS void
 AS $$
 BEGIN
-    EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Write_Permission(''' || from_schema || ''', ''' || table_name || ''', ''cdb_org_member'');';
+    EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Write_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -76,6 +85,6 @@ FUNCTION cartodb.CDB_Organization_Remove_Organization_Access_Permission(from_sch
     RETURNS void
 AS $$
 BEGIN
-    EXECUTE 'SELECT cartodb.CDB_Organization_Remove_Access_Permission(''' || from_schema || ''', ''' || table_name || ''', ''cdb_org_member'');';
+    EXECUTE 'SELECT cartodb.CDB_Organization_Remove_Access_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
