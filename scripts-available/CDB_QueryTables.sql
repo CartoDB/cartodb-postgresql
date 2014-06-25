@@ -22,7 +22,7 @@ BEGIN
     END IF;
 
     BEGIN
-      EXECUTE 'EXPLAIN (FORMAT XML) ' || rec.q INTO STRICT exp;
+      EXECUTE 'EXPLAIN (FORMAT XML, VERBOSE) ' || rec.q INTO STRICT exp;
     EXCEPTION WHEN others THEN
       -- TODO: if error is 'relation "xxxxxx" does not exist', take xxxxxx as
       --       the affected table ?
@@ -33,14 +33,19 @@ BEGIN
 
     -- Now need to extract all values of <Relation-Name>
 
-    --RAISE DEBUG 'Explain: %', exp;
+    -- RAISE DEBUG 'Explain: %', exp;
 
     FOR rec2 IN WITH
-      inp AS ( SELECT xpath('//x:Relation-Name/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as x )
-      SELECT unnest(x)::name as p from inp
+      inp AS (
+        SELECT
+          xpath('//x:Relation-Name/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as x,
+          xpath('//x:Schema/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as s
+      )
+      SELECT unnest(x)::name as p, unnest(s)::name as sc from inp
     LOOP
-      --RAISE DEBUG 'tab: %', rec2.p;
-      tables := array_append(tables, rec2.p);
+      -- RAISE DEBUG 'tab: %', rec2.p;
+      -- RAISE DEBUG 'sc: %', rec2.sc;
+      tables := array_append(tables, (rec2.sc || '.' || rec2.p)::name);
     END LOOP;
 
     -- RAISE DEBUG 'Tables: %', tables;

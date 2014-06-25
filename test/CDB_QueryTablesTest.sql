@@ -25,3 +25,9 @@ WITH inp AS ( select 'create table test (a int); insert into test values (1); se
 
 WITH inp AS ( select 'WITH a AS (select * from pg_class) select * from a'::text as q )
  SELECT q, CDB_QueryTables(q) from inp;
+
+CREATE SCHEMA sc;
+create table sc.test (a int);
+insert into sc.test values (1);
+WITH inp AS ( select 'select * from sc.test'::text as q )
+ SELECT q, CDB_QueryTables(q) from inp;
