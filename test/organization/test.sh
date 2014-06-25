@@ -12,6 +12,18 @@ CMD='echo psql'
 CMD=psql
 
 OK=0
+PARTIALOK=0
+
+function set_failed() {
+    OK=1
+    PARTIALOK=1
+}
+
+
+function clear_partial_result() {
+    PARTIALOK=0
+}
+
 
 function sql() {
     local ROLE
@@ -42,13 +54,13 @@ function sql() {
         if [[ "$3" != "fails" ]]
         then
             log_error "${QUERY}"
-            OK=1
+            set_failed
         fi
     else
         if [[ "$3" == "fails" ]]
         then
             log_error "QUERY: '${QUERY}' was expected to fail and it did not fail"
-            OK=1
+            set_failed
         fi
     fi
 
@@ -57,7 +69,7 @@ function sql() {
         if [[ "${RESULT}" != "$4" ]]
         then
             log_error "QUERY '${QUERY}' expected result '${4}' but got '${RESULT}'"
-            OK=1
+            set_failed
         fi
     fi
 }
@@ -159,6 +171,7 @@ function tear_down() {
 }
 
 function run_tests() {
+    local FAILED_TESTS=()
 
     local TESTS
     if [[ $# -ge 1 ]]
@@ -174,10 +187,21 @@ function run_tests() {
         echo "# Running: ${t}"
         echo "#"
         echo "####################################################################"
+        clear_partial_result
         setup
         eval ${t}
+        if [[ ${PARTIALOK} -ne 0 ]]
+        then
+            FAILED_TESTS+=(${t})
+        fi
         tear_down
     done
+    if [[ ${OK} -ne 0 ]]
+    then
+        echo
+        log_error "The following tests are failing:"
+        printf -- '\t%s\n' "${FAILED_TESTS[@]}"
+    fi
 }
 
 
