@@ -252,6 +252,9 @@ function test_member_2_can_write_to_member_1_table_after_write_permission_is_add
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_2 'DELETE FROM cdb_testmember_1.foo where a = 9;'
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
 }
 
 function test_member_1_removes_access_and_member_2_can_no_longer_query_the_table() {
