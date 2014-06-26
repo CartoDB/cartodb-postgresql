@@ -54,7 +54,7 @@ FUNCTION cartodb.CDB_Organization_Add_Table_Read_Write_Permission(from_schema te
 AS $$
 BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA ' || from_schema || ' TO "' || to_role_name || '"';
-    EXECUTE 'GRANT SELECT, INSERT, UPDATE ON ' || from_schema || '.' || table_name || ' TO "' || to_role_name || '"';
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' || from_schema || '.' || table_name || ' TO "' || to_role_name || '"';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
