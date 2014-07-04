@@ -51,7 +51,7 @@ BEGIN
     qmax := TG_ARGV[1];
   ELSE
     BEGIN
-      EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
+      EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
       EXCEPTION WHEN undefined_function THEN
       RAISE EXCEPTION 'Missing "%"._CDB_UserQuotaInBytes()', schema_name;
     END;
@@ -93,7 +93,7 @@ BEGIN
   END IF;
 
   BEGIN
-    EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name::text) INTO current_quota;
+    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO current_quota;
   EXCEPTION WHEN undefined_function THEN
     current_quota := 0;
   END;

@@ -47,7 +47,7 @@ BEGIN
   -- TODO: Check that user quota is set ?
   BEGIN
   -- Content will be discarded
-    EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
+    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
   EXCEPTION WHEN undefined_function THEN
     RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
   END;
