@@ -27,34 +27,41 @@ $$
 $$
 LANGUAGE 'sql' VOLATILE;
 
-
-CREATE OR REPLACE FUNCTION CDB_CheckQuota(schema_name text)
+-- Triggers cannot have declared arguments: pbfact float8, qmax int8, schema_name text
+CREATE OR REPLACE FUNCTION CDB_CheckQuota()
 RETURNS trigger AS
 $$
 DECLARE
   pbfact float8;
   qmax int8;
+  schema_name text;
   dice float8;
   quota float8;
 BEGIN
-
+  IF TG_NARGS = 3 THEN
+    schema_name := TG_ARGV[2];
+    IF cartodb.schema_exists(schema_name) = false THEN
+      RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+    END IF;
+  ELSE
+    schema_name := 'public';
+  END IF;
+  -- Hack to support old versions of CDB_CheckQuota with 2 params but without schema_name
+  IF TG_NARGS >= 2 AND TG_ARGV[1] <> '-1' THEN
+    qmax := TG_ARGV[1];
+  ELSE
+    BEGIN
+      EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
+      EXCEPTION WHEN undefined_function THEN
+      RAISE EXCEPTION 'Missing "%"._CDB_UserQuotaInBytes()', schema_name;
+    END;
+  END IF;
   pbfact := TG_ARGV[0];
-  dice := random();
 
-  -- RAISE DEBUG 'CDB_CheckQuota enter: pbfact=% dice=%', pbfact, dice;
+  dice := random();
 
   IF dice < pbfact THEN
     RAISE DEBUG 'Checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
-    BEGIN
-      qmax := public._CDB_UserQuotaInBytes(schema_name);
-    EXCEPTION WHEN undefined_function THEN
-      IF TG_NARGS > 1 THEN
-        RAISE NOTICE 'Using quota specified via trigger parameter';
-        qmax := TG_ARGV[1];
-      ELSE
-        RAISE EXCEPTION 'Missing _CDB_UserQuotaInBytes(), and no quota provided as parameter';
-      END IF;
-    END;
 
     IF qmax = 0 THEN
       RETURN NEW;
@@ -62,10 +69,9 @@ BEGIN
 
     SELECT public.CDB_UserDataSize(schema_name) INTO quota;
     IF quota > qmax THEN
-        RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
+      RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
     ELSE RAISE DEBUG 'User quota in bytes: % < % (max allowed)', quota, qmax;
     END IF;
-  -- ELSE RAISE DEBUG 'Not checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
   END IF;
 
   RETURN NEW;
@@ -74,15 +80,7 @@ $$
 LANGUAGE 'plpgsql' VOLATILE;
 
 
-CREATE OR REPLACE FUNCTION CDB_CheckQuota()
-RETURNS trigger AS
-$$
-  SELECT public.CDB_CheckQuota('public');
-$$
-LANGUAGE 'plpgsql' VOLATILE;
-
-
-CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8, schema_name text)
+CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(schema_name text, bytes int8)
 RETURNS int8 AS
 $$
 DECLARE
@@ -90,17 +88,17 @@ DECLARE
   schema_ok boolean;
   sql text;
 BEGIN
-  IF cartodb.schema_exists(schema_name) = false THEN
-    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+  IF cartodb.schema_exists(schema_name::text) = false THEN
+    RAISE EXCEPTION 'Invalid schema name "%"', schema_name::text;
   END IF;
 
   BEGIN
-    EXECUTE FORMAT('current_quota := %I._CDB_UserQuotaInBytes();', schema_name);
+    EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name::text) INTO current_quota;
   EXCEPTION WHEN undefined_function THEN
     current_quota := 0;
   END;
 
-  sql := 'CREATE OR REPLACE FUNCTION ' || schema_name || '._CDB_UserQuotaInBytes() '
+  sql := 'CREATE OR REPLACE FUNCTION "' || schema_name::text || '"._CDB_UserQuotaInBytes() '
     || 'RETURNS int8 AS $X$ SELECT ' || bytes
     || '::int8 $X$ LANGUAGE sql IMMUTABLE';
   EXECUTE sql;
@@ -114,6 +112,8 @@ LANGUAGE 'plpgsql' VOLATILE STRICT;
 CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8)
 RETURNS int8 AS
 $$
-  SELECT public.CDB_SetUserQuotaInBytes(bytes, 'public');
+BEGIN
+  return public.CDB_SetUserQuotaInBytes('public', bytes);
+END;
 $$
 LANGUAGE 'plpgsql' VOLATILE STRICT;

@@ -15,6 +15,6 @@ $$ language 'plpgsql' VOLATILE;
 CREATE OR REPLACE FUNCTION cartodb.schema_exists(schema_name text)
 RETURNS boolean AS
 $$
-  SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schema_name);
+  SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schema_name::text);
 $$
 language sql VOLATILE;

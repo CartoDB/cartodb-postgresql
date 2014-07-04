@@ -4,7 +4,7 @@ CREATE TABLE big(a int);
 -- Try the legacy interface
 -- See https://github.com/CartoDB/cartodb-postgresql/issues/13
 CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON big
-      EXECUTE PROCEDURE CDB_CheckQuota(1,1);
+      EXECUTE PROCEDURE CDB_CheckQuota(1, 1, 'public');
 INSERT INTO big VALUES (1); -- allowed, check runs before
 INSERT INTO big VALUES (1); -- disallowed, quota exceeds before
 SELECT CDB_SetUserQuotaInBytes(0);

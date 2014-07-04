@@ -30,7 +30,7 @@ BEGIN
     END IF;
   END LOOP;
 
-  PERFORM CDB_CartodbfyTable(tabname); 
+  PERFORM CDB_CartodbfyTable('public', tabname);
 
   sql := 'INSERT INTO ' || tabname::text || '(the_geom) values ( CDB_LatLng(2,1) ) RETURNING cartodb_id';
   EXECUTE sql INTO STRICT id;
@@ -132,7 +132,7 @@ LANGUAGE 'plpgsql';
 
 -- table with single non-geometrical column
 CREATE TABLE t AS SELECT 1::int as a;
-SELECT CDB_CartodbfyTable('t'); -- should fail
+SELECT CDB_CartodbfyTable('public', 't'); -- should fail
 SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
 SELECT CDB_CartodbfyTableCheck('t', 'single non-geometrical column');
 DROP TABLE t;

@@ -25,7 +25,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 
 -- Ensure a table is a "cartodb" table
 -- See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table
-CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(schema_name TEXT, reloid REGCLASS)
 RETURNS void 
 AS $$
 DECLARE
@@ -40,9 +40,14 @@ DECLARE
   exists_geom_cols BOOLEAN[];
 BEGIN
 
+  IF cartodb.schema_exists(schema_name) = false THEN
+    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+  END IF;
+
   -- TODO: Check that user quota is set ?
   BEGIN
-    PERFORM public._CDB_UserQuotaInBytes();
+  -- Content will be discarded
+    EXECUTE FORMAT('SELECT "%I"._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
   EXCEPTION WHEN undefined_function THEN
     RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
   END;
@@ -450,13 +455,27 @@ cname, rec2.typname;
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
       || reloid::text
-      || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1)';
+      || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
+      || schema_name::text
+      || ''')';
   EXECUTE sql;
 
   sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
       || reloid::text
-      || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001)';
+      || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
+      || schema_name::text
+      || ''')';
   EXECUTE sql;
  
 END;
 $$ LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
+RETURNS void
+AS $$
+BEGIN
+  PERFORM public.CDB_CartodbfyTable('public', reloid);
+END;
+$$
+LANGUAGE PLPGSQL;
