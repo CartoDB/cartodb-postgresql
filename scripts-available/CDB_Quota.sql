@@ -28,11 +28,10 @@ $$
 LANGUAGE 'sql' VOLATILE;
 
 
-CREATE OR REPLACE FUNCTION CDB_CheckQuota()
+CREATE OR REPLACE FUNCTION CDB_CheckQuota(schema_name text)
 RETURNS trigger AS
 $$
 DECLARE
-
   pbfact float8;
   qmax int8;
   dice float8;
@@ -47,7 +46,7 @@ BEGIN
   IF dice < pbfact THEN
     RAISE DEBUG 'Checking quota on table % (dice:%, needed:<%)', TG_RELID::text, dice, pbfact;
     BEGIN
-      qmax := public._CDB_UserQuotaInBytes();
+      qmax := public._CDB_UserQuotaInBytes(schema_name);
     EXCEPTION WHEN undefined_function THEN
       IF TG_NARGS > 1 THEN
         RAISE NOTICE 'Using quota specified via trigger parameter';
@@ -61,7 +60,7 @@ BEGIN
       RETURN NEW;
     END IF;
 
-    SELECT public.CDB_UserDataSize() INTO quota;
+    SELECT public.CDB_UserDataSize(schema_name) INTO quota;
     IF quota > qmax THEN
         RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
     ELSE RAISE DEBUG 'User quota in bytes: % < % (max allowed)', quota, qmax;
@@ -74,26 +73,47 @@ END;
 $$
 LANGUAGE 'plpgsql' VOLATILE;
 
-CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8)
+
+CREATE OR REPLACE FUNCTION CDB_CheckQuota()
+RETURNS trigger AS
+$$
+  SELECT public.CDB_CheckQuota('public');
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8, schema_name text)
 RETURNS int8 AS
 $$
 DECLARE
   current_quota int8;
+  schema_ok boolean;
   sql text;
 BEGIN
+  IF cartodb.schema_exists(schema_name) = false THEN
+    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+  END IF;
+
   BEGIN
-    current_quota := public._CDB_UserQuotaInBytes();
+    EXECUTE FORMAT('current_quota := %I._CDB_UserQuotaInBytes();', schema_name);
   EXCEPTION WHEN undefined_function THEN
     current_quota := 0;
   END;
 
-  sql := 'CREATE OR REPLACE FUNCTION public._CDB_UserQuotaInBytes() '
+  sql := 'CREATE OR REPLACE FUNCTION ' || schema_name || '._CDB_UserQuotaInBytes() '
     || 'RETURNS int8 AS $X$ SELECT ' || bytes
     || '::int8 $X$ LANGUAGE sql IMMUTABLE';
   EXECUTE sql;
 
   return current_quota;
-
 END
+$$
+LANGUAGE 'plpgsql' VOLATILE STRICT;
+
+
+CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8)
+RETURNS int8 AS
+$$
+  SELECT public.CDB_SetUserQuotaInBytes(bytes, 'public');
 $$
 LANGUAGE 'plpgsql' VOLATILE STRICT;
