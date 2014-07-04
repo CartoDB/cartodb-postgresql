@@ -1,5 +1,5 @@
 -- Return the estimated size of user data. Used for quota checking.
-CREATE OR REPLACE FUNCTION CDB_UserDataSize()
+CREATE OR REPLACE FUNCTION CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
   -- TODO: double check this query. Maybe use CDB_TableMetadata for lookup ?
@@ -10,12 +10,23 @@ $$
   SELECT coalesce(int8(sum(pg_total_relation_size(quote_ident(table_name))) / 2), 0)
     AS quota
   FROM information_schema.tables
-  WHERE table_catalog = current_database() AND table_schema = 'public'
-    AND table_name != 'spatial_ref_sys'
-    AND table_name != 'cdb_tablemetadata'
-    AND table_type = 'BASE TABLE';
+  WHERE table_catalog = current_database() AND table_schema = schema_name
+        AND table_name != 'spatial_ref_sys'
+        AND table_name != 'cdb_tablemetadata'
+        AND table_type = 'BASE TABLE';
 $$
 LANGUAGE 'sql' VOLATILE;
+
+
+-- Return the estimated size of user data. Used for quota checking.
+-- Implicit schema version for backwards compatibility
+CREATE OR REPLACE FUNCTION CDB_UserDataSize()
+RETURNS bigint AS
+$$
+  SELECT public.CDB_UserDataSize('public');
+$$
+LANGUAGE 'sql' VOLATILE;
+
 
 CREATE OR REPLACE FUNCTION CDB_CheckQuota()
 RETURNS trigger AS
