@@ -84,26 +84,18 @@ CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(schema_name text, bytes int8)
 RETURNS int8 AS
 $$
 DECLARE
-  current_quota int8;
-  schema_ok boolean;
   sql text;
 BEGIN
   IF cartodb.schema_exists(schema_name::text) = false THEN
     RAISE EXCEPTION 'Invalid schema name "%"', schema_name::text;
   END IF;
 
-  BEGIN
-    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO current_quota;
-  EXCEPTION WHEN undefined_function THEN
-    current_quota := 0;
-  END;
-
   sql := 'CREATE OR REPLACE FUNCTION "' || schema_name::text || '"._CDB_UserQuotaInBytes() '
     || 'RETURNS int8 AS $X$ SELECT ' || bytes
     || '::int8 $X$ LANGUAGE sql IMMUTABLE';
   EXECUTE sql;
 
-  return current_quota;
+  return bytes;
 END
 $$
 LANGUAGE 'plpgsql' VOLATILE STRICT;

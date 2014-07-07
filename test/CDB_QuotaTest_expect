@@ -6,9 +6,9 @@ ERROR:  Quota exceeded by 3.9990234375KB
 0
 
 INSERT 0 1024
-0
-ERROR:  Quota exceeded by 103.9921875KB
 8
+ERROR:  Quota exceeded by 103.9921875KB
+0
 INSERT 0 1
 DROP TABLE
 SET
