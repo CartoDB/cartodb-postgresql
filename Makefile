@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.3.0
+EXTVERSION = 0.3.1
 
 SED = sed
 

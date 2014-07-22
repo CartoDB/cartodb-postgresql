@@ -1,3 +1,7 @@
+0.3.1 (2014-07-22)
+------------------
+* Dummy version. We start using semantic versioning
+
 0.3.0 (2014-07-15)
 ------------------
 * Permission management functions
