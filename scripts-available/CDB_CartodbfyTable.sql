@@ -500,8 +500,8 @@ BEGIN
   END LOOP; -- } on expected geometry columns
 
   -- Both only populate if proceeds
-  PERFORM public._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols)
-  PERFORM public._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols)
+  PERFORM public._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
+  PERFORM public._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
 
   PERFORM public._CDB_create_triggers(reloid);
  
