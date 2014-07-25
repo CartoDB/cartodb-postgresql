@@ -1,3 +1,7 @@
+0.3.2 (xxxx)
+------------
+* Splitting of CartodbfyTable method in subfunctions to be able to call in fragments and evade timeouts
+
 0.3.1 (2014-07-22)
 ------------------
 * Dummy version. We start using semantic versioning

@@ -23,6 +23,113 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
+-- Drop cartodb triggers (might prevent changing columns)
+CREATE OR REPLACE FUNCTION _CDB_drop_triggers(reloid REGCLASS)
+RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+  -- "track_updates"
+  sql := 'DROP TRIGGER IF EXISTS track_updates ON ' || reloid::text;
+  EXECUTE sql;
+
+  -- "update_the_geom_webmercator"
+  sql := 'DROP TRIGGER IF EXISTS update_the_geom_webmercator_trigger ON ' || reloid::text;
+  EXECUTE sql;
+
+  -- "update_updated_at"
+  sql := 'DROP TRIGGER IF EXISTS update_updated_at_trigger ON ' || reloid::text;
+  EXECUTE sql;
+
+  -- "test_quota" and "test_quota_per_row"
+  sql := 'DROP TRIGGER IF EXISTS test_quota ON ' || reloid::text;
+  EXECUTE sql;
+  sql := 'DROP TRIGGER IF EXISTS test_quota_per_row ON ' || reloid::text;
+  EXECUTE sql;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+-- Create all triggers
+-- NOTE: drop/create has the side-effect of re-enabling disabled triggers
+CREATE OR REPLACE FUNCTION _CDB_create_triggers(reloid REGCLASS)
+RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+-- "track_updates"
+  sql := 'CREATE trigger track_updates AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON '
+         || reloid::text
+         || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
+  EXECUTE sql;
+
+-- "update_the_geom_webmercator"
+-- TODO: why _before_ and not after ?
+  sql := 'CREATE trigger update_the_geom_webmercator_trigger BEFORE INSERT OR UPDATE OF the_geom ON '
+         || reloid::text
+         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator()';
+  EXECUTE sql;
+
+-- "update_updated_at"
+-- TODO: why _before_ and not after ?
+  sql := 'CREATE trigger update_updated_at_trigger BEFORE UPDATE ON '
+         || reloid::text
+         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_updated_at()';
+  EXECUTE sql;
+
+-- "test_quota" and "test_quota_per_row"
+
+  sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
+         || reloid::text
+         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
+         || schema_name::text
+         || ''')';
+  EXECUTE sql;
+
+  sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
+         || reloid::text
+         || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
+         || schema_name::text
+         || ''')';
+  EXECUTE sql;
+END;
+$$ LANGUAGE PLPGSQL;
+
+-- Initialize the_geom with values from the_geom_webmercator
+-- do this only if the_geom_webmercator was found (not created) and the_geom was NOT found.
+CREATE OR REPLACE FUNCTION _CDB_populate_the_geom_from_the_geom_webmercator(reloid REGCLASS, geom_columns_exist BOOLEAN[])
+RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+  IF geom_columns_exist[2] AND NOT geom_columns_exist[1] THEN
+    sql := 'UPDATE ' || reloid::text || ' SET the_geom = ST_Transform(the_geom_webmercator, 4326) ';
+    EXECUTE sql;
+  END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+-- Initialize the_geom_webmercator with values from the_geom
+-- do this only if the_geom was found (not created) and the_geom_webmercator was NOT found.
+CREATE OR REPLACE FUNCTION _CDB_populate_the_geom_webmercator_from_the_geom(reloid REGCLASS, geom_columns_exist BOOLEAN[])
+  RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+  IF geom_columns_exist[1] AND NOT geom_columns_exist[2] THEN
+    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = public.CDB_TransformToWebmercator(the_geom) ';
+    EXECUTE sql;
+  END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+-- ////////////////////////////////////////////////////
+
 -- Ensure a table is a "cartodb" table
 -- See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(schema_name TEXT, reloid REGCLASS)
@@ -52,25 +159,7 @@ BEGIN
     RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
   END;
 
-  -- Drop cartodb triggers (might prevent changing columns)
-
-  -- "track_updates"
-  sql := 'DROP TRIGGER IF EXISTS track_updates ON ' || reloid::text;
-  EXECUTE sql;
-
-  -- "update_the_geom_webmercator"
-  sql := 'DROP TRIGGER IF EXISTS update_the_geom_webmercator_trigger ON ' || reloid::text;
-  EXECUTE sql;
-
-  -- "update_updated_at"
-  sql := 'DROP TRIGGER IF EXISTS update_updated_at_trigger ON ' || reloid::text;
-  EXECUTE sql;
-
-  -- "test_quota" and "test_quota_per_row"
-  sql := 'DROP TRIGGER IF EXISTS test_quota ON ' || reloid::text;
-  EXECUTE sql;
-  sql := 'DROP TRIGGER IF EXISTS test_quota_per_row ON ' || reloid::text;
-  EXECUTE sql;
+  PERFORM public._CDB_drop_triggers(reloid);
 
   -- Ensure required fields exist
 
@@ -229,8 +318,7 @@ BEGIN
            AND NOT a.attisdropped AND a.attname = rec.cname
         INTO STRICT rec2;
         IF rec2.oid NOT IN (1184) THEN -- timestamptz {
-          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.
-cname, rec2.typname;
+          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.cname, rec2.typname;
         ELSE -- }{
           -- Ensure data type is a TIMESTAMP WITH TIMEZONE
           sql := 'ALTER TABLE ' || reloid::text
@@ -411,61 +499,11 @@ cname, rec2.typname;
 
   END LOOP; -- } on expected geometry columns
 
-  -- Initialize the_geom with values from the_geom_webmercator
-  -- do this only if the_geom_webmercator was found (not created)
-  -- _and_ the_geom was NOT found.
-  IF exists_geom_cols[2] AND NOT exists_geom_cols[1] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom = ST_Transform(the_geom_webmercator, 4326) ';
-    EXECUTE sql;
-  END IF;
+  -- Both only populate if proceeds
+  PERFORM public._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols)
+  PERFORM public._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols)
 
-  -- Initialize the_geom_webmercator with values from the_geom
-  -- do this only if the_geom was found (not created)
-  -- _and_ the_geom_webmercator was NOT found.
-  IF exists_geom_cols[1] AND NOT exists_geom_cols[2] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = public.CDB_TransformToWebmercator(the_geom) ';
-    EXECUTE sql;
-  END IF;
-
-  -- Re-create all triggers
-
-  -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
-
-  -- "track_updates"
-  sql := 'CREATE trigger track_updates AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON '
-      || reloid::text
-      || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
-  EXECUTE sql;
-
-  -- "update_the_geom_webmercator"
-  -- TODO: why _before_ and not after ?
-  sql := 'CREATE trigger update_the_geom_webmercator_trigger BEFORE INSERT OR UPDATE OF the_geom ON '
-      || reloid::text
-      || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator()';
-  EXECUTE sql;
-
-  -- "update_updated_at"
-  -- TODO: why _before_ and not after ?
-  sql := 'CREATE trigger update_updated_at_trigger BEFORE UPDATE ON '
-      || reloid::text
-      || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_updated_at()';
-  EXECUTE sql;
-
-  -- "test_quota" and "test_quota_per_row"
-
-  sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
-      || reloid::text
-      || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
-      || schema_name::text
-      || ''')';
-  EXECUTE sql;
-
-  sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
-      || reloid::text
-      || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
-      || schema_name::text
-      || ''')';
-  EXECUTE sql;
+  PERFORM public._CDB_create_triggers(reloid);
  
 END;
 $$ LANGUAGE PLPGSQL;
@@ -477,5 +515,4 @@ AS $$
 BEGIN
   PERFORM public.CDB_CartodbfyTable('public', reloid);
 END;
-$$
-LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL;
