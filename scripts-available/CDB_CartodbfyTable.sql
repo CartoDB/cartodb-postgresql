@@ -497,12 +497,10 @@ BEGIN
         EXIT rename_column;
       END LOOP; --}
       CONTINUE column_setup;
-
     END LOOP; -- } column_setup
-
   END LOOP; -- } on expected geometry columns
 
-  SELECT exists_geom_cols;
+  RETURN exists_geom_cols;
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -517,20 +515,20 @@ DECLARE
   exists_geom_cols BOOLEAN[];
 BEGIN
 
-  PERFORM public._CDB_check_prerequisites(schema_name, reloid);
+  PERFORM cartodb._CDB_check_prerequisites(schema_name, reloid);
 
-  PERFORM public._CDB_drop_triggers(reloid);
+  PERFORM cartodb._CDB_drop_triggers(reloid);
 
   -- Ensure required fields exist
-  PERFORM public._CDB_create_cartodb_id_column(reloid);
-  PERFORM public._CDB_create_timestamp_columns(reloid);
-  SELECT public._CDB_create_the_geom_columns(reloid) INTO exists_geom_cols;
+  PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
+  PERFORM cartodb._CDB_create_timestamp_columns(reloid);
+  SELECT cartodb._CDB_create_the_geom_columns(reloid) INTO exists_geom_cols;
 
   -- Both only populate if proceeds
-  PERFORM public._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
-  PERFORM public._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
+  PERFORM cartodb._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
+  PERFORM cartodb._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
 
-  PERFORM public._CDB_create_triggers(schema_name, reloid);
+  PERFORM cartodb._CDB_create_triggers(schema_name, reloid);
  
 END;
 $$ LANGUAGE PLPGSQL;
@@ -539,6 +537,6 @@ CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
 RETURNS void
 AS $$
 BEGIN
-  PERFORM public.CDB_CartodbfyTable('public', reloid);
+  PERFORM cartodb.CDB_CartodbfyTable('public', reloid);
 END;
 $$ LANGUAGE PLPGSQL;
