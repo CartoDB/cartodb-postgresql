@@ -1,6 +1,10 @@
-0.3.2 (xxxx)
-------------
-* Splitting of CartodbfyTable method in subfunctions to be able to call in fragments and evade timeouts
+0.3.3 (2014-07-xx)
+------------------
+* Splitting of CartodbfyTable method in subfunctions to be able to call in fragments and evade timeouts on hot zones
+
+0.3.2 (2014-07-28)
+------------------
+* Make 0.3.0dev version upgradeable
 
 0.3.1 (2014-07-22)
 ------------------
