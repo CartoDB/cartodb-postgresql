@@ -4,6 +4,7 @@ addons:
   postgresql: 9.3
 
 before_install:
+  - sudo apt-get update
   #- sudo apt-get install -q postgresql-9.3-postgis-2.1
   - sudo apt-get update
   - sudo apt-get install -q postgresql-server-dev-9.3
