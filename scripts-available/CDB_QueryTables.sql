@@ -39,7 +39,7 @@ BEGIN
       inp AS (
         SELECT
           xpath('//x:Relation-Name/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as x,
-          xpath('//x:Schema/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as s
+          xpath('//x:Relation-Name/../x:Schema/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as s
       )
       SELECT unnest(x)::name as p, unnest(s)::name as sc from inp
     LOOP
