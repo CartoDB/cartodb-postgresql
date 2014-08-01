@@ -325,6 +325,27 @@ function test_user_can_read_when_it_has_permission_after_organization_permission
     drop_role_and_schema cdb_testmember_3
 }
 
+function test_cdb_querytables_returns_schema_and_table_name() {
+    sql "CREATE EXTENSION plpythonu;"
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
+}
+
+function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
+    sql "CREATE EXTENSION plpythonu;"
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
+}
+
+function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset() {
+    sql "CREATE EXTENSION plpythonu;"
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
+}
+
 #################################################### TESTS END HERE ####################################################
 
 
