@@ -46,16 +46,20 @@ BEGIN
   ELSE
     schema_name := 'public';
   END IF;
-  -- Hack to support old versions of CDB_CheckQuota with 2 params but without schema_name
-  IF TG_NARGS >= 2 AND TG_ARGV[1] <> '-1' THEN
-    qmax := TG_ARGV[1];
-  ELSE
+
+  -- By default try to use quota function, and if not present then rely on the one specified by params
+  BEGIN
+    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
+  EXCEPTION WHEN undefined_function THEN
     BEGIN
-      EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
-      EXCEPTION WHEN undefined_function THEN
-      RAISE EXCEPTION 'Missing "%"._CDB_UserQuotaInBytes()', schema_name;
+      IF TG_NARGS >= 2 AND TG_ARGV[1] <> '-1' THEN
+        qmax := TG_ARGV[1];
+      ELSE
+        RAISE EXCEPTION 'Missing "%"._CDB_UserQuotaInBytes()', schema_name;
+      END IF;
     END;
-  END IF;
+  END;
+
   pbfact := TG_ARGV[0];
 
   dice := random();
