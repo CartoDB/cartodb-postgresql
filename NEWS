@@ -1,4 +1,12 @@
-0.3.3 (2014-07-xx)
+0.3.5 (2014-08-11)
+------------------
+Inverting priority of CDB_CheckQuota qmax so gies more priority to existing user quota function over parameter value.
+
+0.3.4 (2014-08-01)
+------------------
+Fixes issue with schemas in CDB_QueryTables
+
+0.3.3 (2014-07-30)
 ------------------
 * Splitting of CartodbfyTable method in subfunctions to be able to call in fragments and evade timeouts on hot zones
 
