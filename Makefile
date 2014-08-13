@@ -78,7 +78,7 @@ $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/
