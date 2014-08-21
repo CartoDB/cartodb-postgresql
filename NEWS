@@ -1,3 +1,7 @@
+0.3.X (2014-XX-XX)
+------------------
+Added CDB_Math_Mode function
+
 0.3.6 (2014-08-11)
 ------------------
 Dummy release to solve some issues with cdb branch/tag
