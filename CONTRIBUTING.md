@@ -19,7 +19,7 @@ in which those scripts are loaded.
 
 Scripts would be best coded in a way to be usable both for creation
 and upgrade of the objects. This means using CREATE OR REPLACE for
-the functions, and whatever it takes to check existance of any previous
+the functions, and whatever it takes to check existence of any previous
 version of objects in other cases.
 
 When used as an extension (probably always from version 0.2.0 onwards)
@@ -27,8 +27,8 @@ all the objects will be installed in a "cartodb" schema. Take this into
 account to fully-qualify internal calls to avoid (possibly dangerous)
 name clashes.
 
-Every new feature (as well as bugfixes) should come with a testcase,
-see next session.
+Every new feature (as well as bugfixes) should come with a test case,
+see next section.
 
 Writing testcases
 -----------------
@@ -58,4 +58,3 @@ Starting with 0.2.0, the in-place reload can be done with an ad-hoc function:
 ```sql
 SELECT cartodb.cdb_extension_reload();
 ```
-
