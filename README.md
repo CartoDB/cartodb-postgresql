@@ -20,12 +20,16 @@ Dependencies
 Install
 -------
 
- make all install
+```sh
+make all install
+```
 
 Test installation
 -----------------
 
- make installcheck
+```sh
+make installcheck
+```
 
 NOTE: if ``test_ddl_triggers`` fails it's likely due to an incomplete
       installation of schema_triggers: you need to add ``schema_triggers.so``
