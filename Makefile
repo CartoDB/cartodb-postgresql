@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.3.6
+EXTVERSION = 0.4.0
 
 SED = sed
 
@@ -26,6 +26,7 @@ UPGRADABLE = \
   0.3.3 \
   0.3.4 \
   0.3.5 \
+  0.3.6 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
@@ -36,7 +37,6 @@ UPGRADES = \
      $(SED) 's/$$/--$(EXTVERSION).sql/' | \
      $(SED) 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
 
-REV=$(shell git describe)
 GITDIR=$(shell test -d .git && echo '.git' || cat .git | $(SED) 's/^gitdir: //')
 
 DATA_built = \
@@ -78,7 +78,7 @@ $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION) $(REV)/' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
 
 legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p sql/test/

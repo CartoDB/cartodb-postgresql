@@ -1,6 +1,7 @@
 0.4.0 (2014-mm-dd)
 ------------------
 Added CDB_Math_Mode function
+Changes in versioning: no revision is attached so it no longer uses `git describe` for the version.
 
 0.3.6 (2014-08-11)
 ------------------
