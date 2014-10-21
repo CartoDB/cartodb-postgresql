@@ -104,5 +104,5 @@ test_organization:
 
 legacy_tests: legacy_regress 
 
-installcheck: legacy_tests #    test_organization
+installcheck: legacy_tests test_organization
 
