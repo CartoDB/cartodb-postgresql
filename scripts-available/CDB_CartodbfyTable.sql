@@ -67,6 +67,7 @@ DECLARE
   had_column BOOLEAN;
   i INTEGER;
   new_name TEXT;
+  cartodb_id_name TEXT;
 BEGIN
   << cartodb_id_setup >>
   LOOP --{
@@ -75,6 +76,7 @@ BEGIN
       sql := 'ALTER TABLE ' || reloid::text || ' ADD cartodb_id SERIAL NOT NULL UNIQUE';
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
+      cartodb_id_name := 'cartodb_id';
       EXIT cartodb_id_setup;
       EXCEPTION
       WHEN duplicate_column THEN
@@ -114,6 +116,7 @@ BEGIN
         BEGIN
           RAISE DEBUG 'Running %', sql;
           EXECUTE sql;
+          cartodb_id_name := 'cartodb_id';
           EXIT cartodb_id_setup;
           EXCEPTION
           WHEN unique_violation OR not_null_violation THEN
@@ -139,13 +142,14 @@ BEGIN
           WHEN others THEN
             RAISE EXCEPTION 'Cartodbfying % (renaming cartodb_id): % (%)', reloid, SQLERRM, SQLSTATE;
         END;
+        cartodb_id_name := new_name;
         EXIT rename_column;
       END LOOP; --}
       CONTINUE cartodb_id_setup;
     END IF;
   END LOOP; -- }
 
-    -- Try to copy data from new name if possible
+  -- Try to copy data from new name if possible
   IF new_name IS NOT NULL THEN
     RAISE NOTICE 'Trying to recover data from % column', new_name;
     BEGIN
@@ -184,6 +188,18 @@ BEGIN
         SQLERRM, SQLSTATE;
     END;
   END IF;
+
+  -- Set primary key of the table if not already present (e.g. tables created from SQL API)
+  IF cartodb_id_name IS NULL THEN
+    RAISE EXCEPTION 'Cartodbfying % (Didnt get cartodb_id field name)', reloid;
+  END IF;
+  BEGIN
+    sql := 'ALTER TABLE ' || reloid::text || ' ADD PRIMARY KEY (cartodb_id)';
+    EXECUTE sql;
+    EXCEPTION
+    WHEN others THEN
+      RAISE DEBUG 'Table % Already had PRIMARY KEY', reloid;
+  END;
 
 END;
 $$ LANGUAGE PLPGSQL;
