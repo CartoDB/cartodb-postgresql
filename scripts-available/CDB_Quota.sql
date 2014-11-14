@@ -13,7 +13,11 @@ $$
   WHERE table_catalog = current_database() AND table_schema = schema_name
         AND table_name != 'spatial_ref_sys'
         AND table_name != 'cdb_tablemetadata'
-        AND table_type = 'BASE TABLE';
+        AND table_type = 'BASE TABLE'
+        AND table_name NOT IN (
+          SELECT o_table_name FROM raster_overviews
+          WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
+        );
 $$
 LANGUAGE 'sql' VOLATILE;
 
