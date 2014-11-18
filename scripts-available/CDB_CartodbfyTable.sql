@@ -3,8 +3,7 @@
 --   * CDB_TableMetadata.sql
 --   * CDB_Quota.sql
 --   * _CDB_UserQuotaInBytes() function, installed by rails
---     (user.rebuild_quota_trigger, called by rake task
---      cartodb:db:update_test_quota_trigger)
+--     (user.rebuild_quota_trigger, called by rake task cartodb:db:update_test_quota_trigger)
 
 -- 1) Required checks before running cartodbfication
 -- Either will pass silenty or raise an exception
@@ -22,7 +21,7 @@ BEGIN
   BEGIN
     EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
     EXCEPTION WHEN undefined_function THEN
-    RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
+      RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
   END;
 END;
 $$ LANGUAGE PLPGSQL;
@@ -466,7 +465,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 
--- 8) Create all triggers
+-- 8.a) Create all triggers
 -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
 CREATE OR REPLACE FUNCTION _CDB_create_triggers(schema_name TEXT, reloid REGCLASS)
 RETURNS void
@@ -512,6 +511,46 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+-- 8.b) Create all raster triggers
+-- NOTE: drop/create has the side-effect of re-enabling disabled triggers
+CREATE OR REPLACE FUNCTION _CDB_create_raster_triggers(schema_name TEXT, reloid REGCLASS)
+  RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+-- "track_updates"
+  sql := 'CREATE trigger track_updates AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON '
+         || reloid::text
+         || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
+  EXECUTE sql;
+
+-- "update_updated_at"
+-- TODO: why _before_ and not after ?
+  sql := 'CREATE trigger update_updated_at_trigger BEFORE UPDATE ON '
+         || reloid::text
+         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_updated_at()';
+  EXECUTE sql;
+
+-- "test_quota" and "test_quota_per_row"
+
+  sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
+         || reloid::text
+         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
+         || schema_name::text
+         || ''')';
+  EXECUTE sql;
+
+  sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
+         || reloid::text
+         || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
+         || schema_name::text
+         || ''')';
+  EXECUTE sql;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
 
 -- Update the_geom_webmercator
 CREATE OR REPLACE FUNCTION _CDB_update_the_geom_webmercator()
@@ -532,15 +571,47 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 
+-- Auxiliary function
+CREATE OR REPLACE FUNCTION _CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
+  RETURNS BOOLEAN
+AS $$
+DECLARE
+  sql TEXT;
+  is_raster BOOLEAN;
+BEGIN
+  IF cartodb.schema_exists(schema_name) = FALSE THEN
+    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+  END IF;
+
+  BEGIN
+    sql := 'SELECT the_raster_webmercator FROM '
+          || quote_ident(schema_name::TEXT)
+          || '.'
+          || quote_ident(reloid::TEXT)
+          || ' LIMIT 1';
+    is_raster = TRUE;
+    EXECUTE sql;
+
+    EXCEPTION WHEN undefined_column THEN
+      is_raster = FALSE;
+  END;
+
+  RETURN is_raster;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+
 -- ////////////////////////////////////////////////////
 
--- Ensure a table is a "cartodb" table
--- See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table
+-- Ensure a table is a "cartodb" table (See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table)
+-- Rails code replicates this call at User.cartodbfy()
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(schema_name TEXT, reloid REGCLASS)
 RETURNS void 
 AS $$
 DECLARE
   exists_geom_cols BOOLEAN[];
+  is_raster BOOLEAN;
 BEGIN
 
   PERFORM cartodb._CDB_check_prerequisites(schema_name, reloid);
@@ -550,13 +621,19 @@ BEGIN
   -- Ensure required fields exist
   PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
   PERFORM cartodb._CDB_create_timestamp_columns(reloid);
-  SELECT cartodb._CDB_create_the_geom_columns(reloid) INTO exists_geom_cols;
 
-  -- Both only populate if proceeds
-  PERFORM cartodb._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
-  PERFORM cartodb._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
+  SELECT cartodb._CDB_is_raster_table(schema_name, reloid) INTO is_raster;
+  IF is_raster THEN
+    PERFORM cartodb._CDB_create_raster_triggers(schema_name, reloid);
+  ELSE
+    SELECT cartodb._CDB_create_the_geom_columns(reloid) INTO exists_geom_cols;
 
-  PERFORM cartodb._CDB_create_triggers(schema_name, reloid);
+    -- Both only populate if proceeds
+    PERFORM cartodb._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
+    PERFORM cartodb._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
+
+    PERFORM cartodb._CDB_create_triggers(schema_name, reloid);
+  END IF;
 
 END;
 $$ LANGUAGE PLPGSQL;

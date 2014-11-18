@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.4.1
+EXTVERSION = 0.5.0
 
 SED = sed
 
@@ -28,6 +28,7 @@ UPGRADABLE = \
   0.3.5 \
   0.3.6 \
   0.4.0 \
+  0.4.1 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
@@ -102,7 +103,10 @@ legacy_regress: $(REGRESS_OLD) Makefile
 test_organization:
 	bash test/organization/test.sh
 
+test_extension_new:
+	bash test/extension/test.sh
+
 legacy_tests: legacy_regress 
 
-installcheck: legacy_tests test_organization
+installcheck: legacy_tests test_extension_new test_organization
 

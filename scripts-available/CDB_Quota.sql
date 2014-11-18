@@ -2,24 +2,54 @@
 CREATE OR REPLACE FUNCTION CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
-  -- TODO: double check this query. Maybe use CDB_TableMetadata for lookup ?
-  --       also, it's "table_name" sounds sensible to search_path
-  --
-  -- NOTE: division by 2 is an hack for the_geom_webmercator
-  --
-  SELECT coalesce(int8(sum(pg_total_relation_size(schema_name || '.' || table_name)) / 2), 0)
-    AS quota
+DECLARE
+  quota_vector INT8;
+  quota_raster INT8;
+BEGIN
+  -- TODO: double check queries. Maybe use CDB_TableMetadata for lookup?
+  --  Also, "table_name" sounds sensible to search_path
+
+  -- Division by 2 is for not counting the_geom_webmercator
+  SELECT COALESCE(INT8(SUM(pg_total_relation_size(schema_name || '.' || table_name)) / 2), 0) INTO quota_vector
   FROM information_schema.tables
   WHERE table_catalog = current_database() AND table_schema = schema_name
-        AND table_name != 'spatial_ref_sys'
-        AND table_name != 'cdb_tablemetadata'
-        AND table_type = 'BASE TABLE'
-        AND table_name NOT IN (
-          SELECT o_table_name FROM raster_overviews
-          WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
-        );
+    AND table_name != 'spatial_ref_sys'
+    AND table_name != 'cdb_tablemetadata'
+    AND table_type = 'BASE TABLE'
+    -- exclude raster overview tables
+    AND table_name NOT IN (
+      SELECT o_table_name FROM raster_overviews
+      WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
+    )
+    -- exclude raster "main" tables
+    AND table_name NOT IN (
+      SELECT r_table_name FROM raster_overviews
+      WHERE r_table_name = table_name
+        AND o_table_schema = schema_name AND o_table_catalog = current_database()
+    );
+
+  SELECT COALESCE(INT8(SUM(pg_total_relation_size(schema_name || '.' || table_name))), 0) INTO quota_raster
+  FROM information_schema.tables
+  WHERE table_catalog = current_database() AND table_schema = schema_name
+    AND table_name != 'spatial_ref_sys'
+    AND table_name != 'cdb_tablemetadata'
+    AND table_type = 'BASE TABLE'
+    -- exclude raster overview tables
+    AND table_name NOT IN (
+      SELECT o_table_name FROM raster_overviews
+      WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
+    )
+    -- filter to raster "main" tables
+    AND table_name IN (
+      SELECT r_table_name FROM raster_overviews
+      WHERE r_table_name = table_name
+        AND o_table_schema = schema_name AND o_table_catalog = current_database()
+    );
+
+  RETURN quota_vector + quota_raster;
+END;
 $$
-LANGUAGE 'sql' VOLATILE;
+LANGUAGE 'plpgsql' VOLATILE;
 
 
 -- Return the estimated size of user data. Used for quota checking.

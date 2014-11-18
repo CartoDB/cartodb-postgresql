@@ -1,3 +1,13 @@
+0.5.0 (2014-09-21)
+------------------
+* Support of raster tables for cartodbfication
+* Modified quota functions: vector tables stay the same, raster tables count as full size (as have no
+  the_geom + the_geom_webmercator combo) and raster overviews are not counted
+
+0.4.1 (2014-09-21)
+------------------
+* Bugfix for Cartodbfication: Set primary key of the table if not already present (e.g. tables created from SQL API)
+
 0.4.0 (2014-08-27)
 ------------------
 Added CDB_Math_Mode function
