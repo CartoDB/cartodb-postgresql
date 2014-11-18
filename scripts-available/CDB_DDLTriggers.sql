@@ -4,14 +4,17 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
+  rel_namespace TEXT;
 BEGIN
   event_info := schema_triggers.get_relation_create_eventinfo();
 
   -- We're only interested in real relations
   IF (event_info.new).relkind != 'r' THEN RETURN; END IF;
 
-  RAISE DEBUG 'Relation % of kind % created in namespace oid %',
-	 event_info.relation, (event_info.new).relkind, (event_info.new).relnamespace;
+  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+
+  RAISE DEBUG 'Relation % of kind % created in table % namespace % (oid %)',
+	 event_info.relation, (event_info.new).relkind, (event_info.new).relname::TEXT, rel_namespace, (event_info.new).relnamespace;
 
   -- We don't want to react to alters triggered by superuser,
   IF current_setting('is_superuser') = 'on' THEN
@@ -22,7 +25,7 @@ BEGIN
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
-  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -63,6 +66,7 @@ RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
   rel RECORD;
+  rel_namespace TEXT;
 BEGIN
   event_info := schema_triggers.get_column_alter_eventinfo();
 
@@ -80,9 +84,11 @@ BEGIN
     RETURN;
   END IF;
 
+  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -100,6 +106,7 @@ RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
   rel RECORD;
+  rel_namespace TEXT;
 BEGIN
   event_info := schema_triggers.get_column_drop_eventinfo();
 
@@ -117,9 +124,11 @@ BEGIN
     RETURN;
   END IF;
 
+  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(event_info.relation);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
