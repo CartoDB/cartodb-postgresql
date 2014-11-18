@@ -1,4 +1,5 @@
 -- Depends on:
+--   * CDB_ExtensionUtils.sql
 --   * CDB_TransformToWebmercator.sql
 --   * CDB_TableMetadata.sql
 --   * CDB_Quota.sql
@@ -572,7 +573,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 
 
 -- Auxiliary function
-CREATE OR REPLACE FUNCTION _CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION cartodb._CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
 DECLARE
