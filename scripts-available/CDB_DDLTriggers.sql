@@ -25,7 +25,7 @@ BEGIN
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -84,11 +84,11 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+  SELECT nspname FROM pg_namespace WHERE oid = rel.relnamespace INTO rel_namespace;
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
@@ -124,11 +124,11 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+  SELECT nspname FROM pg_namespace WHERE oid = rel.relnamespace INTO rel_namespace;
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, (event_info.new).relname::TEXT);
+  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 

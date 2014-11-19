@@ -8,6 +8,8 @@ SELECT cartodb.cdb_enable_ddl_hooks();
 
 create schema c;
 
+SELECT CDB_SetUserQuotaInBytes('c', 0);
+
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';

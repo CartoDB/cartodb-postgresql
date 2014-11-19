@@ -579,16 +579,19 @@ AS $$
 DECLARE
   sql TEXT;
   is_raster BOOLEAN;
+  rel_name TEXT;
 BEGIN
   IF cartodb.schema_exists(schema_name) = FALSE THEN
     RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
   END IF;
 
+  SELECT relname FROM pg_class WHERE oid=reloid INTO rel_name;
+
   BEGIN
     sql := 'SELECT the_raster_webmercator FROM '
           || quote_ident(schema_name::TEXT)
           || '.'
-          || quote_ident(reloid::TEXT)
+          || quote_ident(rel_name::TEXT)
           || ' LIMIT 1';
     is_raster = TRUE;
     EXECUTE sql;

@@ -19,6 +19,12 @@ NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 (1 row)
 
 create schema c;
+SELECT CDB_SetUserQuotaInBytes('c', 0);
+ cdb_setuserquotainbytes 
+-------------------------
+                       0
+(1 row)
+
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
@@ -247,7 +253,7 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 ----------------------------
 RESET SESSION AUTHORIZATION;
 drop schema c cascade;
-NOTICE:  drop cascades to 2 other objects
+NOTICE:  drop cascades to 3 other objects
 select count(*) from CDB_TableMetadata;
  count 
 -------
