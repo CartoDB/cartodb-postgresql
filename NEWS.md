@@ -1,4 +1,8 @@
-0.5.0 (2014-09-21)
+0.5.1 (2014-11-21)
+------------------
+* Bugfix: Quota check and some organization permissions functions were not properly escaping table name.
+
+0.5.0 (2014-11-03)
 ------------------
 * Support of raster tables for cartodbfication
 * Modified quota functions: vector tables stay the same, raster tables count as full size (as have no

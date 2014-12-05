@@ -10,7 +10,7 @@ BEGIN
   --  Also, "table_name" sounds sensible to search_path
 
   -- Division by 2 is for not counting the_geom_webmercator
-  SELECT COALESCE(INT8(SUM(pg_total_relation_size(schema_name || '.' || table_name)) / 2), 0) INTO quota_vector
+  SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"')) / 2), 0) INTO quota_vector
   FROM information_schema.tables
   WHERE table_catalog = current_database() AND table_schema = schema_name
     AND table_name != 'spatial_ref_sys'
@@ -28,7 +28,7 @@ BEGIN
         AND o_table_schema = schema_name AND o_table_catalog = current_database()
     );
 
-  SELECT COALESCE(INT8(SUM(pg_total_relation_size(schema_name || '.' || table_name))), 0) INTO quota_raster
+  SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"'))), 0) INTO quota_raster
   FROM information_schema.tables
   WHERE table_catalog = current_database() AND table_schema = schema_name
     AND table_name != 'spatial_ref_sys'
