@@ -28,7 +28,7 @@ BEGIN
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
-	ELSE 0.5
+	ELSE 0.5 -- Division by 2 is for not counting the_geom_webmercator
       END AS multiplier FROM table_cat GROUP BY is_overview, is_raster
   )
   SELECT sum(table_size*multiplier)::int8 INTO total_size FROM sizes;
