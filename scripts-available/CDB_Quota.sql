@@ -3,50 +3,41 @@ CREATE OR REPLACE FUNCTION CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
 DECLARE
-  quota_vector INT8;
-  quota_raster INT8;
+  total_size INT8;
 BEGIN
-  -- TODO: double check queries. Maybe use CDB_TableMetadata for lookup?
-  --  Also, "table_name" sounds sensible to search_path
-
-  -- Division by 2 is for not counting the_geom_webmercator
-  SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"')) / 2), 0) INTO quota_vector
-  FROM information_schema.tables
-  WHERE table_catalog = current_database() AND table_schema = schema_name
-    AND table_name != 'spatial_ref_sys'
-    AND table_name != 'cdb_tablemetadata'
-    AND table_type = 'BASE TABLE'
-    -- exclude raster overview tables
-    AND table_name NOT IN (
-      SELECT o_table_name FROM raster_overviews
+  WITH raster_tables AS (
+    SELECT o_table_name, r_table_name FROM raster_overviews
       WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
-    )
-    -- exclude raster "main" tables
-    AND table_name NOT IN (
-      SELECT r_table_name FROM raster_overviews
-      WHERE r_table_name = table_name
-        AND o_table_schema = schema_name AND o_table_catalog = current_database()
-    );
+  ),
+  user_tables AS (
+    SELECT table_name FROM information_schema.tables
+      WHERE table_catalog = current_database() AND table_schema = schema_name
+        AND table_name != 'spatial_ref_sys'
+        AND table_name != 'cdb_tablemetadata'
+        AND table_type = 'BASE TABLE'
+  ),
+  table_cat AS (
+    SELECT
+      table_name,
+      EXISTS(select * from raster_tables where o_table_name = table_name) AS is_overview,
+      EXISTS(SELECT * FROM raster_tables WHERE r_table_name = table_name) AS is_raster
+    FROM user_tables
+  ),
+  sizes AS (
+    SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"')))) table_size,
+      CASE
+        WHEN is_overview THEN 0
+	WHEN is_raster THEN 1
+	ELSE 0.5 -- Division by 2 is for not counting the_geom_webmercator
+      END AS multiplier FROM table_cat GROUP BY is_overview, is_raster
+  )
+  SELECT sum(table_size*multiplier)::int8 INTO total_size FROM sizes;
 
-  SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"'))), 0) INTO quota_raster
-  FROM information_schema.tables
-  WHERE table_catalog = current_database() AND table_schema = schema_name
-    AND table_name != 'spatial_ref_sys'
-    AND table_name != 'cdb_tablemetadata'
-    AND table_type = 'BASE TABLE'
-    -- exclude raster overview tables
-    AND table_name NOT IN (
-      SELECT o_table_name FROM raster_overviews
-      WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
-    )
-    -- filter to raster "main" tables
-    AND table_name IN (
-      SELECT r_table_name FROM raster_overviews
-      WHERE r_table_name = table_name
-        AND o_table_schema = schema_name AND o_table_catalog = current_database()
-    );
-
-  RETURN quota_vector + quota_raster;
+  IF total_size IS NOT NULL THEN
+    RETURN total_size;
+  ELSE
+    RETURN 0;
+  END IF;
 END;
 $$
 LANGUAGE 'plpgsql' VOLATILE;
