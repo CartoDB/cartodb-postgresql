@@ -1,3 +1,7 @@
+0.5.2 (2015-01-29)
+------------------
+* Improvement: make CDB_UserDataSize functions much faster.
+
 0.5.1 (2014-11-21)
 ------------------
 * Bugfix: Quota check and some organization permissions functions were not properly escaping table name.
