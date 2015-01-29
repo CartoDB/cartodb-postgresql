@@ -33,7 +33,11 @@ BEGIN
   )
   SELECT sum(table_size*multiplier)::int8 INTO total_size FROM sizes;
 
-  RETURN total_size;
+  IF total_size IS NOT NULL THEN
+    RETURN total_size;
+  ELSE
+    RETURN 0;
+  END IF;
 END;
 $$
 LANGUAGE 'plpgsql' VOLATILE;
