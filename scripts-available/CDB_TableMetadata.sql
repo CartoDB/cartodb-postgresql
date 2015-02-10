@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS
     updated_at timestamp with time zone not null default now()
   );
 
--- Anyone can see this, but updates are only possible trough
--- the security definer trigger
-GRANT SELECT ON public.CDB_TableMetadata TO public;
+-- No one can see this
+-- Updates are only possible trough the security definer trigger
+-- GRANT SELECT ON public.CDB_TableMetadata TO public;
 
 --
 -- Trigger logging updated_at in the CDB_TableMetadata
