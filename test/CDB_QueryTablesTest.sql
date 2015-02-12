@@ -31,3 +31,7 @@ create table sc.test (a int);
 insert into sc.test values (1);
 WITH inp AS ( select 'select * from sc.test'::text as q )
  SELECT q, CDB_QueryTables(q) from inp;
+
+WITH inp AS ( select 'SELECT
+* FROM geometry_columns'::text as q )
+ SELECT q, CDB_QueryTables(q) from inp;
