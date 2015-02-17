@@ -1,3 +1,7 @@
+0.5.X ()
+------------------
+* Fixed secuity problem related with system tables
+
 0.5.2 (2015-01-29)
 ------------------
 * Improvement: make CDB_UserDataSize functions much faster.
