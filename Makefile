@@ -91,14 +91,14 @@ legacy_regress: $(REGRESS_OLD) Makefile
 	for f in $(REGRESS_OLD); do \
     tn=`basename $${f} .sql`; \
     of=sql/test/$${tn}.sql; \
-    echo '\\set ECHO off' > $${of}; \
+    echo '\\set ECHO none' > $${of}; \
     echo '\\a' >> $${of}; \
     echo '\\t' >> $${of}; \
     echo '\\set QUIET off' >> $${of}; \
     cat $${f} | \
       $(SED) -e 's/public\./cartodb./g' >> $${of}; \
     exp=expected/test/$${tn}.out; \
-    echo '\\set ECHO off' > $${exp}; \
+    echo '\\set ECHO none' > $${exp}; \
     cat test/$${tn}_expect >> $${exp}; \
   done
 
