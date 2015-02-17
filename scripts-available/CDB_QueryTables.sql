@@ -16,9 +16,9 @@ BEGIN
 
   FOR rec IN SELECT CDB_QueryStatements(query) q LOOP
 
-    IF NOT ( rec.q ilike 'select %' or rec.q ilike 'with %' ) THEN
-      --RAISE WARNING 'Skipping %', rec.q;
-      CONTINUE;
+    IF NOT ( rec.q ilike 'select%' or rec.q ilike 'with%' ) THEN
+        --RAISE WARNING 'Skipping %', rec.q;
+        CONTINUE;
     END IF;
 
     BEGIN
