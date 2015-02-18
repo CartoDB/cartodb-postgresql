@@ -118,3 +118,21 @@ CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
 ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
 
+
+-- similar to TOUCH(1) in unix filesystems but for table in cdb_tablemetadata
+CREATE OR REPLACE FUNCTION public.CDB_TableMetadataTouch(tablename regclass)
+    RETURNS void AS
+    $$
+    BEGIN
+        WITH upsert AS (
+            UPDATE public.cdb_tablemetadata
+            SET updated_at = NOW()
+            WHERE tabname = tablename
+            RETURNING *
+        )
+        INSERT INTO public.cdb_tablemetadata (tabname, updated_at)
+            SELECT tablename, NOW()
+            WHERE NOT EXISTS (SELECT * FROM upsert);
+    END;
+    $$
+LANGUAGE 'plpgsql' VOLATILE STRICT;
