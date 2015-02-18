@@ -253,7 +253,7 @@ function run_tests() {
 # Tests quota checking taking into account both geom and raster tables
 function test_quota_for_each_user() {
     # Normal tables add 4096 bytes
-    # Raster tables with overview constraints add 16384 bytes
+    # Raster tables no longer add anything so also count as 4096
 
     sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 4096
     sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 4096
@@ -261,13 +261,13 @@ function test_quota_for_each_user() {
     create_raster_table cdb_testmember_1 raster_1
     create_raster_table cdb_testmember_2 raster_2
 
-    sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 20480
-    sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 20480
+    sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 4096
+    sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 4096
 
     create_raster_table cdb_testmember_1 raster_3
 
-    sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 36864
-    sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 20480
+    sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 4096
+    sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 4096
 
     drop_raster_table cdb_testmember_1 raster_1
     drop_raster_table cdb_testmember_2 raster_2
