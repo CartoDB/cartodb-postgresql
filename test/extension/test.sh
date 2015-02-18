@@ -296,7 +296,11 @@ function test_cdb_tablemetadatatouch() {
     sql "SELECT CDB_TableMetadataTouch('touch_example');"
     sql postgres "SELECT updated_at FROM CDB_TableMetadata WHERE tabname = 'touch_example'::regclass;" should-not ''
 
-
+    # Works with qualified tables
+    sql "SELECT CDB_TableMetadataTouch('public.touch_example');"
+    sql "SELECT CDB_TableMetadataTouch('public.\"touch_example\"');"
+    sql "SELECT CDB_TableMetadataTouch('\"public\".touch_example');"
+    sql "SELECT CDB_TableMetadataTouch('\"public\".\"touch_example\"');"
 
     #### test tear down
     sql 'DROP TABLE touch_example;'
