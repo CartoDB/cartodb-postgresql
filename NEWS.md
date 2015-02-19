@@ -1,3 +1,7 @@
+0.6.1 (2015-mm-dd)
+------------------
+
+
 0.6.0 (2015-02-19)
 ------------------
 * Select permission in CDB_TableMetadata no longer granted to public
