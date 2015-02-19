@@ -75,6 +75,15 @@ function sql() {
             set_failed
         fi
     fi
+
+    if [[ "$3" == "should-not" ]]
+    then
+        if [[ "${RESULT}" == "$4" ]]
+        then
+            log_error "QUERY '${QUERY}' did not expect '${RESULT}'"
+            set_failed
+        fi
+    fi
 }
 
 
@@ -275,6 +284,42 @@ function test_quota_for_each_user() {
 
     sql cdb_testmember_1 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_1'::TEXT);" should 4096
     sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 4096
+}
+
+function test_cdb_tablemetadatatouch() {
+    sql "CREATE TABLE touch_example (a int)"
+    sql postgres "SELECT updated_at FROM CDB_TableMetadata WHERE tabname = 'touch_example'::regclass;" should ''
+    sql "SELECT CDB_TableMetadataTouch('touch_example');"
+    sql postgres "SELECT updated_at FROM CDB_TableMetadata WHERE tabname = 'touch_example'::regclass;" should-not ''
+
+    # Another call doesn't fail
+    sql "SELECT CDB_TableMetadataTouch('touch_example');"
+    sql postgres "SELECT updated_at FROM CDB_TableMetadata WHERE tabname = 'touch_example'::regclass;" should-not ''
+
+    # Works with qualified tables
+    sql "SELECT CDB_TableMetadataTouch('public.touch_example');"
+    sql "SELECT CDB_TableMetadataTouch('public.\"touch_example\"');"
+    sql "SELECT CDB_TableMetadataTouch('\"public\".touch_example');"
+    sql "SELECT CDB_TableMetadataTouch('\"public\".\"touch_example\"');"
+
+    #### test tear down
+    sql 'DROP TABLE touch_example;'
+}
+
+function test_cdb_tablemetadatatouch_fails_for_unexistent_table() {
+    sql postgres "SELECT CDB_TableMetadataTouch('unexistent_example');" fails
+}
+
+function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
+    sql "CREATE TABLE touch_example (a int);"
+    sql postgres "SELECT CDB_TableMetadataTouch('touch_example');"
+
+    sql cdb_testmember_1 "SELECT CDB_TableMetadataTouch('touch_example');" fails
+
+    sql postgres "GRANT ALL ON CDB_TableMetadata TO cdb_testmember_1;"
+    sql cdb_testmember_1 "SELECT CDB_TableMetadataTouch('touch_example');"
+
+    sql postgres "REVOKE ALL ON CDB_TableMetadata FROM cdb_testmember_1;"
 }
 
 #################################################### TESTS END HERE ####################################################

@@ -18,7 +18,7 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 ----------------------
 -- CREATE TABLE
 ----------------------
-
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select 1 as i INTO c.t3;
 
 select
@@ -28,11 +28,13 @@ select
  i
 from c.t3;
 
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)) as age
 FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 -- Table with cartodb_id field, see
 -- http://github.com/CartoDB/cartodb-postgresql/issues/32
 select 1 as cartodb_id INTO c.t4;
@@ -41,6 +43,8 @@ select
  NOW() - updated_at < '1 secs' as "u<1s",
  the_geom, the_geom_webmercator
 from c.t4;
+
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now() - updated_at)) as age
@@ -49,6 +53,7 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t4'::regclass;
 ----------------------------
 -- ALTER TABLE RENAME COLUMN
 ----------------------------
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 
 select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc;
@@ -60,11 +65,13 @@ select
  i, webmerc
 from c.t3;
 
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
 FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
 
@@ -75,6 +82,7 @@ select
  i, webmerc, webmerc2
 from c.t3;
 
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
@@ -83,7 +91,7 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 ----------------------------
 -- ALTER TABLE DROP COLUMN
 ----------------------------
-
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 drop column the_geom_webmercator;
 
@@ -94,6 +102,7 @@ select
  i, webmerc, webmerc2
 from c.t3;
 
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs
@@ -102,7 +111,7 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 ----------------------------
 -- ALTER TABLE ADD COLUMN
 ----------------------------
-
+SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 add column id2 int;
 
@@ -113,6 +122,7 @@ select
  i, webmerc, webmerc2, id2
 from c.t3;
 
+RESET SESSION AUTHORIZATION;
 select
  tabname::text,
  round(extract('secs' from now()  - updated_at)*10) as agecs

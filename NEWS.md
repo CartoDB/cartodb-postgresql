@@ -1,3 +1,8 @@
+0.6.0 (2015-02-xx)
+------------------
+* Select permission in CDB_TableMetadata no longer granted to public
+* New function to upsert the updated_at in CDB_TableMetadata for a regclass
+
 0.5.3 (2015-02-xx)
 ------------------
 * Fixed secuity problem related with system tables
