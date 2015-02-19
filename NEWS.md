@@ -1,4 +1,4 @@
-0.6.0 (2015-02-xx)
+0.6.0 (2015-02-19)
 ------------------
 * Select permission in CDB_TableMetadata no longer granted to public
 * New function to upsert the updated_at in CDB_TableMetadata for a regclass
