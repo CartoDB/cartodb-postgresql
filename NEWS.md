@@ -3,9 +3,9 @@
 * Select permission in CDB_TableMetadata no longer granted to public
 * New function to upsert the updated_at in CDB_TableMetadata for a regclass
 
-0.5.3 (2015-02-xx)
+0.5.3 (2015-02-17)
 ------------------
-* Fixed secuity problem related with system tables
+* Fixed security problem related with system tables
 * Changed quota checks to use `pg_relation_size` instead of `pg_total_relation_size`
 
 0.5.2 (2015-01-29)
