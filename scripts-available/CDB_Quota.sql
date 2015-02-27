@@ -24,7 +24,7 @@ BEGIN
     FROM user_tables
   ),
   sizes AS (
-    SELECT COALESCE(INT8(SUM(pg_relation_size('"' || schema_name || '"."' || table_name || '"')))) table_size,
+    SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"')))) table_size,
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
