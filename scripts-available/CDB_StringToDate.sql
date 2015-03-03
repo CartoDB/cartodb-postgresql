@@ -1,8 +1,8 @@
 -- Convert string to date
 --
 CREATE OR REPLACE FUNCTION CDB_StringToDate(input character varying)
-RETURNS date AS $$
-DECLARE output DATE;
+RETURNS TIMESTAMP AS $$
+DECLARE output TIMESTAMP;
 BEGIN
     BEGIN
         output := input::date;
