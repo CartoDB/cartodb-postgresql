@@ -1,3 +1,8 @@
+0.7.3 (2015-03-03)
+------------------
+* Fix upgrade of CDB_StringToDate function
+* Add a test for to validate CDB_TableMetadataTouch usage with OID
+
 0.7.2 (2015-03-03)
 ------------------
 * Fix conversion of strings to datetime
