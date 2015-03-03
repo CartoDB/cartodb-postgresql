@@ -36,7 +36,7 @@ UPGRADABLE = \
   0.6.0 \
   0.7.0 \
   0.7.1 \
-	0.7.2 \
+  0.7.2 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
