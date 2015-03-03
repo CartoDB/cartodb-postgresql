@@ -302,6 +302,10 @@ function test_cdb_tablemetadatatouch() {
     sql "SELECT CDB_TableMetadataTouch('\"public\".touch_example');"
     sql "SELECT CDB_TableMetadataTouch('\"public\".\"touch_example\"');"
 
+    # Works with OID
+    TABLE_OID=`${CMD} -U postgres ${DATABASE} -c "SELECT tableoid FROM pg_attribute WHERE attrelid = 'touch_example'::regclass limit 1;" -A -t`
+    sql "SELECT CDB_TableMetadataTouch('${TABLE_OID}');"
+
     #### test tear down
     sql 'DROP TABLE touch_example;'
 }
