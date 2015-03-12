@@ -21,7 +21,7 @@ AS $$
       'spatial_ref_sys'
      )
   ), perms AS (
-    SELECT t, has_table_privilege('public', 'public'||'.'||t, 'SELECT') as p
+    SELECT t, has_table_privilege('publicuser', 'public'||'.'||t, 'SELECT') as p
     FROM usertables
   )
   SELECT t FROM perms
