@@ -317,9 +317,6 @@ function test_cdb_tablemetadatatouch() {
     sql postgres "SELECT tabname from CDB_TableMetadata;" should 'touch_example'
     sql postgres "SELECT count(*) from CDB_TableMetadata;" should 1
 
-    # non existent tables fails
-    sql postgres "SELECT CDB_TableMetadataTouch('wadus_table_name');" fails
-
     #### test tear down
     sql 'DROP TABLE touch_example;'
 }
