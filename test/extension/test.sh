@@ -303,8 +303,22 @@ function test_cdb_tablemetadatatouch() {
     sql "SELECT CDB_TableMetadataTouch('\"public\".\"touch_example\"');"
 
     # Works with OID
-    TABLE_OID=`${CMD} -U postgres ${DATABASE} -c "SELECT tableoid FROM pg_attribute WHERE attrelid = 'touch_example'::regclass limit 1;" -A -t`
+    sql postgres "SELECT tabname from CDB_TableMetadata;" should 'touch_example'
+    sql postgres "SELECT count(*) from CDB_TableMetadata;" should 1
+    TABLE_OID=`${CMD} -U postgres ${DATABASE} -c "SELECT attrelid FROM pg_attribute WHERE attrelid = 'touch_example'::regclass limit 1;" -A -t`
+
+    # quoted OID works
     sql "SELECT CDB_TableMetadataTouch('${TABLE_OID}');"
+    sql postgres "SELECT tabname from CDB_TableMetadata;" should 'touch_example'
+    sql postgres "SELECT count(*) from CDB_TableMetadata;" should 1
+
+    # non quoted OID works
+    sql "SELECT CDB_TableMetadataTouch(${TABLE_OID});"
+    sql postgres "SELECT tabname from CDB_TableMetadata;" should 'touch_example'
+    sql postgres "SELECT count(*) from CDB_TableMetadata;" should 1
+
+    # non existent tables fails
+    sql postgres "SELECT CDB_TableMetadataTouch('wadus_table_name');" fails
 
     #### test tear down
     sql 'DROP TABLE touch_example;'
