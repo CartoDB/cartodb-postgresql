@@ -649,3 +649,649 @@ BEGIN
   PERFORM cartodb.CDB_CartodbfyTable('public', reloid);
 END;
 $$ LANGUAGE PLPGSQL;
+
+
+-- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+--
+--    NEW CARTODBFY CODE FROM HERE ON DOWN
+--
+-- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+--
+--  CDB_CartodbfyTable2(reloid REGCLASS, destschema TEXT DEFAULT NULL)
+--    
+--     Main function, calls the following functions, with a little
+--     logic before the table re-write to avoid re-writing if the table
+--     already has all the necessary columns in place.
+--
+-- (1) _CDB_drop_triggers
+--     As before, this drops all the metadata and geom sync triggers
+--
+-- (2) _CDB_Has_Usable_Primary_ID()
+--     Returns TRUE if it can find a unique integer primary key named
+--    'cartodb_id' or can rename an existing key.
+--     Returns FALSE otherwise.
+--
+-- (3) _CDB_Has_Usable_Geom()
+--     Looks for existing EPSG:4326 and EPSG:3857 geometry columns, and
+--     renames them to the standard names if it can find them, returning TRUE.
+--     If it cannot find both columns in the right EPSG, returns FALSE.
+--
+-- (4) _CDB_Rewrite_Table()
+--     If table does not have a usable primary key and both usable geom
+--     columns it needs to be re-written. Function constructs an appropriate
+--     CREATE TABLE AS SELECT... query and executes it.
+--
+-- (5) _CDB_Add_Indexes()
+--     Checks the primary key column for primary key constraint, adds it if
+--     missing. Check geometry columns for GIST indexes and adds them if missing.
+--
+-- (6) _CDB_create_triggers()
+--     Adds the system metadata and geometry column update triggers back
+--     onto the table.
+--
+-- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+
+
+-- Find out if the table already has a usable primary key
+-- If the table has both a usable key and usable geometry
+-- we can no-op on the table copy and just ensure that the 
+-- indexes and triggers are in place
+CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Primary_ID(reloid REGCLASS, keyname TEXT)
+  RETURNS BOOLEAN
+AS $$
+DECLARE
+  rec RECORD;
+  i INTEGER;
+  sql TEXT;
+BEGIN
+
+  RAISE DEBUG 'Entered _CDB_Has_Usable_Primary_ID';
+
+  -- Do we already have a properly named column?
+  SELECT a.attname, i.indisprimary, i.indisunique, a.attnotnull, a.atttypid
+  INTO rec
+  FROM pg_class c 
+  JOIN pg_attribute a ON a.attrelid = c.oid 
+  JOIN pg_type t ON a.atttypid = t.oid
+  LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE c.oid = reloid AND NOT a.attisdropped
+  AND a.attname = keyname;
+
+  -- It's perfect (named right, right type, right index)!
+  IF FOUND AND rec.indisprimary AND rec.indisunique AND rec.attnotnull AND rec.atttypid IN (20,21,23) THEN
+    RAISE DEBUG '_CDB_Has_Usable_Primary_ID found good ''%''', keyname;
+    RETURN true;
+    
+  -- It's not suitable (not an integer?, not unique?) to rename it out of the way
+  ELSIF FOUND THEN
+    RAISE DEBUG '_CDB_Has_Usable_Primary_ID found bad ''%'', renaming it', keyname;
+    
+    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
+              reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, keyname));
+    EXECUTE sql;        
+    
+  -- There's no column there named keyname
+  ELSE
+
+    -- Is there another suitable primary key already?
+    SELECT a.attname
+    INTO rec
+    FROM pg_class c 
+    JOIN pg_attribute a ON a.attrelid = c.oid 
+    JOIN pg_type t ON a.atttypid = t.oid
+    LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+    WHERE c.oid = reloid AND NOT a.attisdropped
+    AND i.indisprimary AND i.indisunique AND a.attnotnull AND a.atttypid IN (20,21,23);
+  
+    -- Yes! Ok, rename it.
+    IF FOUND THEN
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, keyname);
+      RAISE DEBUG '_CDB_Has_Usable_Primary_ID found acceptable primary key ''%s'', renaming to ''%''', rec.attname, keyname;
+      RETURN true;
+    ELSE
+      RAISE DEBUG '_CDB_Has_Usable_Primary_ID found no useful column for ''%''', keyname;
+    END IF;
+  
+  END IF;
+
+  -- Remove any unsuitable primary key constraint that is hanging around, 
+  -- because we will be adding one back later
+  SELECT ci.relname AS pkey
+  INTO rec
+  FROM pg_class c 
+  JOIN pg_attribute a ON a.attrelid = c.oid 
+  LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+  JOIN pg_class ci ON i.indexrelid = ci.oid
+  WHERE c.oid = reloid AND NOT a.attisdropped
+  AND a.attname != keyname
+  AND i.indisprimary AND a.atttypid NOT IN (20,21,23);
+  
+  IF FOUND THEN
+    EXECUTE Format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s', reloid::text, rec.pkey);
+    RAISE DEBUG '_CDB_Has_Usable_Primary_ID dropping unused primary key ''%''', rec.pkey;
+  END IF;
+    
+  -- Didn't fine re-usable key, so return FALSE
+  RETURN false;
+
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  rec RECORD;
+  i INTEGER;
+  newrelname TEXT;
+BEGIN
+
+  i := 0;
+  newrelname := relationname;
+  LOOP
+
+    SELECT c.relname, n.nspname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.relname = newrelname
+    AND n.nspname = schemaname;
+  
+    IF NOT FOUND THEN
+      RETURN newrelname;
+    END IF;
+    
+    i := i + 1;
+    newrelname := relationname || '_' || i;
+  
+    IF i > 100 THEN
+      RAISE EXCEPTION '_CDB_Unique_Relation_Name looping too far';
+    END IF;
+  
+  END LOOP;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+
+CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  rec RECORD;
+  i INTEGER;
+  newcolname TEXT;
+BEGIN
+
+  i := 0;
+  newcolname := columnname;
+  LOOP
+
+    SELECT a.attname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    WHERE NOT a.attisdropped
+    AND a.attnum > 0
+    AND c.oid = reloid
+    AND a.attname = newcolname;
+  
+    IF NOT FOUND THEN
+      RETURN newcolname;
+    END IF;
+    
+    i := i + 1;
+    newcolname := columnname || '_' || i;
+  
+    IF i > 100 THEN
+      RAISE EXCEPTION '_CDB_Unique_Column_Name looping too far';
+    END IF;
+  
+  END LOOP;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+    
+
+
+CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS, geom_name TEXT, mercgeom_name TEXT)
+  RETURNS BOOLEAN
+AS $$
+DECLARE
+  rec RECORD;
+  has_geom BOOLEAN := false;
+  has_mercgeom BOOLEAN := false;
+  str TEXT;
+BEGIN
+
+  RAISE DEBUG 'Entered _CDB_Has_Usable_Geom';
+
+  -- Do we have a column we can use?
+  FOR rec IN
+    SELECT 
+    a.attname, 
+    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
+    t.typname
+    FROM pg_class c 
+    JOIN pg_attribute a ON a.attrelid = c.oid 
+    JOIN pg_type t ON a.atttypid = t.oid
+    WHERE c.oid = reloid
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857)
+    ORDER BY a.attnum
+  LOOP
+  
+    RAISE DEBUG '_CDB_Has_Usable_Geom, checking ''%''', rec.attname;
+  
+    -- Geographic: Right name, but wrong type? Rename it out of the way!
+    IF rec.attname = geom_name AND rec.typname != 'geometry' THEN
+      str := _CDB_Unique_Column_Name(reloid, geom_name);
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, geom_name, str);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
+    END IF;
+
+    -- Mercator: Right name, but wrong type? Rename it out of the way!
+    IF rec.attname = mercgeom_name AND rec.typname != 'geometry' THEN
+      str := _CDB_Unique_Column_Name(reloid, geom_name);
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO _%s', reloid::text, geom_name, str);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
+    END IF;
+  
+    -- Geographic: If it's the right name and right SRID, we can use it in place without
+    -- transforming it
+    IF rec.attname = geom_name AND rec.srid = 4326 AND rec.typname = 'geometry' THEN
+      has_geom = true;
+      RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', geom_name;
+    -- If it's the right SRID and wrong name, we can just rename it
+    ELSIF rec.srid = 4326  AND rec.typname = 'geometry' THEN
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, geom_name);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', rec.attname, geom_name;
+      has_geom = true;
+    END IF;
+
+    -- Mercator: If it's the right name and right SRID, we can use it in place without
+    -- transforming it
+    IF rec.attname = mercgeom_name AND rec.srid = 3857  AND rec.typname = 'geometry' THEN
+      has_mercgeom = true;
+      RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', mercgeom_name;
+    -- If it's the right SRID and wrong name, we can just rename it
+    ELSIF rec.srid = 3857  AND rec.typname = 'geometry' THEN
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, mercgeom_name);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', rec.attname, mercgeom_name;
+      has_mercgeom = true;
+    END IF;
+    
+  END LOOP;
+  
+  -- If table is perfect (no transforms required), return TRUE!
+  RETURN has_geom AND has_mercgeom;
+
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+
+CREATE OR REPLACE FUNCTION _CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT, has_usable_primary_key BOOLEAN, has_usable_geoms BOOLEAN, geom_name TEXT, mercgeom_name TEXT, primary_key_name TEXT)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+
+  relname TEXT;
+  relschema TEXT;
+
+  destoid REGCLASS;
+  destname TEXT;
+  destseq TEXT;
+  destseqmax INTEGER;
+    
+  salt TEXT := md5(random()::text || now());
+  copyname TEXT;
+
+  column_name_sql TEXT;
+  geom_transform_sql TEXT := NULL;
+  geom_column_source TEXT := NULL;
+
+  rec RECORD;
+  sql TEXT;
+  str TEXT;
+  
+BEGIN
+
+  RAISE DEBUG 'Entered _CDB_Rewrite_Table';
+
+  -- Check calling convention
+  IF has_usable_primary_key AND has_usable_geoms THEN
+    RAISE EXCEPTION '_CDB_Rewrite_Table should not be called, it has good key and geoms';
+  END IF;
+
+  -- Save the raw schema/table names for later
+  SELECT n.nspname, c.relname, c.relname
+  INTO STRICT relschema, relname, destname
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid 
+  WHERE c.oid = reloid;
+  
+  -- Put the primary key sequence in the right schema
+  -- If the new table is not moving, better salt the schema name to avoid conflicts
+  destseq := relname || '_' || primary_key_name || '_seq';
+  destseq := _CDB_Unique_Relation_Name(destschema, destseq);
+  destseq := Format('%s.%s', destschema, destseq);
+  EXECUTE Format('CREATE SEQUENCE %s', destseq);
+
+  -- Salt a temporary table name if we are re-writing in place
+  IF destschema = relschema THEN
+    copyname := destschema || '.' || destname || '_' || salt;
+  ELSE
+    copyname := destschema || '.' || destname;
+  END IF;
+  
+  -- Start building the SQL!
+  sql := 'CREATE TABLE ' || copyname || ' AS SELECT ';
+  
+  -- Add cartodb ID!
+  IF has_usable_primary_key THEN
+    sql := sql || primary_key_name;
+  ELSE
+    sql := sql || 'nextval(''' || destseq || ''') AS ' || primary_key_name;
+  END IF;
+  
+  -- Add the geometry columns!
+  IF has_usable_geoms THEN
+    sql := sql || ',' || geom_name || ',' || mercgeom_name;
+  ELSE
+    
+    -- The geometry columns weren't in the right projection,
+    -- so we need to find the first decent geometry column
+    -- in the table and wrap it in two transforms, one to 4326
+    -- and another to 3857. Then remember its name so we can
+    -- ignore it when we build the list of other columns to
+    -- add to the output table
+    SELECT ',ST_Transform(' 
+      || a.attname 
+      || ',4326)::Geometry(' 
+      || postgis_typmod_type(a.atttypmod) 
+      || ', 4326) AS '
+      || geom_name 
+      || ', ST_Transform(' 
+      || a.attname 
+      || ',3857)::Geometry('
+      || postgis_typmod_type(a.atttypmod) 
+      || ', 3857) AS '
+      || mercgeom_name,
+      a.attname
+    INTO geom_transform_sql, geom_column_source
+    FROM pg_class c 
+    JOIN pg_attribute a ON a.attrelid = c.oid 
+    JOIN pg_type t ON a.atttypid = t.oid
+    WHERE c.oid = reloid
+    AND t.typname = 'geometry'
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    AND postgis_typmod_srid(a.atttypmod) > 0
+    ORDER BY a.attnum
+    LIMIT 1;
+    
+    -- If there is no geometry column, we continue making a 
+    -- non-spatial table. This is important for folks who want
+    -- their tables to invalidate the SQL API 
+    -- cache on update/insert/delete.
+    IF FOUND THEN
+      sql := sql || geom_transform_sql;
+    ELSE 
+      geom_column_source := '';
+    END IF;
+        
+  END IF;
+
+  -- Add now add all the rest of the columns
+  -- by selecting their names into an array and
+  -- joining the array with a comma
+  SELECT 
+    ',' || array_to_string(array_agg(a.attname),',')
+  INTO column_name_sql
+  FROM pg_class c 
+  JOIN pg_attribute a ON a.attrelid = c.oid 
+  JOIN pg_type t ON a.atttypid = t.oid
+  WHERE c.oid = reloid
+  AND a.attnum > 0
+  AND a.attname NOT IN (geom_name, mercgeom_name, primary_key_name, geom_column_source)
+  AND NOT a.attisdropped;
+
+  -- No non-cartodb columns? Possible, I guess.
+  IF NOT FOUND THEN
+    column_name_sql := '';
+  END IF;
+
+  -- Add the source table to the SQL
+  sql := sql || column_name_sql || ' FROM ' || reloid::text;
+  RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+
+  -- Run it!
+  EXECUTE sql;
+  
+  -- Set up the primary key sequence
+  -- If we copied the primary key from the original data, we need
+  -- to set the sequence to the maximum value of that key
+  IF has_usable_primary_key THEN
+
+    EXECUTE Format('SELECT max(%s) FROM %s',
+            primary_key_name, copyname)
+       INTO destseqmax;
+
+    IF FOUND AND destseqmax IS NOT NULL THEN
+      EXECUTE Format('SELECT setval(''%s'', %s)', destseq, destseqmax);
+    END IF;
+
+  END IF;
+
+  -- Make the primary key use the sequence as its default value
+  sql := Format('ALTER TABLE %s ALTER COLUMN %I SET DEFAULT nextval(''%s'')', 
+          copyname, primary_key_name, destseq);
+  RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+  EXECUTE sql;
+  
+  -- We just made a copy, so we can drop the original now
+  sql := Format('DROP TABLE %s', reloid::text);
+  RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+  EXECUTE sql;
+  
+  -- If we used a temporary destination table
+  -- we can now rename it into place
+  IF destschema = relschema THEN
+    sql := Format('ALTER TABLE %s RENAME TO %s', copyname, destname);
+    RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+    EXECUTE sql;
+  END IF;
+
+  RETURN true;
+
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+
+CREATE OR REPLACE FUNCTION _CDB_Add_Indexes(reloid REGCLASS, geom_name TEXT, mercgeom_name TEXT, primary_key_name TEXT)
+  RETURNS BOOLEAN
+AS $$
+DECLARE
+  rec RECORD;
+  iname TEXT;
+  sql TEXT;
+  relname TEXT;
+BEGIN
+
+  RAISE DEBUG 'Entered _CDB_Add_Indexes';
+
+  -- Extract just the relname to use for the index names
+  SELECT c.relname
+  INTO STRICT relname
+  FROM pg_class c
+  WHERE c.oid = reloid;
+
+  -- Is the default primary key flagged as primary?
+  SELECT a.attname
+  INTO rec
+  FROM pg_class c 
+  JOIN pg_attribute a ON a.attrelid = c.oid 
+  JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+  JOIN pg_class ci ON ci.oid = i.indexrelid
+  WHERE attnum > 0 
+  AND c.oid = reloid
+  AND a.attname = primary_key_name
+  AND i.indisprimary
+  AND i.indisunique
+  AND NOT attisdropped;
+  
+  -- No primary key? Add one.
+  IF NOT FOUND THEN
+    sql := Format('ALTER TABLE %s ADD PRIMARY KEY (%s)', reloid::text, primary_key_name);
+    RAISE DEBUG '_CDB_Add_Indexes: %', sql;
+    EXECUTE sql;
+  END IF;
+  
+  -- Add geometry indexes to all "special geometry columns" that 
+  -- don't have one (either have no index at all, or have a non-GIST index)
+  FOR rec IN 
+    SELECT a.attname, n.nspname
+    FROM pg_class c 
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = c.oid AND attnum > 0 
+    LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+    WHERE NOT attisdropped
+    AND a.attname IN (geom_name, mercgeom_name)
+    AND c.oid = reloid
+    AND i.indexrelid IS NULL
+    UNION 
+    SELECT a.attname, n.nspname
+    FROM pg_class c 
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = c.oid AND attnum > 0 
+    JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+    JOIN pg_class ci ON ci.oid = i.indexrelid
+    JOIN pg_am am ON ci.relam = am.oid
+    WHERE NOT attisdropped
+    AND a.attname IN (geom_name, mercgeom_name)
+    AND c.oid = reloid
+    AND am.amname != 'gist'
+  LOOP
+    sql := Format('CREATE INDEX %s_%s_gix ON %s USING GIST (%s)', relname, rec.attname, reloid::text, rec.attname);
+    RAISE DEBUG '_CDB_Add_Indexes: %', sql;
+    EXECUTE sql;
+  END LOOP;
+    
+  RETURN true;
+
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+CREATE OR REPLACE FUNCTION CDB_CartodbfyTable2(reloid REGCLASS, destschema TEXT DEFAULT NULL)
+RETURNS void 
+AS $$
+DECLARE
+  -- Because we're going to change these some day, ha ha ha ha!
+  geom_name TEXT := 'the_geom';
+  mercgeom_name TEXT := 'the_geom_webmercator';
+  primary_key_name TEXT := 'cartodb_id';
+  
+  relname TEXT;
+  relschema TEXT;
+
+  destoid REGCLASS;
+  destname TEXT;
+
+  has_usable_primary_key BOOLEAN;
+  has_usable_geoms BOOLEAN;
+  rewrite_success BOOLEAN;
+  rewrite BOOLEAN;
+  index_success BOOLEAN;
+  rec RECORD;
+BEGIN
+
+  -- Save the raw schema/table names for later
+  SELECT n.nspname, c.relname, c.relname
+  INTO STRICT relschema, relname, destname
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid 
+  WHERE c.oid = reloid;
+
+  -- Check destination schema exists
+  -- Throws an exception of there is no matching schema
+  IF destschema IS NOT NULL THEN
+    SELECT n.nspname
+    INTO rec FROM pg_namespace n WHERE n.nspname = destschema;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Schema ''%'' does not exist', destschema;
+    END IF;
+
+  ELSE
+    destschema := relschema;
+  END IF;
+
+  -- Drop triggers first
+  -- PERFORM _CDB_drop_triggers(reloid);
+  
+  -- See if there is a primary key column we need to carry along to the
+  -- new table. If this is true, it implies there is an indexed
+  -- primary key of integer type named (by default) cartodb_id
+  SELECT _CDB_Has_Usable_Primary_ID(reloid, primary_key_name) AS has_usable_primary_key
+  INTO STRICT has_usable_primary_key;
+
+  -- See if the geometry columns we need are already available
+  -- on the table. If they are, we don't need to do any bulk
+  -- transformation of the table, we can just ensure proper
+  -- indexes are in place and apply a rename
+  SELECT _CDB_Has_Usable_Geom(reloid, geom_name, mercgeom_name) AS has_usable_geoms
+  INTO STRICT has_usable_geoms;
+  
+  -- We can only avoid a rewrite if both the key and 
+  -- geometry are usable
+  rewrite := NOT (has_usable_primary_key AND has_usable_geoms);
+  
+  -- No table re-write is required, BUT a rename is required to 
+  -- a destination schema, so do that now
+  IF NOT rewrite AND destschema != relschema THEN
+    
+    RAISE DEBUG 'perfect table needs to be moved to schema (%)', destschema;
+    EXECUTE Format('ALTER TABLE %s SET SCHEMA %s', reloid::text, destschema);
+
+  -- Don't move anything, just make sure our destination information is set right
+  ELSIF NOT rewrite AND destschema = relschema THEN
+
+    RAISE DEBUG 'perfect table in the perfect place';
+  
+  -- We must rewrite, so here we go...
+  ELSIF rewrite THEN
+
+    SELECT _CDB_Rewrite_Table(reloid, destschema, has_usable_primary_key, has_usable_geoms, geom_name, mercgeom_name, primary_key_name)
+    INTO STRICT rewrite_success;
+    
+    IF NOT rewrite_success THEN
+      RAISE EXCEPTION 'Cartodbfying % (rewriting table): % (%)', reloid, SQLERRM, SQLSTATE;
+    END IF;
+      
+  END IF;
+
+  -- The old regclass might not be valid anymore if we re-wrote the table...
+  destoid := (destschema || '.' || destname)::regclass;
+
+  -- Add indexes to the destination table, as necessary
+  SELECT _CDB_Add_Indexes(destoid, geom_name, mercgeom_name, primary_key_name)
+  INTO STRICT index_success;
+
+  IF NOT index_success THEN
+    RAISE EXCEPTION 'Cartodbfying % (indexing table): % (%)', destoid, SQLERRM, SQLSTATE;
+  END IF;
+  
+  -- Add triggers to the destination table, as necessary
+  -- PERFORM _CDB_create_triggers(destschema, reloid);
+  
+  
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+
+
