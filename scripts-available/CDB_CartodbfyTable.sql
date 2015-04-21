@@ -715,20 +715,27 @@ BEGIN
   JOIN pg_attribute a ON a.attrelid = c.oid 
   JOIN pg_type t ON a.atttypid = t.oid
   LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
-  WHERE c.oid = reloid AND NOT a.attisdropped
+  WHERE c.oid = reloid 
+  AND NOT a.attisdropped
   AND a.attname = keyname;
 
   -- It's perfect (named right, right type, right index)!
   IF FOUND AND rec.indisprimary AND rec.indisunique AND rec.attnotnull AND rec.atttypid IN (20,21,23) THEN
     RAISE DEBUG '_CDB_Has_Usable_Primary_ID found good ''%''', keyname;
     RETURN true;
-    
+  
+  -- It's an integer and it's named 'cartodb_id' maybe it is usable
+  -- ELSIF rec.atttypid IN (20,21,23) THEN
+  
+  
+  
   -- It's not suitable (not an integer?, not unique?) to rename it out of the way
   ELSIF FOUND THEN
     RAISE DEBUG '_CDB_Has_Usable_Primary_ID found bad ''%'', renaming it', keyname;
     
     sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
               reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, keyname));
+    RAISE DEBUG '_CDB_Has_Usable_Primary_ID: %', sql;
     EXECUTE sql;        
     
   -- There's no column there named keyname
@@ -771,7 +778,9 @@ BEGIN
     EXECUTE Format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s', reloid::text, rec.pkey);
     RAISE DEBUG '_CDB_Has_Usable_Primary_ID dropping unused primary key ''%''', rec.pkey;
   END IF;
-    
+  
+  RAISE DEBUG '_CDB_Has_Usable_Primary_ID completed';
+  
   -- Didn't fine re-usable key, so return FALSE
   RETURN false;
 
@@ -816,7 +825,6 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-
 CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
 RETURNS TEXT
 AS $$
@@ -856,6 +864,28 @@ END;
 $$ LANGUAGE 'plpgsql';
     
 
+CREATE OR REPLACE FUNCTION _CDB_Geometry_SRID(reloid REGCLASS, columnname TEXT)
+RETURNS INTEGER
+AS $$
+DECLARE
+  rec RECORD;
+BEGIN
+
+  RAISE DEBUG '_CDB_Geometry_SRID, entered';
+  
+  EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', columnname, reloid::text)
+  INTO rec;
+
+  IF FOUND THEN 
+    RETURN rec.srid;
+  ELSE
+    RETURN 0;
+  END IF;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+
+
 
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS, geom_name TEXT, mercgeom_name TEXT)
   RETURNS BOOLEAN
@@ -863,9 +893,9 @@ AS $$
 DECLARE
   r1 RECORD;
   r2 RECORD;
+  found_geom BOOLEAN := false;
   has_geom BOOLEAN := false;
   has_mercgeom BOOLEAN := false;
-  srid INTEGER := 0;
   str TEXT;
 BEGIN
 
@@ -876,75 +906,50 @@ BEGIN
     SELECT 
     a.attname, 
     CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
-    t.typname
+    t.typname,
+    f.desired_attname, f.desired_srid
     FROM pg_class c 
     JOIN pg_attribute a ON a.attrelid = c.oid 
-    JOIN pg_type t ON a.atttypid = t.oid
+    JOIN pg_type t ON a.atttypid = t.oid,
+    (VALUES (geom_name, 4326), (mercgeom_name, 3857) ) as f(desired_attname, desired_srid)
     WHERE c.oid = reloid
     AND a.attnum > 0
     AND NOT a.attisdropped
     AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
-    ORDER BY a.attnum
+    ORDER BY t.oid ASC
   LOOP
   
     RAISE DEBUG '_CDB_Has_Usable_Geom, checking ''%''', r1.attname;
-    
-    -- The column SRID could be 0 but the data might have a 
-    -- good SRID value in it, so we have to check that before
-    -- going forward (*sigh*)
-    IF r1.srid = 0 THEN
+    found_geom := false;
 
-      RAISE DEBUG '_CDB_Has_Usable_Geom, no column srid, checking data row';
+    -- Name collision: right name but wrong type, rename it!
+    IF r1.typname != 'geometry' AND r1.attname = r1.desired_attname THEN
+      str := _CDB_Unique_Column_Name(reloid, r1.attname);
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, str);
+      RAISE DEBUG '_CDB_Has_Usable_Geom: % is the wrong type, renamed to %', r1.attname, str;
 
-      EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', r1.attname, reloid::text)
-      INTO r2;
-      
-      IF r2.srid > 0 THEN
-        srid := r2.srid;
+    -- Found a geometry column!
+    ELSIF r1.typname = 'geometry' THEN
+
+      -- If it's the right SRID, we can use it in place without
+      -- transforming it!
+      IF r1.srid = r1.desired_srid OR _CDB_Geometry_SRID(reloid, r1.attname) = r1.desired_srid THEN
+        RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', r1.attname;
+
+        -- If it's the wrong name, just rename it.
+        IF r1.attname != r1.desired_attname THEN
+          EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, r1.desired_attname);
+          RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', r1.attname, r1.desired_attname;
+        END IF;
+
+        IF r1.desired_attname = geom_name THEN
+          has_geom = true;
+        ELSIF r1.desired_attname = mercgeom_name THEN
+          has_mercgeom = true;
+        END IF;
+        
       END IF;
-
-    ELSE
-      srid := r1.srid;
-    END IF;
-
-    RAISE DEBUG '_CDB_Has_Usable_Geom, SRID(%) is %', r1.attname, srid;
-
-    -- Geographic: Right name, but wrong type? Rename it out of the way!
-    IF r1.attname = geom_name AND r1.typname != 'geometry' THEN
-      str := _CDB_Unique_Column_Name(reloid, geom_name);
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, geom_name, str);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
-    END IF;
-
-    -- Mercator: Right name, but wrong type? Rename it out of the way!
-    IF r1.attname = mercgeom_name AND r1.typname != 'geometry' THEN
-      str := _CDB_Unique_Column_Name(reloid, geom_name);
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO _%s', reloid::text, geom_name, str);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
-    END IF;
-  
-    -- Geographic: If it's the right name and right SRID, we can use it in place without
-    -- transforming it
-    IF r1.attname = geom_name AND srid = 4326 AND r1.typname = 'geometry' THEN
-      has_geom = true;
-      RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', geom_name;
-    -- If it's the right SRID and wrong name, we can just rename it
-    ELSIF srid = 4326  AND r1.typname = 'geometry' THEN
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, geom_name);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', r1.attname, geom_name;
-      has_geom = true;
-    END IF;
-
-    -- Mercator: If it's the right name and right SRID, we can use it in place without
-    -- transforming it
-    IF r1.attname = mercgeom_name AND srid = 3857  AND r1.typname = 'geometry' THEN
-      has_mercgeom = true;
-      RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', mercgeom_name;
-    -- If it's the right SRID and wrong name, we can just rename it
-    ELSIF srid = 3857  AND r1.typname = 'geometry' THEN
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, mercgeom_name);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', r1.attname, mercgeom_name;
-      has_mercgeom = true;
+      
     END IF;
     
   END LOOP;
@@ -975,7 +980,7 @@ DECLARE
 
   column_name_sql TEXT;
   geom_transform_sql TEXT := NULL;
-  geom_column_source TEXT := NULL;
+  geom_column_source TEXT := '';
 
   rec RECORD;
   sql TEXT;
@@ -997,7 +1002,8 @@ BEGIN
   WHERE c.oid = reloid;
   
   -- Put the primary key sequence in the right schema
-  -- If the new table is not moving, better salt the schema name to avoid conflicts
+  -- If the new table is not moving, better ensure the sequence name
+  -- is unique
   destseq := relname || '_' || primary_key_name || '_seq';
   destseq := _CDB_Unique_Relation_Name(destschema, destseq);
   destseq := Format('%s.%s', destschema, destseq);
@@ -1028,7 +1034,7 @@ BEGIN
     -- This gets complicated: we have to make sure the 
     -- geometry column we are using can be transformed into
     -- geographics, which means it needs to have a valid
-    -- SRID. And the geometry objects can have an 
+    -- SRID.  
     SELECT a.attname
     INTO rec
     FROM pg_class c 
@@ -1111,8 +1117,10 @@ BEGIN
 
   -- No non-cartodb columns? Possible, I guess.
   IF rec.count = 0 THEN
+    RAISE DEBUG '_CDB_Rewrite_Table found no extra columns';
     column_name_sql := '';
   ELSE
+    RAISE DEBUG '_CDB_Rewrite_Table found extra columns columns %', rec.column_name_sql;
     column_name_sql := rec.column_name_sql;
   END IF;
 
@@ -1141,6 +1149,12 @@ BEGIN
   -- Make the primary key use the sequence as its default value
   sql := Format('ALTER TABLE %s ALTER COLUMN %I SET DEFAULT nextval(''%s'')', 
           copyname, primary_key_name, destseq);
+  RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+  EXECUTE sql;
+
+  -- Make the sequence owned by the table, so when the table drops, 
+  -- the sequence does too
+  sql := Format('ALTER SEQUENCE %s OWNED BY %s.%s', destseq, copyname, primary_key_name);
   RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
   EXECUTE sql;
   
