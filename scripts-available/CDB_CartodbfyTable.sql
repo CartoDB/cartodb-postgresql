@@ -861,16 +861,18 @@ CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS, geom_name TEXT,
   RETURNS BOOLEAN
 AS $$
 DECLARE
-  rec RECORD;
+  r1 RECORD;
+  r2 RECORD;
   has_geom BOOLEAN := false;
   has_mercgeom BOOLEAN := false;
+  srid INTEGER := 0;
   str TEXT;
 BEGIN
 
   RAISE DEBUG 'Entered _CDB_Has_Usable_Geom';
 
   -- Do we have a column we can use?
-  FOR rec IN
+  FOR r1 IN
     SELECT 
     a.attname, 
     CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
@@ -881,21 +883,41 @@ BEGIN
     WHERE c.oid = reloid
     AND a.attnum > 0
     AND NOT a.attisdropped
-    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857)
+    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
     ORDER BY a.attnum
   LOOP
   
-    RAISE DEBUG '_CDB_Has_Usable_Geom, checking ''%''', rec.attname;
-  
+    RAISE DEBUG '_CDB_Has_Usable_Geom, checking ''%''', r1.attname;
+    
+    -- The column SRID could be 0 but the data might have a 
+    -- good SRID value in it, so we have to check that before
+    -- going forward (*sigh*)
+    IF r1.srid = 0 THEN
+
+      RAISE DEBUG '_CDB_Has_Usable_Geom, no column srid, checking data row';
+
+      EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', r1.attname, reloid::text)
+      INTO r2;
+      
+      IF r2.srid > 0 THEN
+        srid := r2.srid;
+      END IF;
+
+    ELSE
+      srid := r1.srid;
+    END IF;
+
+    RAISE DEBUG '_CDB_Has_Usable_Geom, SRID(%) is %', r1.attname, srid;
+
     -- Geographic: Right name, but wrong type? Rename it out of the way!
-    IF rec.attname = geom_name AND rec.typname != 'geometry' THEN
+    IF r1.attname = geom_name AND r1.typname != 'geometry' THEN
       str := _CDB_Unique_Column_Name(reloid, geom_name);
       EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, geom_name, str);
       RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
     END IF;
 
     -- Mercator: Right name, but wrong type? Rename it out of the way!
-    IF rec.attname = mercgeom_name AND rec.typname != 'geometry' THEN
+    IF r1.attname = mercgeom_name AND r1.typname != 'geometry' THEN
       str := _CDB_Unique_Column_Name(reloid, geom_name);
       EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO _%s', reloid::text, geom_name, str);
       RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', geom_name, str;
@@ -903,25 +925,25 @@ BEGIN
   
     -- Geographic: If it's the right name and right SRID, we can use it in place without
     -- transforming it
-    IF rec.attname = geom_name AND rec.srid = 4326 AND rec.typname = 'geometry' THEN
+    IF r1.attname = geom_name AND srid = 4326 AND r1.typname = 'geometry' THEN
       has_geom = true;
       RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', geom_name;
     -- If it's the right SRID and wrong name, we can just rename it
-    ELSIF rec.srid = 4326  AND rec.typname = 'geometry' THEN
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, geom_name);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', rec.attname, geom_name;
+    ELSIF srid = 4326  AND r1.typname = 'geometry' THEN
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, geom_name);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', r1.attname, geom_name;
       has_geom = true;
     END IF;
 
     -- Mercator: If it's the right name and right SRID, we can use it in place without
     -- transforming it
-    IF rec.attname = mercgeom_name AND rec.srid = 3857  AND rec.typname = 'geometry' THEN
+    IF r1.attname = mercgeom_name AND srid = 3857  AND r1.typname = 'geometry' THEN
       has_mercgeom = true;
       RAISE DEBUG '_CDB_Has_Usable_Geom found acceptable ''%''', mercgeom_name;
     -- If it's the right SRID and wrong name, we can just rename it
-    ELSIF rec.srid = 3857  AND rec.typname = 'geometry' THEN
-      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, mercgeom_name);
-      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', rec.attname, mercgeom_name;
+    ELSIF srid = 3857  AND r1.typname = 'geometry' THEN
+      EXECUTE Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, mercgeom_name);
+      RAISE DEBUG '_CDB_Has_Usable_Geom renamed % to %', r1.attname, mercgeom_name;
       has_mercgeom = true;
     END IF;
     
