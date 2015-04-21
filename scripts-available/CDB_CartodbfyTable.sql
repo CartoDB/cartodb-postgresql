@@ -990,39 +990,25 @@ BEGIN
   
   -- Start building the SQL!
   sql := 'CREATE TABLE ' || copyname || ' AS SELECT ';
-  
+
   -- Add cartodb ID!
   IF has_usable_primary_key THEN
     sql := sql || primary_key_name;
   ELSE
     sql := sql || 'nextval(''' || destseq || ''') AS ' || primary_key_name;
   END IF;
-  
+
   -- Add the geometry columns!
   IF has_usable_geoms THEN
     sql := sql || ',' || geom_name || ',' || mercgeom_name;
   ELSE
     
-    -- The geometry columns weren't in the right projection,
-    -- so we need to find the first decent geometry column
-    -- in the table and wrap it in two transforms, one to 4326
-    -- and another to 3857. Then remember its name so we can
-    -- ignore it when we build the list of other columns to
-    -- add to the output table
-    SELECT ',ST_Transform(' 
-      || a.attname 
-      || ',4326)::Geometry(' 
-      || postgis_typmod_type(a.atttypmod) 
-      || ', 4326) AS '
-      || geom_name 
-      || ', ST_Transform(' 
-      || a.attname 
-      || ',3857)::Geometry('
-      || postgis_typmod_type(a.atttypmod) 
-      || ', 3857) AS '
-      || mercgeom_name,
-      a.attname
-    INTO geom_transform_sql, geom_column_source
+    -- This gets complicated: we have to make sure the 
+    -- geometry column we are using can be transformed into
+    -- geographics, which means it needs to have a valid
+    -- SRID. And the geometry objects can have an 
+    SELECT a.attname
+    INTO rec
     FROM pg_class c 
     JOIN pg_attribute a ON a.attrelid = c.oid 
     JOIN pg_type t ON a.atttypid = t.oid
@@ -1030,28 +1016,68 @@ BEGIN
     AND t.typname = 'geometry'
     AND a.attnum > 0
     AND NOT a.attisdropped
-    AND postgis_typmod_srid(a.atttypmod) > 0
     ORDER BY a.attnum
     LIMIT 1;
     
-    -- If there is no geometry column, we continue making a 
-    -- non-spatial table. This is important for folks who want
-    -- their tables to invalidate the SQL API 
-    -- cache on update/insert/delete.
-    IF FOUND THEN
-      sql := sql || geom_transform_sql;
-    ELSE 
+    IF NOT FOUND THEN
+      -- If there is no geometry column, we continue making a 
+      -- non-spatial table. This is important for folks who want
+      -- their tables to invalidate the SQL API 
+      -- cache on update/insert/delete.
       geom_column_source := '';
+
+    ELSE
+
+      EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', rec.attname, reloid::text)
+      INTO rec;
+    
+      -- The geometry columns weren't in the right projection,
+      -- so we need to find the first decent geometry column
+      -- in the table and wrap it in two transforms, one to 4326
+      -- and another to 3857. Then remember its name so we can
+      -- ignore it when we build the list of other columns to
+      -- add to the output table
+      SELECT ',ST_Transform(' 
+        || a.attname 
+        || ',4326)::Geometry(' 
+        || postgis_typmod_type(a.atttypmod) 
+        || ', 4326) AS '
+        || geom_name 
+        || ', ST_Transform(' 
+        || a.attname 
+        || ',3857)::Geometry('
+        || postgis_typmod_type(a.atttypmod) 
+        || ', 3857) AS '
+        || mercgeom_name,
+        a.attname
+      INTO geom_transform_sql, geom_column_source
+      FROM pg_class c 
+      JOIN pg_attribute a ON a.attrelid = c.oid 
+      JOIN pg_type t ON a.atttypid = t.oid,
+      ( SELECT rec.srid AS srid ) AS srid
+      WHERE c.oid = reloid
+      AND t.typname = 'geometry'
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND (postgis_typmod_srid(a.atttypmod) > 0 OR srid.srid > 0)
+      ORDER BY a.attnum
+      LIMIT 1;
+    
+      IF FOUND THEN
+        sql := sql || geom_transform_sql;
+      END IF;
+
     END IF;
-        
+    
   END IF;
 
   -- Add now add all the rest of the columns
   -- by selecting their names into an array and
   -- joining the array with a comma
   SELECT 
-    ',' || array_to_string(array_agg(a.attname),',')
-  INTO column_name_sql
+    ',' || array_to_string(array_agg(a.attname),',') AS column_name_sql, 
+    Count(*) AS count
+  INTO rec
   FROM pg_class c 
   JOIN pg_attribute a ON a.attrelid = c.oid 
   JOIN pg_type t ON a.atttypid = t.oid
@@ -1060,14 +1086,17 @@ BEGIN
   AND a.attname NOT IN (geom_name, mercgeom_name, primary_key_name, geom_column_source)
   AND NOT a.attisdropped;
 
+
   -- No non-cartodb columns? Possible, I guess.
-  IF NOT FOUND THEN
+  IF rec.count = 0 THEN
     column_name_sql := '';
+  ELSE
+    column_name_sql := rec.column_name_sql;
   END IF;
 
   -- Add the source table to the SQL
   sql := sql || column_name_sql || ' FROM ' || reloid::text;
-  RAISE DEBUG '_CDB_Rewrite_Table: %', sql;
+  RAISE DEBUG '_CDB_Rewrite_Table generated SQL: %', sql;
 
   -- Run it!
   EXECUTE sql;
