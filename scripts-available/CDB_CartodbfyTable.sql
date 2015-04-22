@@ -692,6 +692,8 @@ $$ LANGUAGE PLPGSQL;
 -- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 
+-- TODO: Handing the case of 'cartodb_id' column with integer non-primary key
+-- TODO: Preserve that column, IFF it has unique values
 
 -- Find out if the table already has a usable primary key
 -- If the table has both a usable key and usable geometry
@@ -704,6 +706,7 @@ DECLARE
   rec RECORD;
   i INTEGER;
   sql TEXT;
+  useable_key BOOLEAN = false;
 BEGIN
 
   RAISE DEBUG 'Entered _CDB_Has_Usable_Primary_ID';
@@ -719,24 +722,65 @@ BEGIN
   AND NOT a.attisdropped
   AND a.attname = keyname;
 
-  -- It's perfect (named right, right type, right index)!
-  IF FOUND AND rec.indisprimary AND rec.indisunique AND rec.attnotnull AND rec.atttypid IN (20,21,23) THEN
-    RAISE DEBUG '_CDB_Has_Usable_Primary_ID found good ''%''', keyname;
-    RETURN true;
+  -- Found something named right...
+  IF FOUND THEN
   
-  -- It's an integer and it's named 'cartodb_id' maybe it is usable
-  -- ELSIF rec.atttypid IN (20,21,23) THEN
+    -- And it's an integer column...
+    IF rec.atttypid IN (20,21,23) THEN
+          
+      -- And it's a unique primary key! Done!
+      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull THEN
+        RAISE DEBUG '_CDB_Has_Usable_Primary_ID found good ''%''', keyname;
+        RETURN true;
+
+      -- Check and see if the column values are unique, 
+      -- if they are, we can use this column...
+      ELSE
+
+        -- Assume things are OK until proven otherwise...
+        useable_key := true;
+      
+        BEGIN
+          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_unique UNIQUE (%s)', reloid::text, keyname, keyname);
+          RAISE DEBUG '_CDB_Has_Usable_Primary_ID: %', sql;
+          EXECUTE sql;
+          EXCEPTION      
+          -- Failed unique check...
+          WHEN unique_violation THEN
+            RAISE NOTICE '_CDB_Has_Usable_Primary_ID column % is not unique', keyname;
+            useable_key := false;
+          -- Other fatal error
+          WHEN others THEN
+            RAISE EXCEPTION 'Cartodbfying % (%s): % (%)', reloid::text, keyname, SQLERRM, SQLSTATE;
+        END;
   
-  
-  
-  -- It's not suitable (not an integer?, not unique?) to rename it out of the way
-  ELSIF FOUND THEN
-    RAISE DEBUG '_CDB_Has_Usable_Primary_ID found bad ''%'', renaming it', keyname;
+        -- Clean up test constraint
+        IF useable_key THEN
+          EXECUTE Format('ALTER TABLE %s DROP CONSTRAINT %s_unique', reloid::text, keyname);
+
+        -- Move non-unique column out of the way
+        ELSE
+
+          RAISE DEBUG '_CDB_Has_Usable_Primary_ID found non-unique ''%'', renaming it', keyname;
+          sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
+                    reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, keyname));
+          RAISE DEBUG '_CDB_Has_Usable_Primary_ID: %', sql;
+          EXECUTE sql;
+        
+        END IF;
+
+      END IF;
     
-    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
-              reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, keyname));
-    RAISE DEBUG '_CDB_Has_Usable_Primary_ID: %', sql;
-    EXECUTE sql;        
+    -- It's not an integer column, we have to rename it
+    ELSE
+  
+      RAISE DEBUG '_CDB_Has_Usable_Primary_ID found non-integer ''%'', renaming it', keyname;    
+      sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
+                reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, keyname));
+      RAISE DEBUG '_CDB_Has_Usable_Primary_ID: %', sql;
+      EXECUTE sql;        
+    
+    END IF;
     
   -- There's no column there named keyname
   ELSE
