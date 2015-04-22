@@ -1064,7 +1064,7 @@ $$ LANGUAGE 'plpgsql';
 -- a "good" one, and the same for the geometry columns. If all the required
 -- columns are in place already, it no-ops and just renames the table to 
 -- the destination if necessary.
-CREATE OR REPLACE FUNCTION _CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT, has_usable_primary_key BOOLEAN, has_usable_geoms BOOLEAN)
+CREATE OR REPLACE FUNCTION _CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT DEFAULT NULL)
 RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -1090,6 +1090,9 @@ DECLARE
   str TEXT;
   table_srid INTEGER;
   
+  has_usable_primary_key BOOLEAN;
+  has_usable_geoms BOOLEAN;
+  
 BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): %', 'entered function';
@@ -1097,17 +1100,56 @@ BEGIN
   -- Read CartoDB standard column names in
   const := _CDB_Columns();
 
-  -- No-op if there is no rewrite to be done
-  IF has_usable_primary_key AND has_usable_geoms THEN
-    RETURN true;
-  END IF;
-
   -- Save the raw schema/table names for later
   SELECT n.nspname, c.relname, c.relname
   INTO STRICT relschema, relname, destname
   FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid 
   WHERE c.oid = reloid;
+
+  -- Default the destination to current schema if unspecified
+  IF destschema IS NULL THEN
+    destschema := relschema;
+  END IF;
+
+  -- See if there is a primary key column we need to carry along to the
+  -- new table. If this is true, it implies there is an indexed
+  -- primary key of integer type named (by default) cartodb_id
+  SELECT _CDB_Has_Usable_Primary_ID(reloid) AS has_usable_primary_key
+  INTO STRICT has_usable_primary_key;
+
+  RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_primary_key %', has_usable_primary_key;
+
+  -- See if the geometry columns we need are already available
+  -- on the table. If they are, we don't need to do any bulk
+  -- transformation of the table, we can just ensure proper
+  -- indexes are in place and apply a rename
+  SELECT _CDB_Has_Usable_Geom(reloid) AS has_usable_geoms
+  INTO STRICT has_usable_geoms;
+
+  RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', has_usable_geoms;
+
+  -- We can only avoid a rewrite if both the key and 
+  -- geometry are usable
+
+  -- No table re-write is required, BUT a rename is required to 
+  -- a destination schema, so do that now
+  IF has_usable_primary_key AND has_usable_geoms AND destschema != relschema THEN
   
+    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
+    PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %s', reloid::text, destschema), '_CDB_Rewrite_Table');
+    RETURN true;
+
+  -- Don't move anything, just make sure our destination information is set right
+  ELSIF has_usable_primary_key AND has_usable_geoms AND destschema = relschema THEN
+
+    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
+    RETURN true;
+
+  END IF;
+
+  -- We must rewrite, so here we go...
+
+
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
@@ -1396,11 +1438,6 @@ DECLARE
   destoid REGCLASS;
   destname TEXT;
 
-  has_usable_primary_key BOOLEAN;
-  has_usable_geoms BOOLEAN;
-  rewrite_success BOOLEAN;
-  rewrite BOOLEAN;
-  index_success BOOLEAN;
   rec RECORD;
   
 BEGIN
@@ -1414,6 +1451,7 @@ BEGIN
   -- Check destination schema exists
   -- Throws an exception of there is no matching schema
   IF destschema IS NOT NULL THEN
+  
     SELECT n.nspname
     INTO rec FROM pg_namespace n WHERE n.nspname = destschema;
     IF NOT FOUND THEN
@@ -1426,66 +1464,18 @@ BEGIN
 
   -- Drop triggers first
   PERFORM _CDB_drop_triggers(reloid);
-  
-  -- See if there is a primary key column we need to carry along to the
-  -- new table. If this is true, it implies there is an indexed
-  -- primary key of integer type named (by default) cartodb_id
-  SELECT _CDB_Has_Usable_Primary_ID(reloid) AS has_usable_primary_key
-  INTO STRICT has_usable_primary_key;
-
-  RAISE DEBUG 'CDB(CDB_CartodbfyTable2): has_usable_primary_key %', has_usable_primary_key;
-
-  -- See if the geometry columns we need are already available
-  -- on the table. If they are, we don't need to do any bulk
-  -- transformation of the table, we can just ensure proper
-  -- indexes are in place and apply a rename
-  SELECT _CDB_Has_Usable_Geom(reloid) AS has_usable_geoms
-  INTO STRICT has_usable_geoms;
-
-  RAISE DEBUG 'CDB(CDB_CartodbfyTable2): has_usable_geoms %', has_usable_geoms;
-  
-  -- We can only avoid a rewrite if both the key and 
-  -- geometry are usable
-  rewrite := NOT (has_usable_primary_key AND has_usable_geoms);
-  
-  -- No table re-write is required, BUT a rename is required to 
-  -- a destination schema, so do that now
-  IF NOT rewrite AND destschema != relschema THEN
     
-    RAISE DEBUG 'CDB(CDB_CartodbfyTable2): perfect table needs to be moved to schema (%)', destschema;
-    EXECUTE Format('ALTER TABLE %s SET SCHEMA %s', reloid::text, destschema);
-
-  -- Don't move anything, just make sure our destination information is set right
-  ELSIF NOT rewrite AND destschema = relschema THEN
-
-    RAISE DEBUG 'CDB(CDB_CartodbfyTable2): perfect table in the perfect place';
-  
-  -- We must rewrite, so here we go...
-  ELSIF rewrite THEN
-
-    SELECT _CDB_Rewrite_Table(reloid, destschema, has_usable_primary_key, has_usable_geoms)
-    INTO STRICT rewrite_success;
-    
-    IF NOT rewrite_success THEN
-      PERFORM _CDB_Error('rewriting table', 'CDB_CartodbfyTable2');
-    END IF;
-      
-  END IF;
+  -- Rewrite (or rename) the table to the new location
+  PERFORM _CDB_Rewrite_Table(reloid, destschema);
 
   -- The old regclass might not be valid anymore if we re-wrote the table...
   destoid := (destschema || '.' || destname)::regclass;
 
   -- Add indexes to the destination table, as necessary
-  SELECT _CDB_Add_Indexes(destoid)
-  INTO STRICT index_success;
-
-  IF NOT index_success THEN
-    PERFORM _CDB_Error('indexing table', 'CDB_CartodbfyTable2');
-  END IF;
+  PERFORM _CDB_Add_Indexes(destoid);
   
   -- Add triggers to the destination table, as necessary
   -- PERFORM _CDB_create_triggers(destschema, reloid);
-  
   
 END;
 $$ LANGUAGE 'plpgsql';
