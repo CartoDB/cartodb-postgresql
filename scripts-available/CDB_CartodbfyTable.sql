@@ -692,8 +692,111 @@ $$ LANGUAGE PLPGSQL;
 -- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 
--- TODO: Handing the case of 'cartodb_id' column with integer non-primary key
--- TODO: Preserve that column, IFF it has unique values
+
+-- Find a unique relation name in the given schema, starting from the 
+-- template given. If the template is already unique, just return it; 
+-- otherwise, append an increasing integer until you find a unique variant.
+CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  rec RECORD;
+  i INTEGER;
+  newrelname TEXT;
+BEGIN
+
+  i := 0;
+  newrelname := relationname;
+  LOOP
+
+    SELECT c.relname, n.nspname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.relname = newrelname
+    AND n.nspname = schemaname;
+  
+    IF NOT FOUND THEN
+      RETURN newrelname;
+    END IF;
+    
+    i := i + 1;
+    newrelname := relationname || '_' || i;
+  
+    IF i > 100 THEN
+      RAISE EXCEPTION '_CDB_Unique_Relation_Name looping too far';
+    END IF;
+  
+  END LOOP;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+-- Find a unique column name in the given relation, starting from the 
+-- column name given. If the column name is already unique, just return it; 
+-- otherwise, append an increasing integer until you find a unique variant.
+CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  rec RECORD;
+  i INTEGER;
+  newcolname TEXT;
+BEGIN
+
+  i := 0;
+  newcolname := columnname;
+  LOOP
+
+    SELECT a.attname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    WHERE NOT a.attisdropped
+    AND a.attnum > 0
+    AND c.oid = reloid
+    AND a.attname = newcolname;
+  
+    IF NOT FOUND THEN
+      RETURN newcolname;
+    END IF;
+    
+    i := i + 1;
+    newcolname := columnname || '_' || i;
+  
+    IF i > 100 THEN
+      RAISE EXCEPTION '_CDB_Unique_Column_Name looping too far';
+    END IF;
+  
+  END LOOP;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+    
+
+-- Return the geometry SRID of the very first entry in a given column.
+CREATE OR REPLACE FUNCTION _CDB_Geometry_SRID(reloid REGCLASS, columnname TEXT)
+RETURNS INTEGER
+AS $$
+DECLARE
+  rec RECORD;
+BEGIN
+
+  RAISE DEBUG '_CDB_Geometry_SRID, entered';
+  
+  EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', columnname, reloid::text)
+  INTO rec;
+
+  IF FOUND THEN 
+    RETURN rec.srid;
+  ELSE
+    RETURN 0;
+  END IF;
+  
+END;
+$$ LANGUAGE 'plpgsql';
+
 
 -- Find out if the table already has a usable primary key
 -- If the table has both a usable key and usable geometry
@@ -805,23 +908,6 @@ BEGIN
     END IF;
   
   END IF;
-
-  -- Remove any unsuitable primary key constraint that is hanging around, 
-  -- because we will be adding one back later
-  SELECT ci.relname AS pkey
-  INTO rec
-  FROM pg_class c 
-  JOIN pg_attribute a ON a.attrelid = c.oid 
-  LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
-  JOIN pg_class ci ON i.indexrelid = ci.oid
-  WHERE c.oid = reloid AND NOT a.attisdropped
-  AND a.attname != keyname
-  AND i.indisprimary AND a.atttypid NOT IN (20,21,23);
-  
-  IF FOUND THEN
-    EXECUTE Format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s', reloid::text, rec.pkey);
-    RAISE DEBUG '_CDB_Has_Usable_Primary_ID dropping unused primary key ''%''', rec.pkey;
-  END IF;
   
   RAISE DEBUG '_CDB_Has_Usable_Primary_ID completed';
   
@@ -830,105 +916,6 @@ BEGIN
 
 END;
 $$ LANGUAGE 'plpgsql';
-
-
-CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
-RETURNS TEXT
-AS $$
-DECLARE
-  rec RECORD;
-  i INTEGER;
-  newrelname TEXT;
-BEGIN
-
-  i := 0;
-  newrelname := relationname;
-  LOOP
-
-    SELECT c.relname, n.nspname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE c.relname = newrelname
-    AND n.nspname = schemaname;
-  
-    IF NOT FOUND THEN
-      RETURN newrelname;
-    END IF;
-    
-    i := i + 1;
-    newrelname := relationname || '_' || i;
-  
-    IF i > 100 THEN
-      RAISE EXCEPTION '_CDB_Unique_Relation_Name looping too far';
-    END IF;
-  
-  END LOOP;
-  
-END;
-$$ LANGUAGE 'plpgsql';
-
-
-CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
-RETURNS TEXT
-AS $$
-DECLARE
-  rec RECORD;
-  i INTEGER;
-  newcolname TEXT;
-BEGIN
-
-  i := 0;
-  newcolname := columnname;
-  LOOP
-
-    SELECT a.attname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_attribute a ON a.attrelid = c.oid
-    WHERE NOT a.attisdropped
-    AND a.attnum > 0
-    AND c.oid = reloid
-    AND a.attname = newcolname;
-  
-    IF NOT FOUND THEN
-      RETURN newcolname;
-    END IF;
-    
-    i := i + 1;
-    newcolname := columnname || '_' || i;
-  
-    IF i > 100 THEN
-      RAISE EXCEPTION '_CDB_Unique_Column_Name looping too far';
-    END IF;
-  
-  END LOOP;
-  
-END;
-$$ LANGUAGE 'plpgsql';
-    
-
-CREATE OR REPLACE FUNCTION _CDB_Geometry_SRID(reloid REGCLASS, columnname TEXT)
-RETURNS INTEGER
-AS $$
-DECLARE
-  rec RECORD;
-BEGIN
-
-  RAISE DEBUG '_CDB_Geometry_SRID, entered';
-  
-  EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', columnname, reloid::text)
-  INTO rec;
-
-  IF FOUND THEN 
-    RETURN rec.srid;
-  ELSE
-    RETURN 0;
-  END IF;
-  
-END;
-$$ LANGUAGE 'plpgsql';
-
 
 
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS, geom_name TEXT, mercgeom_name TEXT)
@@ -1005,7 +992,11 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-
+-- Create a copy of the table. Assumes that the "Has usable" functions
+-- have already been run, so that if there is a 'cartodb_id' column, it is
+-- a "good" one, and the same for the geometry columns. If all the required
+-- columns are in place already, it no-ops and just renames the table to 
+-- the destination if necessary.
 CREATE OR REPLACE FUNCTION _CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT, has_usable_primary_key BOOLEAN, has_usable_geoms BOOLEAN, geom_name TEXT, mercgeom_name TEXT, primary_key_name TEXT)
 RETURNS BOOLEAN
 AS $$
@@ -1221,7 +1212,9 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-
+-- Assumes the table already has the right metadata columns
+-- (primary key and two geometry columns) and adds primary key
+-- and geometry indexes if necessary.
 CREATE OR REPLACE FUNCTION _CDB_Add_Indexes(reloid REGCLASS, geom_name TEXT, mercgeom_name TEXT, primary_key_name TEXT)
   RETURNS BOOLEAN
 AS $$
@@ -1239,6 +1232,28 @@ BEGIN
   INTO STRICT relname
   FROM pg_class c
   WHERE c.oid = reloid;
+
+
+  -- Is there already a primary key on this table for 
+  -- a column other than our chosen primary key?
+  SELECT ci.relname AS pkey
+  INTO rec
+  FROM pg_class c 
+  JOIN pg_attribute a ON a.attrelid = c.oid 
+  LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
+  JOIN pg_class ci ON i.indexrelid = ci.oid
+  WHERE c.oid = reloid 
+  AND NOT a.attisdropped
+  AND a.attname != primary_key_name
+  AND i.indisprimary;
+
+  -- Yes? Then drop it, we're adding our own PK to the column
+  -- we prefer.
+  IF FOUND THEN
+    EXECUTE Format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s', reloid::text, rec.pkey);
+    RAISE DEBUG '_CDB_Add_Indexes dropping unwanted primary key ''%''', rec.pkey;
+  END IF;
+
 
   -- Is the default primary key flagged as primary?
   SELECT a.attname
