@@ -1047,7 +1047,7 @@ BEGIN
   END IF;
 
   -- If mercgeom is the wrong name, just rename it.
-  IF has_mercgeom AND has_mercgeom_name != const.geomcol THEN  
+  IF has_mercgeom AND has_mercgeom_name != const.mercgeomcol THEN  
     sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, has_mercgeom_name, const.mercgeomcol);
     PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
   END IF;
@@ -1425,7 +1425,7 @@ BEGIN
   END IF;
 
   -- Drop triggers first
-  -- PERFORM _CDB_drop_triggers(reloid);
+  PERFORM _CDB_drop_triggers(reloid);
   
   -- See if there is a primary key column we need to carry along to the
   -- new table. If this is true, it implies there is an indexed
