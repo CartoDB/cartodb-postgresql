@@ -18,12 +18,12 @@ BEGIN
     -- get our unique values
     SELECT array_agg(e) INTO in_array FROM (SELECT unnest(in_array) e GROUP BY e ORDER BY e ASC) x;
     -- get the total size of our row
-    element_count := array_upper(in_array, 1) - array_lower(in_array, 1); 
+    element_count := array_length(in_array, 1); 
     break_size :=  element_count::numeric / breaks;
     -- slice our bread
     LOOP  
         IF i > breaks THEN  EXIT;  END IF;  
-        SELECT e INTO tmp_val FROM ( SELECT unnest(in_array) e LIMIT 1 OFFSET round(break_size * i)) x;
+        SELECT e INTO tmp_val FROM ( SELECT unnest(in_array) e LIMIT 1 OFFSET round(break_size * i) - 1) x;
         reply = array_append(reply, tmp_val);
         i := i+1; 
     END LOOP; 
