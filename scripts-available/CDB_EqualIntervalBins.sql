@@ -11,26 +11,27 @@
 -- 
 --
 
-CREATE OR REPLACE FUNCTION CDB_EqualIntervalBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$ 
+CREATE OR REPLACE FUNCTION CDB_EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
 DECLARE 
     diff numeric;
     min_val numeric;
+    max_val numeric;
     tmp_val numeric;
     i INT := 1;
     reply numeric[];
 BEGIN
-    SELECT (max(e) - min(e)) / breaks::numeric, min(e) INTO diff, min_val FROM (SELECT unnest(in_array) e) x WHERE e is not null;
-    RAISE NOTICE 'diff = %, min_val = %', diff, min_val;
+    SELECT min(e), max(e) INTO min_val, max_val FROM ( SELECT unnest(in_array) e ) x WHERE e IS NOT NULL;
+    diff = (max_val - min_val) / breaks::numeric;
     LOOP
-        IF i < breaks + 1 THEN
+        IF i < breaks THEN
             tmp_val = min_val + i::numeric * diff;
-            RAISE NOTICE 'tmp_val = %', tmp_val;
             reply = array_append(reply, tmp_val);
             i := i+1;
         ELSE
+            reply = array_append(reply, max_val);
             EXIT;
         END IF;
     END LOOP;
     RETURN reply;
-END; 
+END;
 $$ language plpgsql IMMUTABLE;
