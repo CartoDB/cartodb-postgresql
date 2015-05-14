@@ -2,4 +2,4 @@ WITH data AS (
     SELECT array_agg(x) s FROM generate_series(1,300) x 
         WHERE x % 5 != 0 AND x % 7 != 0
     ) 
-SELECT unnest(CDB_EqualIntervalBins(s, 7)) FROM data
+SELECT round(unnest(CDB_EqualIntervalBins(s, 7)),7) FROM data
