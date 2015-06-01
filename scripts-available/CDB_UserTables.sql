@@ -20,7 +20,8 @@ AND n.nspname NOT IN ('pg_catalog', 'information_schema')
 AND CASE WHEN perm = 'public' THEN has_table_privilege('public', c.oid, 'SELECT')
          WHEN perm = 'private' THEN has_table_privilege(c.oid, 'SELECT') AND NOT 
                                     has_table_privilege('public', c.oid, 'SELECT')
-         ELSE has_table_privilege(c.oid, 'SELECT') END;
+         WHEN perm = 'all' THEN has_table_privilege(c.oid, 'SELECT') 
+         ELSE false END;
 
 $$ LANGUAGE 'sql';
 
