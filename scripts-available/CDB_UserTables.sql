@@ -6,34 +6,22 @@
 -- Currently accepted permissions are: 'public', 'private' or 'all'
 --
 CREATE OR REPLACE FUNCTION CDB_UserTables(perm text DEFAULT 'all')
-RETURNS SETOF information_schema.sql_identifier
+RETURNS SETOF name
 AS $$
-  WITH usertables AS ( 
-    -- TODO: query CDB_TableMetadata for this ?
-    -- See http://github.com/CartoDB/cartodb/issues/254#issuecomment-26044777
-    SELECT table_name as t
-    FROM information_schema.tables
-    WHERE
-         table_type='BASE TABLE'
-     AND table_schema='public'
-     AND table_name NOT IN (
-      'cdb_tablemetadata',
-      'spatial_ref_sys'
-     )
-  ), perms AS (
-    SELECT t, has_table_privilege('public', 'public'||'.'||t, 'SELECT') as p
-    FROM usertables
-  )
-  SELECT t FROM perms
-  WHERE (
-    p = CASE WHEN $1 = 'private' THEN false
-                 WHEN $1 = 'public' THEN true
-                 ELSE not p -- none
-            END
-    OR $1 = 'all'
-  )
-  AND has_table_privilege('public'||'.'||t, 'SELECT')
-   ;
+
+SELECT c.relname 
+FROM pg_class c 
+JOIN pg_roles r ON r.oid = c.relowner
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE r.rolname = current_user 
+AND c.relkind = 'r' 
+AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
+AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+AND CASE WHEN perm = 'public' THEN has_table_privilege('public', c.oid, 'SELECT')
+         WHEN perm = 'private' THEN has_table_privilege(c.oid, 'SELECT') AND NOT 
+                                    has_table_privilege('public', c.oid, 'SELECT')
+         ELSE has_table_privilege(c.oid, 'SELECT') END;
+
 $$ LANGUAGE 'sql';
 
 -- This is to migrate from pre-0.2.0 version
