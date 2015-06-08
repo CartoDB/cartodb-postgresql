@@ -10,9 +10,8 @@
 --    1. width_bucket/histograms: http://tapoueh.org/blog/2014/02/21-PostgreSQL-histogram
 --    2. R implementation: https://github.com/cran/agrmt
 
-
-CREATE OR REPLACE FUNCTION CDB_ClassTest ( in_array NUMERIC[] ) RETURNS text as $$ 
-DECLARE 
+CREATE OR REPLACE FUNCTION CDB_DistType ( in_array NUMERIC[] ) RETURNS text as $$
+DECLARE
     element_count INT4;
     minv numeric;
     maxv numeric;
@@ -27,7 +26,7 @@ DECLARE
 BEGIN
     SELECT min(e), max(e), count(e) INTO minv, maxv, element_count FROM ( SELECT unnest(in_array) e ) x;
 
-    IF abs(maxv - minv) < 1e-7 THEN -- if max and min are nearly equal, call if 'F'
+    IF abs(maxv - minv) < 1e-7 THEN -- if max and min are nearly equal, call if 'F' (make relative to maxv?)
         signature = 'F';
     ELSE
         -- Calculate bins and count in bins
@@ -39,7 +38,7 @@ BEGIN
             WHERE e is not null
         ),
         hist as (
-            SELECT width_bucket(e, s.minv, s.maxv, 6) bucket,
+            SELECT width_bucket(e, s.minv, s.maxv, 7) bucket,
                    count(*) freq
             FROM (SELECT unnest($1) e) x, stats s
             WHERE e is not null
