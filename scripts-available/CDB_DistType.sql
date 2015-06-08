@@ -17,8 +17,6 @@ DECLARE
     maxv numeric;
     bins numeric[];
     freqs numeric[];
-    diff numeric[];
-    diffdiff numeric[];
     ajus INT[];
     freq INT4;
     signature text;
@@ -50,7 +48,6 @@ BEGIN
         FROM hist, stats'
         INTO freqs, bins
         USING in_array;
-        -- don't need bins variable (freq are already sorted), discard it later
 
         LOOP
             IF i < 7 THEN
