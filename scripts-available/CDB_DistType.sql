@@ -1,6 +1,6 @@
 --
 -- CDB_DistType classifies the histograms of a column into
--- one of the basic types listed by Galtong: http://druedin.com/2012/12/08/galtungs-ajus-system/
+-- one of the basic types listed by Galtung: http://druedin.com/2012/12/08/galtungs-ajus-system/
 -- 
 -- Future improvements:
 --    variable number of bins (7 is baked in right now)
@@ -51,14 +51,16 @@ BEGIN
 
         LOOP
             IF i < 7 THEN
-                ajus[i] = CDB_CompareValues(freqs[i],freqs[i+1],5.0); -- 5% tolerance
+                ajus[i] = CASE WHEN freqs[i] > freqs[i+1] THEN -1
+                               WHEN abs(freqs[i] - freqs[i+1]) <= 0.05 THEN 0
+                               ELSE 1 END;
             ELSE
                 EXIT;
             END IF;
             i := i + 1;
         END LOOP;
 
-        signature = CDB_DistributionType(ajus);
+        signature = _CDB_DistTypeClassify(ajus);
     END IF;
 
     RETURN signature;
@@ -67,7 +69,7 @@ $$ language plpgsql IMMUTABLE;
 
 -- Classify data into AJUSFL
 
-CREATE OR REPLACE FUNCTION CDB_DistributionType ( in_array INT[] ) RETURNS text as $$
+CREATE OR REPLACE FUNCTION _CDB_DistTypeClassify ( in_array INT[] ) RETURNS text as $$
 DECLARE
     element_count INT4;
     maxv numeric;
@@ -117,22 +119,4 @@ BEGIN
 
     RETURN type;
 END;
-$$ language plpgsql IMMUTABLE;
-
-CREATE OR REPLACE FUNCTION CDB_CompareValues ( a numeric, b numeric, tolerance numeric ) RETURNS INT as $$
-DECLARE
-    d INT4;
-BEGIN
-    IF a > b THEN
-        SELECT -1 INTO d;
-    ELSE
-        SELECT 1 INTO d;
-    END IF;
-
-    IF abs(a-b) <= tolerance THEN
-        SELECT 0 INTO d;
-    END IF;
-
-    RETURN d;
-END; 
 $$ language plpgsql IMMUTABLE;
