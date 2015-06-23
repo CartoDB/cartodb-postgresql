@@ -36,10 +36,8 @@ BEGIN
             INTO maxval
             USING element_count, in_array;
 
-    passes = CASE WHEN maxval >= threshold
-                  THEN TRUE
-                  ELSE FALSE
-                  END;
+    passes = (maxval >= threshold);
+
     RETURN passes;
 END;
 $$ language plpgsql IMMUTABLE;
