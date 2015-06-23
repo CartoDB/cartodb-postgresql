@@ -17,4 +17,4 @@ WITH a As (
 		)::text AS x 
 	) 
 
-SELECT CDB_DistinctMeasure(string_to_array(x,null),0.90) from a ;
+SELECT CDB_DistinctMeasure(string_to_array(x,null),0.90) from a

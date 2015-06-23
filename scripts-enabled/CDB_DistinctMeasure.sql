@@ -1,1 +1,1 @@
-scripts-available/CDB_DistinctMeasure.sql
+../scripts-available/CDB_DistinctMeasure.sql
