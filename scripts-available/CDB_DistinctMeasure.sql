@@ -40,7 +40,6 @@ BEGIN
                   THEN TRUE
                   ELSE FALSE
                   END;
-    RAISE NOTICE 'maxval: %', maxval;
     RETURN passes;
 END;
 $$ language plpgsql IMMUTABLE;
