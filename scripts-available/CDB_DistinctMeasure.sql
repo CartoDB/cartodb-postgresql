@@ -5,11 +5,11 @@
 -- 
 -- 
 
-CREATE OR REPLACE FUNCTION CDB_DistinctMeasure ( in_array text[], threshold numeric DEFAULT 0.90 ) RETURNS boolean as $$
+CREATE OR REPLACE FUNCTION CDB_DistinctMeasure ( in_array text[], threshold numeric DEFAULT null ) RETURNS numeric as $$
 DECLARE
     element_count INT4;
     maxval numeric;
-    passes boolean;
+    passes numeric;
 BEGIN
     SELECT count(e) INTO element_count FROM ( SELECT unnest(in_array) e ) x;
 
@@ -35,8 +35,11 @@ BEGIN
             SELECT max(cumsum) maxval FROM b'
             INTO maxval
             USING element_count, in_array;
-
-    passes = (maxval >= threshold);
+    IF threshold is null THEN
+        passes = maxval;
+    ELSE
+        passes = CASE WHEN (maxval >= threshold) THEN 1 ELSE 0 END;
+    END IF;
 
     RETURN passes;
 END;
