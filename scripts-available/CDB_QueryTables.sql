@@ -2,12 +2,12 @@
 --
 -- Requires PostgreSQL 9.x+
 --
-CREATE OR REPLACE FUNCTION CDB_QueryTablesRegclass(query text)
-RETURNS regclass[]
+CREATE OR REPLACE FUNCTION CDB_QueryTablesText(query text)
+RETURNS text[]
 AS $$
 DECLARE
   exp XML;
-  tables regclass[];
+  tables text[];
   rec RECORD;
   rec2 RECORD;
 BEGIN
@@ -45,7 +45,7 @@ BEGIN
     LOOP
       -- RAISE DEBUG 'tab: %', rec2.p;
       -- RAISE DEBUG 'sc: %', rec2.sc;
-      tables := array_append(tables, (rec2.sc || '.' || rec2.p)::regclass);
+      tables := array_append(tables, (rec2.sc || '.' || rec2.p));
     END LOOP;
 
     -- RAISE DEBUG 'Tables: %', tables;
@@ -73,6 +73,6 @@ CREATE OR REPLACE FUNCTION CDB_QueryTables(query text)
 RETURNS name[]
 AS $$
 BEGIN
-  RETURN CDB_QueryTablesRegclass(query)::name[];
+  RETURN CDB_QueryTablesText(query)::name[];
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
