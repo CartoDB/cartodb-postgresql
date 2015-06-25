@@ -19,10 +19,10 @@ BEGIN
     -- for n <= 10 depending on # of distinct values
     EXECUTE 'WITH a As (
               SELECT
-                count(*) cnt,
-                e
+                count(*) cnt
               FROM
                 (SELECT * FROM unnest($2) e ) x
+              WHERE e is not null
               GROUP BY e
               ORDER BY cnt DESC
             ),
@@ -31,7 +31,7 @@ BEGIN
                 sum(cnt) OVER (ORDER BY cnt DESC) / $1 As cumsum
               FROM a
               LIMIT 10
-              )
+            )
             SELECT max(cumsum) maxval FROM b'
             INTO maxval
             USING element_count, in_array;
