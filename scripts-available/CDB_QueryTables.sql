@@ -2,12 +2,12 @@
 --
 -- Requires PostgreSQL 9.x+
 --
-CREATE OR REPLACE FUNCTION CDB_QueryTables(query text)
-RETURNS name[]
+CREATE OR REPLACE FUNCTION CDB_QueryTablesText(query text)
+RETURNS text[]
 AS $$
 DECLARE
   exp XML;
-  tables NAME[];
+  tables text[];
   rec RECORD;
   rec2 RECORD;
 BEGIN
@@ -41,11 +41,11 @@ BEGIN
           xpath('//x:Relation-Name/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as x,
           xpath('//x:Relation-Name/../x:Schema/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as s
       )
-      SELECT unnest(x)::name as p, unnest(s)::name as sc from inp
+      SELECT unnest(x) as p, unnest(s) as sc from inp
     LOOP
       -- RAISE DEBUG 'tab: %', rec2.p;
       -- RAISE DEBUG 'sc: %', rec2.sc;
-      tables := array_append(tables, (rec2.sc || '.' || rec2.p)::name);
+      tables := array_append(tables, (rec2.sc || '.' || rec2.p));
     END LOOP;
 
     -- RAISE DEBUG 'Tables: %', tables;
@@ -63,5 +63,16 @@ BEGIN
   --RAISE DEBUG 'Tables: %', tables;
 
   return tables;
+END
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+
+
+-- Keep CDB_QueryTables with same signature for backwards compatibility.
+-- It should probably be removed in the future.
+CREATE OR REPLACE FUNCTION CDB_QueryTables(query text)
+RETURNS name[]
+AS $$
+BEGIN
+  RETURN CDB_QueryTablesText(query)::name[];
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
