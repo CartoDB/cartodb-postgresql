@@ -1,3 +1,12 @@
+0.7.4 (2015-06-29)
+------------------
+* Adds new function CDB_QueryTablesText that can deal with "schema.table_name"
+  longer than 63 chars.
+* Adds a set of statistical functions:
+  - CDB_DistType
+  - CDB_DistinctMeasure
+  - CDB_EqualIntervalBins
+
 0.7.3 (2015-03-03)
 ------------------
 * Fix upgrade of CDB_StringToDate function
