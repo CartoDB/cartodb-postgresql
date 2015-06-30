@@ -17,5 +17,7 @@ CREATE SCHEMA
 CREATE TABLE
 INSERT 0 1
 select * from sc.test|{sc.test}
+DROP TABLE
+DROP SCHEMA
 SELECT
 * FROM geometry_columns|{pg_catalog.pg_attribute,pg_catalog.pg_class,pg_catalog.pg_namespace,pg_catalog.pg_type}

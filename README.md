@@ -11,7 +11,7 @@ See https://github.com/CartoDB/cartodb/wiki/CartoDB-PostgreSQL-extension
 Dependencies
 ------------
 
- * PostgreSQL 9.3+ (with plpythonu extension)
+ * PostgreSQL 9.3+ (with plpythonu extension and xml support)
  * [PostGIS extension](http://postgis.net) 
  * [Schema triggers extension]
    (https://bitbucket.org/malloclabs/pg_schema_triggers)
