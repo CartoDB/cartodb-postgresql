@@ -5,6 +5,7 @@
 --
 -- Currently accepted permissions are: 'public', 'private' or 'all'
 --
+DROP FUNCTION IF EXISTS cdb_usertables(text);
 CREATE OR REPLACE FUNCTION CDB_UserTables(perm text DEFAULT 'all')
 RETURNS SETOF name
 AS $$
