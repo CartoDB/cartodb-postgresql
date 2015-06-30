@@ -1,4 +1,4 @@
-0.7.4 (2015-06-29)
+0.8.0 (2015-06-30)
 ------------------
 * Adds new function CDB_QueryTablesText that can deal with "schema.table_name"
   longer than 63 chars.
@@ -6,6 +6,10 @@
   - CDB_DistType
   - CDB_DistinctMeasure
   - CDB_EqualIntervalBins
+
+0.7.4 (2015-06-29)
+------------------
+Dummy transitional version.
 
 0.7.3 (2015-03-03)
 ------------------
