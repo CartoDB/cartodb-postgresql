@@ -6,6 +6,7 @@
   - CDB_DistType
   - CDB_DistinctMeasure
   - CDB_EqualIntervalBins
+* Fix for CDB_UserTables returns 0 entries for multiuser accounts [#64](https://github.com/CartoDB/cartodb-postgresql/issues/64)
 
 0.7.4 (2015-06-29)
 ------------------
