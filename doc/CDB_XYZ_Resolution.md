@@ -13,7 +13,7 @@ SELECT CDB_XYZ_Resolution(2)
 --- Returns a float, 39135.7587890625
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_XYZ_Resolution(z)
 

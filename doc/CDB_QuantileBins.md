@@ -13,7 +13,7 @@ SELECT CDB_QuantileBins(array_agg(numeric_column), 7) FROM table_name
 -- (bin1 is less than or equal to 80, bin2 is less than or equal to 2281, etc.)
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_QuantileBins(in_array, breaks)
 

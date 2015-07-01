@@ -7,7 +7,7 @@ SELECT CDB_ColumnNames('table_name')
 --- Returns a set of rows with column names
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_ColumnNames(table_name)
 

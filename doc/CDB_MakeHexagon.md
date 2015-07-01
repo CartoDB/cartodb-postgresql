@@ -13,7 +13,7 @@ Would give you back a single hexagon geometry,
 ![hexagon](http://i.imgur.com/6jeGStb.png)
 
 
-#### Arguements
+#### Arguments
 
 CDB_MakeHexagon(center, radius)
 

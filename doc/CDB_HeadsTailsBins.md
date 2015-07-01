@@ -13,7 +13,7 @@ SELECT CDB_HeadsTailsBins(array_agg(numeric_column), 7) FROM table_name
 -- (bin1 is less than or equal to 7824, bin2 is less than or equal to 23492, etc.)
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_HeadsTailsBins(in_array, breaks)
 

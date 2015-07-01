@@ -13,7 +13,7 @@ SELECT CDB_XYZ_Extent(3,2,2)
 --- Returns a WKB polygon in Webmercator (SRID 3857)
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_XYZ_Extent(x,y,z)
 

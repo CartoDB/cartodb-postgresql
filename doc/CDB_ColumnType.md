@@ -7,7 +7,7 @@ SELECT CDB_ColumnType('column_name','table_name')
 --- Returns a set of rows with column types
 ```
 
-#### Arguements
+#### Arguments
 
 CDB_ColumnType(column_name, table_name)
 

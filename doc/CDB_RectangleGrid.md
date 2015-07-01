@@ -36,7 +36,7 @@ Which will look something like this,
 
 ![rect grid](http://i.imgur.com/HuhOJRs.png)
 
-#### Arguements
+#### Arguments
 
 CDB_RectangleGrid(ext, width, height, origin)
 

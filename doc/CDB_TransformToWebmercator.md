@@ -37,7 +37,7 @@ Would give you back a single valid rectangle in webmercator. Since a longitude o
 ![valid geom](http://i.imgur.com/EFdXiqt.png)
 
 
-#### Arguements
+#### Arguments
 
 CDB_TransformToWebmercator(geom)
 
