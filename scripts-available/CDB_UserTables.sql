@@ -12,16 +12,14 @@ AS $$
 
 SELECT c.relname 
 FROM pg_class c 
-JOIN pg_roles r ON r.oid = c.relowner
 JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE r.rolname = current_user 
-AND c.relkind = 'r' 
+WHERE c.relkind = 'r' 
 AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
-AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-AND CASE WHEN perm = 'public' THEN has_table_privilege('public', c.oid, 'SELECT')
-         WHEN perm = 'private' THEN has_table_privilege(c.oid, 'SELECT') AND NOT 
-                                    has_table_privilege('public', c.oid, 'SELECT')
-         WHEN perm = 'all' THEN has_table_privilege(c.oid, 'SELECT') 
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology')
+AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SELECT')
+         WHEN perm = 'private' THEN (has_table_privilege(c.relowner, c.oid, 'SELECT') OR has_table_privilege(current_user, c.oid, 'SELECT'))
+                                    AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
+         WHEN perm = 'all' THEN has_table_privilege(c.relowner, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
          ELSE false END;
 
 $$ LANGUAGE 'sql';
