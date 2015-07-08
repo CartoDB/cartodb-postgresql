@@ -1,3 +1,7 @@
+0.8.1 (2015-06-30)
+------------------
+* Fix for [#95](https://github.com/CartoDB/cartodb-postgresql/issues/95) *cdb_usertables should return public tables when the user is publicuser*
+
 0.8.0 (2015-06-30)
 ------------------
 * Adds new function CDB_QueryTablesText that can deal with "schema.table_name"
