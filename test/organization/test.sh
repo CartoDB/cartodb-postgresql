@@ -142,6 +142,8 @@ function setup() {
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
+    sql "CREATE ROLE publicuser LOGIN;"
+    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -171,6 +173,7 @@ function tear_down() {
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
+    sql 'DROP ROLE publicuser;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -347,7 +350,6 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
 }
 
 function test_cdb_usertables_should_work_with_orgusers() {
-    sql "ALTER USER publicuser LOGIN"
     sql "GRANT USAGE ON SCHEMA cartodb TO publicuser;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
     sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
@@ -363,7 +365,6 @@ function test_cdb_usertables_should_work_with_orgusers() {
 
     sql cdb_testmember_1 "DROP TABLE test_perms_pub"
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
-    sql "ALTER USER publicuser NOLOGIN"
 }
 
 
