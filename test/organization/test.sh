@@ -346,6 +346,23 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
+function test_cdb_usertables_should_work_with_orgusers() {
+    sql "CREATE ROLE publicuser LOGIN"
+    sql "GRANT USAGE ON SCHEMA cartodb TO publicuser;"
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
+    sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
+    sql cdb_testmember_1 "CREATE TABLE test_perms_priv (a int)"
+    sql cdb_testmember_1 "GRANT SELECT ON TABLE test_perms_pub TO publicuser"
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('all')" should 1
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('public')" should 1
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('private')" should 0
+    # the following tests are for https://github.com/CartoDB/cartodb-postgresql/issues/98
+    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('all')" should 1
+    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('public')" should 1
+    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('private')" should 0
+}
+
+
 #################################################### TESTS END HERE ####################################################
 
 
