@@ -120,5 +120,5 @@ test_extension_new:
 
 legacy_tests: legacy_regress 
 
-installcheck: test_organization
+installcheck: legacy_tests test_extension_new test_organization
 
