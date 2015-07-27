@@ -360,6 +360,9 @@ function test_cdb_usertables_should_work_with_orgusers() {
     #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('all')" should 1
     #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('public')" should 1
     #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('private')" should 0
+
+    sql cdb_testmember_1 "DROP TABLE test_perms_pub"
+    sql cdb_testmember_1 "DROP TABLE test_perms_priv"
 }
 
 
