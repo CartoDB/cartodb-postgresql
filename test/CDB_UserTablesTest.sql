@@ -1,4 +1,4 @@
-CREATE ROLE publicuser;
+CREATE ROLE publicuser LOGIN;
 CREATE TABLE pub(a int);
 CREATE TABLE prv(a int);
 GRANT SELECT ON TABLE pub TO publicuser;
