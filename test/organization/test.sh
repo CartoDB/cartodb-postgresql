@@ -170,6 +170,7 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
