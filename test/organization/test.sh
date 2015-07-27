@@ -347,7 +347,7 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
 }
 
 function test_cdb_usertables_should_work_with_orgusers() {
-    #sql "CREATE ROLE publicuser LOGIN"
+    sql "CREATE ROLE publicuser"
     sql "GRANT USAGE ON SCHEMA cartodb TO publicuser;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
     sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
