@@ -1,3 +1,7 @@
+0.8.2 (2015-07-27)
+------------------
+* Fix for CDB_UserTables returning wrong listings when publicuser is used
+
 0.8.1 (2015-06-30)
 ------------------
 * Fix for [#95](https://github.com/CartoDB/cartodb-postgresql/issues/95) *cdb_usertables should return public tables when the user is publicuser*
