@@ -17,9 +17,8 @@ WHERE c.relkind = 'r'
 AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
 AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology')
 AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SELECT')
-         WHEN perm = 'private' THEN (has_table_privilege(c.relowner, c.oid, 'SELECT') OR has_table_privilege(current_user, c.oid, 'SELECT'))
-                                    AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
-         WHEN perm = 'all' THEN has_table_privilege(c.relowner, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
+         WHEN perm = 'private' THEN has_table_privilege(current_user, c.oid, 'SELECT') AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
+         WHEN perm = 'all' THEN has_table_privilege(current_user, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
          ELSE false END;
 
 $$ LANGUAGE 'sql';
