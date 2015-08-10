@@ -11,8 +11,6 @@ DATABASE=test_organizations
 CMD='echo psql'
 CMD=psql
 
-GROUP_A="group_a"
-
 OK=0
 PARTIALOK=0
 
@@ -144,8 +142,8 @@ function setup() {
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
-    sql "CREATE ROLE publicuser LOGIN;"
-    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
+    #sql "CREATE ROLE publicuser LOGIN;"
+    #sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -155,8 +153,10 @@ function setup() {
     sql cdb_testmember_2 'INSERT INTO bar VALUES (1), (2), (3), (4), (5);'
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
 
-    sql "SELECT cartodb.CDB_Group_CreateGroup('${GROUP_A}_tmp')"
-    sql "SELECT cartodb.CDB_Group_RenameGroup('${GROUP_A}_tmp', '${GROUP_A}')"
+    sql "SELECT cartodb.CDB_Group_CreateGroup('group_a_tmp')"
+    sql "SELECT cartodb.CDB_Group_RenameGroup('group_a_tmp', 'group_a')"
+
+    sql "SELECT cartodb.CDB_Group_AddMember('group_a', 'cdb_testmember_1')"
 }
 
 
@@ -168,7 +168,9 @@ function tear_down() {
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo;'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.bar;'
 
-    sql "select cartodb.CDB_Group_DropGroup('${GROUP_A}')"
+    sql "SELECT cartodb.CDB_Group_RemoveMember('group_a', 'cdb_testmember_1')"
+
+    sql "select cartodb.CDB_Group_DropGroup('group_a')"
 
     sql "DROP SCHEMA cartodb CASCADE"
 
@@ -178,11 +180,11 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
-    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    #sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
-    sql 'DROP ROLE publicuser;'
+    #sql 'DROP ROLE publicuser;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -399,6 +401,21 @@ function test_cdb_usertables_should_work_with_orgusers() {
 
     sql cdb_testmember_1 "DROP TABLE test_perms_pub"
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
+}
+
+function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should_remove() {
+  create_table cdb_testmember_2 shared_with_group
+
+  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group')"
+  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+
+  sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }
 
 #################################################### TESTS END HERE ####################################################
