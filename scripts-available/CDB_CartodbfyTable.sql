@@ -1475,7 +1475,7 @@ BEGIN
   PERFORM _CDB_Add_Indexes(destoid);
   
   -- Add triggers to the destination table, as necessary
-  -- PERFORM _CDB_create_triggers(destschema, reloid);
+  PERFORM _CDB_create_triggers(destschema, destoid);
   
 END;
 $$ LANGUAGE 'plpgsql';
