@@ -24,7 +24,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
-
+-- Renames a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RenameGroup(old_group_name text, new_group_name text)
     RETURNS VOID AS $$
@@ -33,6 +33,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
+-- Adds a user to a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_AddMember(group_name text, username text)
     RETURNS VOID AS $$
@@ -46,6 +47,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
+-- Removes a user from a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RemoveMember(group_name text, username text)
     RETURNS VOID AS $$
@@ -59,6 +61,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
+-- Grants table read permission to a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table_name text)
     RETURNS VOID AS $$
@@ -71,6 +74,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
+-- Revokes all permissions on a table from a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table_name text)
     RETURNS VOID AS $$
@@ -85,6 +89,7 @@ $$ LANGUAGE PLPGSQL;
 -----------------------
 -- Private functions
 -----------------------
+-- Given a group name returns a role
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_GroupRole(group_name text)
     RETURNS TEXT AS $$
