@@ -11,6 +11,8 @@ DATABASE=test_organizations
 CMD='echo psql'
 CMD=psql
 
+GROUP_A="group_a"
+
 OK=0
 PARTIALOK=0
 
@@ -137,7 +139,7 @@ function setup() {
 
     log_info "########################### BOOTSTRAP ###########################"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
-
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
 
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
@@ -152,7 +154,10 @@ function setup() {
     create_table cdb_testmember_2 bar
     sql cdb_testmember_2 'INSERT INTO bar VALUES (1), (2), (3), (4), (5);'
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
+
+    sql "SELECT cartodb.CDB_Group_CreateGroup('${GROUP_A}')"
 }
+
 
 function tear_down() {
     log_info "########################### USER TEAR DOWN ###########################"
@@ -161,6 +166,8 @@ function tear_down() {
 
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo;'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.bar;'
+
+    sql "select cartodb.CDB_Group_DropGroup('${GROUP_A}')"
 
     sql "DROP SCHEMA cartodb CASCADE"
 
@@ -392,7 +399,6 @@ function test_cdb_usertables_should_work_with_orgusers() {
     sql cdb_testmember_1 "DROP TABLE test_perms_pub"
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
 }
-
 
 #################################################### TESTS END HERE ####################################################
 
