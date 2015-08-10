@@ -403,7 +403,7 @@ function test_cdb_usertables_should_work_with_orgusers() {
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
 }
 
-function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should_remove() {
+function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should_remove_it() {
   create_table cdb_testmember_2 shared_with_group
 
   sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
@@ -414,6 +414,21 @@ function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should
   sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
   sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
   sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+
+  sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_CDB_Group_Table_GrantReadWrite_should_grant_insert_and_RevokeAll_should_remove_it() {
+  create_table cdb_testmember_2 shared_with_group
+
+  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
 
   sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }

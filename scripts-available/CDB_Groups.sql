@@ -74,6 +74,19 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL;
 
+-- Grants table write permission to a group
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, table_name text)
+    RETURNS VOID AS $$
+DECLARE
+    cdb_group_role TEXT;
+BEGIN
+    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE 'GRANT USAGE ON SCHEMA "' || username || '" TO "' || cdb_group_role || '"';
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "' || username || '"."' || table_name || '" TO "' || cdb_group_role || '"';
+END
+$$ LANGUAGE PLPGSQL;
+
 -- Revokes all permissions on a table from a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table_name text)
