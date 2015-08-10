@@ -106,8 +106,10 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_GroupRole(group_name text)
     RETURNS TEXT AS $$
+DECLARE
+    group_role TEXT;
 BEGIN
-    RETURN cartoDB.CDB_Organization_Member_Group_Role_Member_Name() || '_g_' || group_name;
+    RETURN 'g_' || md5(current_database()) || '_' || group_name;
 END
 $$ LANGUAGE PLPGSQL;
 
