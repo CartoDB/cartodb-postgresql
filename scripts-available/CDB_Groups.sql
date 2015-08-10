@@ -1,6 +1,7 @@
+-- Creates a new group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
-    RETURNS TEXT AS $$
+    RETURNS VOID AS $$
 DECLARE
   cdb_group_role TEXT;
 BEGIN
@@ -10,7 +11,6 @@ BEGIN
   THEN
     EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
   END IF;
-  RETURN cdb_group_role;
 END
 $$ LANGUAGE PLPGSQL;
 
