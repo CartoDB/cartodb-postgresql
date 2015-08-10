@@ -155,7 +155,8 @@ function setup() {
     sql cdb_testmember_2 'INSERT INTO bar VALUES (1), (2), (3), (4), (5);'
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
 
-    sql "SELECT cartodb.CDB_Group_CreateGroup('${GROUP_A}')"
+    sql "SELECT cartodb.CDB_Group_CreateGroup('${GROUP_A}_tmp')"
+    sql "SELECT cartodb.CDB_Group_RenameGroup('${GROUP_A}_tmp', '${GROUP_A}')"
 }
 
 
