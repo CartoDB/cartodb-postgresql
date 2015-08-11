@@ -170,8 +170,8 @@ function setup() {
     sql "SELECT cartodb.CDB_Organization_AddAdmin('cdb_org_admin');"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
-    #publicuser# sql "CREATE ROLE publicuser LOGIN;"
-    #publicuser# sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
+    sql "CREATE ROLE publicuser LOGIN;"
+    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -212,12 +212,12 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
-    #publicuser# sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_org_admin;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
-    #publicuser# sql 'DROP ROLE publicuser;'
+    sql 'DROP ROLE publicuser;'
     sql 'DROP ROLE cdb_org_admin;'
 
     sql "DROP SCHEMA cartodb CASCADE"
