@@ -28,6 +28,7 @@ function clear_partial_result() {
 function sql() {
     local ROLE
     local QUERY
+    ERROR_OUTPUT_FILE='/tmp/test_error.log'
     if [[ $# -ge 2 ]]
     then
         ROLE="$1"
@@ -38,15 +39,41 @@ function sql() {
 
     if [ -n "${ROLE}" ]; then
       log_debug "Executing query '${QUERY}' as ${ROLE}"
-      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
+      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     else
       log_debug "Executing query '${QUERY}'"
-      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t`
+      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     fi
     CODERESULT=$?
+    ERROR_OUTPUT=`cat "${ERROR_OUTPUT_FILE}"`
+    rm ${ERROR_OUTPUT_FILE}
 
+    echo -n "- Code Result: "
+    echo ${CODERESULT}
+    echo -n "- Result: "
     echo ${RESULT}
-    echo
+    echo -n "- Error output: "
+    echo ${ERROR_OUTPUT}
+
+    # Some warnings should actually be failures
+    if [[ ${CODERESULT} == "0" ]]
+    then
+      case "${ERROR_OUTPUT}" in
+        WARNING:*no*privileges*were*granted*for*)
+          echo -n "FAILED BECAUSE OF PRIVILEGES GRANTING WARNING"
+          CODERESULT=1
+        ;;
+        WARNING:*no*privileges*could*be*revoked*for*)
+          echo -n "FAILED BECAUSE OF PRIVILEGES REVOKING WARNING"
+          CODERESULT=1
+        ;;
+        *) echo "All ok" ;;
+      esac
+    fi
+
+    echo "- New code result: "
+    echo ${CODERESULT}
+    echo "-------------"
 
     if [[ ${CODERESULT} -ne 0 ]]
     then
@@ -142,8 +169,8 @@ function setup() {
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
-    sql "CREATE ROLE publicuser LOGIN;"
-    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
+    #publicuser# sql "CREATE ROLE publicuser LOGIN;"
+    #publicuser# sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -157,6 +184,8 @@ function setup() {
     sql "SELECT cartodb.CDB_Group_RenameGroup('group_a_tmp', 'group_a')"
 
     sql "SELECT cartodb.CDB_Group_AddMember('group_a', 'cdb_testmember_1')"
+
+    sql "SELECT cartodb.CDB_Group_CreateGroup('group_b')"
 }
 
 
@@ -167,6 +196,8 @@ function tear_down() {
 
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo;'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.bar;'
+
+    sql "select cartodb.CDB_Group_DropGroup('group_b')"
 
     sql "SELECT cartodb.CDB_Group_RemoveMember('group_a', 'cdb_testmember_1')"
 
@@ -180,11 +211,11 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
-    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    #publicuser# sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
-    sql 'DROP ROLE publicuser;'
+    #publicuser# sql 'DROP ROLE publicuser;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -431,6 +462,27 @@ function test_CDB_Group_Table_GrantReadWrite_should_grant_insert_and_RevokeAll_s
   sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
 
   sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_group_management_functions_cant_be_used_by_normal_members() {
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_CreateGroup('group_x_1');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RenameGroup('group_a', 'group_x_2');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_DropGroup('group_a');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_AddMember('group_a', 'cdb_testmember_2');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RemoveMember('group_a', 'cdb_testmember_1');" fails
+
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    # Checks that you can't grant even if your group has RW permissions
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }
 
 #################################################### TESTS END HERE ####################################################
