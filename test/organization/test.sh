@@ -205,6 +205,8 @@ function tear_down() {
     sql "select cartodb.CDB_Group_DropGroup('group_a')"
     sql "SELECT cartodb.CDB_Organization_RemoveAdmin('cdb_org_admin');"
 
+    sql "DROP SCHEMA cartodb CASCADE"
+
     log_info "########################### TEAR DOWN ###########################"
     sql 'DROP SCHEMA cdb_testmember_1;'
     sql 'DROP SCHEMA cdb_testmember_2;'
@@ -219,8 +221,6 @@ function tear_down() {
     sql 'DROP ROLE cdb_testmember_2;'
     sql 'DROP ROLE publicuser;'
     sql 'DROP ROLE cdb_org_admin;'
-
-    sql "DROP SCHEMA cartodb CASCADE"
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
