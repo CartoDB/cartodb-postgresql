@@ -25,6 +25,57 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+-------------------------------------------------------------------------------
+-- Administrator
+-------------------------------------------------------------------------------
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Organization_Admin_Role_Name()
+    RETURNS TEXT
+AS 'SELECT ''cdb_org_admin''::text || ''_'' || md5(current_database());'
+LANGUAGE SQL IMMUTABLE;
+
+DO LANGUAGE 'plpgsql' $$
+DECLARE
+    cdb_org_admin_role_name TEXT;
+BEGIN
+    cdb_org_admin_role_name := cartodb._CDB_Organization_Admin_Role_Name();
+    IF NOT EXISTS ( SELECT * FROM pg_roles WHERE rolname= cdb_org_admin_role_name )
+    THEN
+        EXECUTE 'CREATE ROLE "' || cdb_org_admin_role_name || '" CREATEROLE NOLOGIN;';
+    END IF;
+END
+$$;
+
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Organization_AddAdmin(username text)
+    RETURNS void
+AS $$
+DECLARE
+    cdb_user_role TEXT;
+    cdb_admin_role TEXT;
+BEGIN
+    cdb_admin_role := cartodb._CDB_Organization_Admin_Role_Name();
+    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
+    EXECUTE 'GRANT "' || cdb_admin_role || '" TO "' || cdb_user_role || '" WITH ADMIN OPTION';
+    -- CREATEROLE is not inherited, and is needed for user creation
+    EXECUTE 'ALTER ROLE "' || cdb_user_role || '" CREATEROLE';
+END
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Organization_RemoveAdmin(username text)
+    RETURNS void
+AS $$
+DECLARE
+    cdb_user_role TEXT;
+    cdb_admin_role TEXT;
+BEGIN
+    cdb_admin_role := cartodb._CDB_Organization_Admin_Role_Name();
+    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
+    EXECUTE 'ALTER ROLE "' || cdb_user_role || '" NOCREATEROLE';
+    EXECUTE 'REVOKE "' || cdb_admin_role || '" FROM "' || cdb_user_role || '"';
+END
+$$ LANGUAGE PLPGSQL;
 
 -------------------------------------------------------------------------------
 -- Sharing tables

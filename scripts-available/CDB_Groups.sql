@@ -5,7 +5,6 @@ FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
 DECLARE
     cdb_group_role TEXT;
 BEGIN
-    -- TODO: escape group_name
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = cdb_group_role )
     THEN
@@ -15,12 +14,19 @@ END
 $$ LANGUAGE PLPGSQL;
 
 -- Drops group and everything that role owns
+-- TODO: LIMITATION: in order to drop a role all its owned objects must be dropped before.
+-- Right now this is done with DROP OWNED, which can only be done by a superadmin.
+-- Not even the role creator can drop the role and the objects it owns.
+-- All group owned objects by the group are permissions.
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_DropGroup(group_name text)
     RETURNS VOID AS $$
+DECLARE
+    cdb_group_role TEXT;
 BEGIN
-    EXECUTE 'DROP OWNED BY "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
-    EXECUTE 'DROP ROLE IF EXISTS "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
+    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE 'DROP OWNED BY "' || cdb_group_role || '"';
+    EXECUTE 'DROP ROLE IF EXISTS "' || cdb_group_role || '"';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -124,7 +130,9 @@ FUNCTION cartodb._CDB_User_RoleFromUsername(username text)
 DECLARE
     user_role TEXT;
 BEGIN
-    EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
+    -- This was preferred, but non-superadmins won't get results
+    --EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
+    EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
     RETURN user_role;
 END
 $$ LANGUAGE PLPGSQL;

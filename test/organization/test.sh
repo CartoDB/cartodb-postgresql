@@ -166,6 +166,8 @@ function setup() {
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
 
     log_info "############################# SETUP #############################"
+    create_role_and_schema cdb_org_admin
+    sql "SELECT cartodb.CDB_Organization_AddAdmin('cdb_org_admin');"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
     #publicuser# sql "CREATE ROLE publicuser LOGIN;"
@@ -201,20 +203,24 @@ function tear_down() {
     sql "SELECT cartodb.CDB_Group_RemoveMember('group_a', 'cdb_testmember_1')"
 
     sql "select cartodb.CDB_Group_DropGroup('group_a')"
-
-    sql "DROP SCHEMA cartodb CASCADE"
+    sql "SELECT cartodb.CDB_Organization_RemoveAdmin('cdb_org_admin');"
 
     log_info "########################### TEAR DOWN ###########################"
     sql 'DROP SCHEMA cdb_testmember_1;'
     sql 'DROP SCHEMA cdb_testmember_2;'
+    sql 'DROP SCHEMA cdb_org_admin;'
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
     #publicuser# sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_org_admin;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
     #publicuser# sql 'DROP ROLE publicuser;'
+    sql 'DROP ROLE cdb_org_admin;'
+
+    sql "DROP SCHEMA cartodb CASCADE"
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -470,7 +476,9 @@ function test_group_management_functions_cant_be_used_by_normal_members() {
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_DropGroup('group_a');" fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_AddMember('group_a', 'cdb_testmember_2');" fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RemoveMember('group_a', 'cdb_testmember_1');" fails
+}
 
+function test_group_permission_functions_cant_be_used_by_normal_members() {
     create_table cdb_testmember_2 shared_with_group
 
     sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
@@ -481,6 +489,30 @@ function test_group_management_functions_cant_be_used_by_normal_members() {
     sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
     sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
     sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_group_management_functions_can_be_used_by_org_admin() {
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_CreateGroup('group_x_tmp');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_RenameGroup('group_x_tmp', 'group_x');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_AddMember('group_x', 'cdb_testmember_1');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_RemoveMember('group_x', 'cdb_testmember_1');"
+    # TODO: workaround superadmin limitation
+    sql "SELECT cartodb.CDB_Group_DropGroup('group_x');"
+}
+
+function test_org_admin_cant_grant_permissions_on_tables_he_does_not_own() {
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    # Checks that you can't grant even if your group has RW permissions
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantReadWrite('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
 
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }
