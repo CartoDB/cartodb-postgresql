@@ -38,11 +38,11 @@ function sql() {
     fi
 
     if [ -n "${ROLE}" ]; then
-      log_debug "Executing query '${QUERY}' as ${ROLE}"
-      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
+        log_debug "Executing query '${QUERY}' as ${ROLE}"
+        RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     else
-      log_debug "Executing query '${QUERY}'"
-      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
+        log_debug "Executing query '${QUERY}'"
+        RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     fi
     CODERESULT=$?
     ERROR_OUTPUT=`cat "${ERROR_OUTPUT_FILE}"`
@@ -58,17 +58,17 @@ function sql() {
     # Some warnings should actually be failures
     if [[ ${CODERESULT} == "0" ]]
     then
-      case "${ERROR_OUTPUT}" in
-        WARNING:*no*privileges*were*granted*for*)
-          echo -n "FAILED BECAUSE OF PRIVILEGES GRANTING WARNING"
-          CODERESULT=1
-        ;;
-        WARNING:*no*privileges*could*be*revoked*for*)
-          echo -n "FAILED BECAUSE OF PRIVILEGES REVOKING WARNING"
-          CODERESULT=1
-        ;;
-        *) echo "All ok" ;;
-      esac
+        case "${ERROR_OUTPUT}" in
+            WARNING:*no*privileges*were*granted*for*)
+                echo -n "FAILED BECAUSE OF PRIVILEGES GRANTING WARNING"
+                CODERESULT=1
+            ;;
+            WARNING:*no*privileges*could*be*revoked*for*)
+                echo -n "FAILED BECAUSE OF PRIVILEGES REVOKING WARNING"
+                CODERESULT=1
+            ;;
+            *) echo "All ok" ;;
+        esac
     fi
 
     echo "- New code result: "
@@ -435,33 +435,33 @@ function test_cdb_usertables_should_work_with_orgusers() {
 }
 
 function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should_remove_it() {
-  create_table cdb_testmember_2 shared_with_group
+    create_table cdb_testmember_2 shared_with_group
 
-  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
-  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
-  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group')"
-  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
-  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
-  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
-  sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
-  sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
 
-  sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }
 
 function test_CDB_Group_Table_GrantReadWrite_should_grant_insert_and_RevokeAll_should_remove_it() {
-  create_table cdb_testmember_2 shared_with_group
+    create_table cdb_testmember_2 shared_with_group
 
-  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
-  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
-  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
-  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
-  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
-  sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
-  sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
-  sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
 
-  sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
 }
 
 function test_group_management_functions_cant_be_used_by_normal_members() {

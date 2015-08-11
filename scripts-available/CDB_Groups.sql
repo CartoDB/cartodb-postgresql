@@ -3,14 +3,14 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
     RETURNS VOID AS $$
 DECLARE
-  cdb_group_role TEXT;
+    cdb_group_role TEXT;
 BEGIN
-  -- TODO: escape group_name
-  cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-  IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = cdb_group_role )
-  THEN
-    EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
-  END IF;
+    -- TODO: escape group_name
+    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = cdb_group_role )
+    THEN
+        EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
+    END IF;
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -19,8 +19,8 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_DropGroup(group_name text)
     RETURNS VOID AS $$
 BEGIN
-  EXECUTE 'DROP OWNED BY "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
-  EXECUTE 'DROP ROLE IF EXISTS "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
+    EXECUTE 'DROP OWNED BY "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
+    EXECUTE 'DROP ROLE IF EXISTS "' || cartodb._CDB_Group_GroupRole(group_name) || '"';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -29,7 +29,7 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RenameGroup(old_group_name text, new_group_name text)
     RETURNS VOID AS $$
 BEGIN
-  EXECUTE 'ALTER ROLE "' || cartodb._CDB_Group_GroupRole(old_group_name) || '" RENAME TO "' || cartodb._CDB_Group_GroupRole(new_group_name) || '"';
+    EXECUTE 'ALTER ROLE "' || cartodb._CDB_Group_GroupRole(old_group_name) || '" RENAME TO "' || cartodb._CDB_Group_GroupRole(new_group_name) || '"';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -38,12 +38,12 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_AddMember(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
-  cdb_group_role TEXT;
-  cdb_user_role TEXT;
+    cdb_group_role TEXT;
+    cdb_user_role TEXT;
 BEGIN
-  cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-  cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-  EXECUTE 'GRANT "' || cdb_group_role || '" TO "' || cdb_user_role || '"';
+    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
+    EXECUTE 'GRANT "' || cdb_group_role || '" TO "' || cdb_user_role || '"';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -52,12 +52,12 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RemoveMember(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
-  cdb_group_role TEXT;
-  cdb_user_role TEXT;
+    cdb_group_role TEXT;
+    cdb_user_role TEXT;
 BEGIN
-  cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-  cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-  EXECUTE 'REVOKE "' || cdb_group_role || '" FROM "' || cdb_user_role || '"';
+    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
+    EXECUTE 'REVOKE "' || cdb_group_role || '" FROM "' || cdb_user_role || '"';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -118,9 +118,9 @@ CREATE OR REPLACE
 FUNCTION cartodb._CDB_User_RoleFromUsername(username text)
     RETURNS TEXT AS $$
 DECLARE
-  user_role TEXT;
+    user_role TEXT;
 BEGIN
-  EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
-  RETURN user_role;
+    EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
+    RETURN user_role;
 END
 $$ LANGUAGE PLPGSQL;
