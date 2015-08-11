@@ -28,13 +28,6 @@ trigger-protected the_geom cartodbfied fine
 extent|BOX(1 1,2 2)
 DROP TABLE
 SELECT 1
-text timestamps cartodbfied fine
-0|0
-CREATE VIEW
-cartodbfied with view cartodbfied fine
-DROP VIEW
-DROP TABLE
-SELECT 1
 text cartodb_id cartodbfied fine
 5
 DROP TABLE
@@ -49,9 +42,6 @@ DROP TABLE
 CREATE TABLE
 cartodb_id serial primary key cartodbfied fine
 t_pkey|cartodb_id
-DROP TABLE
-CREATE TABLE
-null geom and timestamp values cartodbfied fine
 DROP TABLE
 DROP FUNCTION
 DROP FUNCTION
