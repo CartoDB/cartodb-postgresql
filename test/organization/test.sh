@@ -48,12 +48,12 @@ function sql() {
     ERROR_OUTPUT=`cat "${ERROR_OUTPUT_FILE}"`
     rm ${ERROR_OUTPUT_FILE}
 
-    echo -n "- Code Result: "
-    echo ${CODERESULT}
-    echo -n "- Result: "
-    echo ${RESULT}
-    echo -n "- Error output: "
-    echo ${ERROR_OUTPUT}
+    echo -n "> Code Result: "
+    echo -n ${CODERESULT}
+    echo -n "; Result: "
+    echo -n ${RESULT}
+    echo -n "; Error output: "
+    echo -n ${ERROR_OUTPUT}
 
     # Some warnings should actually be failures
     if [[ ${CODERESULT} == "0" ]]
@@ -67,13 +67,12 @@ function sql() {
                 echo -n "FAILED BECAUSE OF PRIVILEGES REVOKING WARNING"
                 CODERESULT=1
             ;;
-            *) echo "All ok" ;;
+            *) ;;
         esac
     fi
 
-    echo "- New code result: "
+    echo -n "; New code result: "
     echo ${CODERESULT}
-    echo "-------------"
 
     if [[ ${CODERESULT} -ne 0 ]]
     then
