@@ -69,10 +69,10 @@ function sql() {
             ;;
             *) ;;
         esac
+        echo -n "; Code result after warnings: "
+        echo -n ${CODERESULT}
     fi
-
-    echo -n "; New code result: "
-    echo ${CODERESULT}
+    echo
 
     if [[ ${CODERESULT} -ne 0 ]]
     then
@@ -238,6 +238,7 @@ function run_tests() {
         echo "####################################################################"
         clear_partial_result
         setup
+        log_info "############################# TESTS #############################"
         eval ${t}
         if [[ ${PARTIALOK} -ne 0 ]]
         then
@@ -482,6 +483,21 @@ function test_group_management_functions_cant_be_used_by_normal_members() {
     sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
 
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_valid_group_names() {
+    sql "select cartodb._CDB_Group_GroupRole('group_1$_a');"
+    sql "select cartodb._CDB_Group_GroupRole('GROUP_1$_A');"
+    sql "select cartodb._CDB_Group_GroupRole('_group_1$_a');"
+}
+
+function test_not_valid_group_names() {
+    sql postgres "select cartodb._CDB_Group_GroupRole('1$_a');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole(' group_1$_a');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole('group_1$_a ');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole(' group_1$_a ');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole('group _1$_a');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole('groupña');" fails
 }
 
 #################################################### TESTS END HERE ####################################################

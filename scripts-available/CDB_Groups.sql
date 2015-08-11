@@ -102,13 +102,17 @@ $$ LANGUAGE PLPGSQL;
 -----------------------
 -- Private functions
 -----------------------
--- Given a group name returns a role
+-- Given a group name returns a role. group_name must be a valid PostgreSQL idenfifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_GroupRole(group_name text)
     RETURNS TEXT AS $$
 DECLARE
     group_role TEXT;
 BEGIN
+    IF group_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$'
+    THEN
+        RAISE EXCEPTION 'Group name (%) must be a valid identifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS', group_name;
+    END IF;
     RETURN 'g_' || md5(current_database()) || '_' || group_name;
 END
 $$ LANGUAGE PLPGSQL;
