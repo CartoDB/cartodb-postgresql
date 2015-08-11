@@ -43,10 +43,6 @@ BEGIN
   sql := 'DROP TRIGGER IF EXISTS update_the_geom_webmercator_trigger ON ' || reloid::text;
   EXECUTE sql;
 
-  -- "update_updated_at"
-  sql := 'DROP TRIGGER IF EXISTS update_updated_at_trigger ON ' || reloid::text;
-  EXECUTE sql;
-
   -- "test_quota" and "test_quota_per_row"
   sql := 'DROP TRIGGER IF EXISTS test_quota ON ' || reloid::text;
   EXECUTE sql;
@@ -204,118 +200,6 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-
--- 4) created_at and updated_at creation & validation or renaming if invalid
-CREATE OR REPLACE FUNCTION _CDB_create_timestamp_columns(reloid REGCLASS)
-  RETURNS void
-AS $$
-DECLARE
-  sql TEXT;
-  rec RECORD;
-  rec2 RECORD;
-  had_column BOOLEAN;
-  i INTEGER;
-  new_name TEXT;
-BEGIN
-
-  FOR rec IN SELECT * FROM ( VALUES ('created_at'), ('updated_at') ) t(cname)
-  LOOP --{
-    new_name := null;
-    << column_setup >>
-    LOOP --{
-      had_column := FALSE;
-      BEGIN
-        sql := 'ALTER TABLE ' || reloid::text || ' ADD ' || rec.cname
-               || ' TIMESTAMPTZ NOT NULL DEFAULT now()';
-        RAISE DEBUG 'Running %', sql;
-        EXECUTE sql;
-        EXIT column_setup;
-        EXCEPTION
-        WHEN duplicate_column THEN
-          RAISE NOTICE 'Column % already exists', rec.cname;
-          had_column := TRUE;
-        WHEN others THEN
-          RAISE EXCEPTION 'Cartodbfying % (%): % (%)', reloid, rec.cname, SQLERRM, SQLSTATE;
-      END;
-
-      IF had_column THEN
-        -- Check data type is a TIMESTAMP WITH TIMEZONE
-        SELECT t.typname, t.oid, a.attnotnull FROM pg_type t, pg_attribute a
-        WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped AND a.attname = rec.cname
-        INTO STRICT rec2;
-        IF rec2.oid NOT IN (1184) THEN -- timestamptz {
-          RAISE NOTICE 'Existing % field is of invalid type % (need timestamptz), renaming', rec.cname, rec2.typname;
-        ELSE -- }{
-          -- Ensure data type is a TIMESTAMP WITH TIMEZONE
-          sql := 'ALTER TABLE ' || reloid::text
-                 || ' ALTER ' || rec.cname
-                 || ' SET NOT NULL,'
-                 || ' ALTER ' || rec.cname
-                 || ' SET DEFAULT now()';
-          BEGIN
-            RAISE DEBUG 'Running %', sql;
-            EXECUTE sql;
-            EXIT column_setup;
-            EXCEPTION
-            WHEN not_null_violation THEN -- failed not-null
-              RAISE NOTICE '%, renaming', SQLERRM;
-            WHEN cannot_coerce THEN -- failed cast
-              RAISE NOTICE '%, renaming', SQLERRM;
-            WHEN others THEN
-              RAISE EXCEPTION 'Cartodbfying % (%): % (%)', reloid, rec.cname, SQLERRM, SQLSTATE;
-          END;
-        END IF; -- }
-
-        -- invalid column, need rename and re-create it
-        i := 0;
-        << rename_column >>
-        LOOP --{
-          new_name := '_' || rec.cname || i;
-          BEGIN
-            sql := 'ALTER TABLE ' || reloid::text || ' RENAME COLUMN ' || rec.cname || ' TO ' || new_name;
-            RAISE DEBUG 'Running %', sql;
-            EXECUTE sql;
-            EXCEPTION
-            WHEN duplicate_column THEN
-              i := i+1;
-              CONTINUE rename_column;
-            WHEN others THEN
-              RAISE EXCEPTION 'Cartodbfying % (renaming %): % (%)',
-              reloid, rec.cname, SQLERRM, SQLSTATE;
-          END;
-          EXIT rename_column;
-        END LOOP; --}
-        CONTINUE column_setup;
-      END IF;
-    END LOOP; -- }
-
-    -- Try to copy data from new name if possible
-    IF new_name IS NOT NULL THEN -- {
-      RAISE NOTICE 'Trying to recover data from % coumn', new_name;
-      BEGIN
-        -- Copy existing values to new field
-        -- NOTE: using ALTER is a workaround to a PostgreSQL bug and is also known to be faster for tables with many rows
-        -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-        sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
-               || ' TYPE TIMESTAMPTZ USING '
-               || new_name || '::timestamptz';
-        RAISE DEBUG 'Running %', sql;
-        EXECUTE sql;
-
-        -- Drop old column (all went find if we got here)
-        sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
-        RAISE DEBUG 'Running %', sql;
-        EXECUTE sql;
-
-        EXCEPTION
-        WHEN others THEN
-          RAISE NOTICE 'Could not initialize % with existing values: % (%)', rec.cname, SQLERRM, SQLSTATE;
-      END;
-    END IF; -- }
-  END LOOP; -- }
-
-END;
-$$ LANGUAGE PLPGSQL;
 
 
 -- 5) the_geom and the_geom_webmercator creation & validation or renaming if invalid
@@ -487,13 +371,6 @@ BEGIN
          || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator()';
   EXECUTE sql;
 
--- "update_updated_at"
--- TODO: why _before_ and not after ?
-  sql := 'CREATE trigger update_updated_at_trigger BEFORE UPDATE ON '
-         || reloid::text
-         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_updated_at()';
-  EXECUTE sql;
-
 -- "test_quota" and "test_quota_per_row"
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
@@ -526,13 +403,6 @@ BEGIN
          || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
   EXECUTE sql;
 
--- "update_updated_at"
--- TODO: why _before_ and not after ?
-  sql := 'CREATE trigger update_updated_at_trigger BEFORE UPDATE ON '
-         || reloid::text
-         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_updated_at()';
-  EXECUTE sql;
-
 -- "test_quota" and "test_quota_per_row"
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
@@ -560,14 +430,6 @@ AS $$
 BEGIN
   NEW.the_geom_webmercator := public.CDB_TransformToWebmercator(NEW.the_geom);
   RETURN NEW;
-END;
-$$ LANGUAGE plpgsql VOLATILE;
-
-CREATE OR REPLACE FUNCTION _CDB_update_updated_at()
-  RETURNS TRIGGER AS $$
-BEGIN
-   NEW.updated_at := now();
-   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
@@ -624,7 +486,6 @@ BEGIN
 
   -- Ensure required fields exist
   PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
-  PERFORM cartodb._CDB_create_timestamp_columns(reloid);
 
   SELECT cartodb._CDB_is_raster_table(schema_name, reloid) INTO is_raster;
   IF is_raster THEN
@@ -1492,7 +1353,3 @@ BEGIN
   
 END;
 $$ LANGUAGE 'plpgsql';
-
-
-
-
