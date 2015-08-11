@@ -1432,6 +1432,7 @@ RETURNS void
 AS $$
 DECLARE
   
+  is_raster BOOLEAN;
   relname TEXT;
   relschema TEXT;
 
@@ -1464,18 +1465,30 @@ BEGIN
 
   -- Drop triggers first
   PERFORM _CDB_drop_triggers(reloid);
+
+  -- Rasters only get a cartodb_id and a limited selection of triggers
+  -- underlying assumption is that they are already formed up correctly
+  SELECT cartodb._CDB_is_raster_table(destschema, reloid) INTO is_raster;
+  IF is_raster THEN
+
+    PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
+    PERFORM cartodb._CDB_create_raster_triggers(destschema, reloid);
+
+  ELSE
     
-  -- Rewrite (or rename) the table to the new location
-  PERFORM _CDB_Rewrite_Table(reloid, destschema);
+    -- Rewrite (or rename) the table to the new location
+    PERFORM _CDB_Rewrite_Table(reloid, destschema);
 
-  -- The old regclass might not be valid anymore if we re-wrote the table...
-  destoid := (destschema || '.' || destname)::regclass;
+    -- The old regclass might not be valid anymore if we re-wrote the table...
+    destoid := (destschema || '.' || destname)::regclass;
 
-  -- Add indexes to the destination table, as necessary
-  PERFORM _CDB_Add_Indexes(destoid);
+    -- Add indexes to the destination table, as necessary
+    PERFORM _CDB_Add_Indexes(destoid);
   
-  -- Add triggers to the destination table, as necessary
-  PERFORM _CDB_create_triggers(destschema, destoid);
+    -- Add triggers to the destination table, as necessary
+    PERFORM _CDB_create_triggers(destschema, destoid);
+
+  END IF;
   
 END;
 $$ LANGUAGE 'plpgsql';
