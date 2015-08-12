@@ -351,18 +351,40 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
 }
 
 function test_cdb_usertables_should_work_with_orgusers() {
-    sql "GRANT USAGE ON SCHEMA cartodb TO publicuser;"
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
+    # create tables
     sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
-    sql cdb_testmember_1 "CREATE TABLE test_perms_priv (a int)"
+    sql cdb_testmember_1 "INSERT INTO test_perms_pub (a) values (1);"
     sql cdb_testmember_1 "GRANT SELECT ON TABLE test_perms_pub TO publicuser"
+    
+    sql cdb_testmember_1 "CREATE TABLE test_perms_priv (a int)"
+
+
+    # this is what we need to make public tables available in CDB_UserTables
+    sql postgres "grant publicuser to cdb_testmember_1;"
+    sql postgres "grant publicuser to cdb_testmember_2;"
+
+
+    # this is required to enable select from other schema
+    sql postgres "GRANT USAGE ON SCHEMA cdb_testmember_1 TO cdb_testmember_2";
+
+
+    # test CDB_UserTables with publicuser
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
+
     sql publicuser "SELECT count(*) FROM CDB_UserTables('all')" should 1
     sql publicuser "SELECT count(*) FROM CDB_UserTables('public')" should 1
     sql publicuser "SELECT count(*) FROM CDB_UserTables('private')" should 0
+    sql publicuser "SELECT * FROM CDB_UserTables('all')" should "test_perms_pub"
+    sql publicuser "SELECT * FROM CDB_UserTables('public')" should "test_perms_pub"
+    sql publicuser "SELECT * FROM CDB_UserTables('private')" should ""
     # the following tests are for https://github.com/CartoDB/cartodb-postgresql/issues/98
-    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('all')" should 1
-    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('public')" should 1
-    #sql cdb_testmember_2 "SELECT count(*) FROM CDB_UserTables('private')" should 0
+    # cdb_testmember_2 is already owner of `bar` table
+    sql cdb_testmember_2 "select string_agg(t,',') from (select cdb_usertables('all') t order by t) as s" should "bar,test_perms_pub"
+    sql cdb_testmember_2 "SELECT * FROM CDB_UserTables('public')" should "test_perms_pub"
+    sql cdb_testmember_2 "SELECT * FROM CDB_UserTables('private')" should "bar"
+
+    # test cdb_testmember_2 can select from cdb_testmember_1's public table
+    sql cdb_testmember_2 "SELECT * FROM cdb_testmember_1.test_perms_pub" should 1
 
     sql cdb_testmember_1 "DROP TABLE test_perms_pub"
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
