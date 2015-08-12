@@ -530,6 +530,11 @@ function test_not_valid_group_names() {
     sql postgres "select cartodb._CDB_Group_GroupRole(' group_1$_a ');" fails
     sql postgres "select cartodb._CDB_Group_GroupRole('group _1$_a');" fails
     sql postgres "select cartodb._CDB_Group_GroupRole('groupña');" fails
+    sql postgres "select cartodb._CDB_Group_GroupRole('a123456789012345678901234567890123456789012345678901234567890');" fails
+}
+
+function test_administrator_name_generation() {
+    sql postgres "select cartodb._CDB_Organization_Admin_Role_Name();"
 }
 
 #################################################### TESTS END HERE ####################################################

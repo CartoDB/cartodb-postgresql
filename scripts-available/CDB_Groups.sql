@@ -2,14 +2,8 @@
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
     RETURNS VOID AS $$
-DECLARE
-    cdb_group_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = cdb_group_role )
-    THEN
-        EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
-    END IF;
+    EXECUTE 'CREATE ROLE "' || cartodb._CDB_Group_GroupRole(group_name) || '" NOLOGIN;';
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -114,12 +108,18 @@ FUNCTION cartodb._CDB_Group_GroupRole(group_name text)
     RETURNS TEXT AS $$
 DECLARE
     group_role TEXT;
+    max_length constant INTEGER := 60;
 BEGIN
     IF group_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$'
     THEN
         RAISE EXCEPTION 'Group name (%) must be a valid identifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS', group_name;
     END IF;
-    RETURN 'g_' || md5(current_database()) || '_' || group_name;
+    group_role := current_database() || '_g_' || group_name;
+    IF LENGTH(group_role) > max_length
+    THEN
+        RAISE EXCEPTION 'Group name should be shorter. Resulting role must have less than % characters, but it is longer: %', max_length, group_role;
+    END IF;
+    RETURN group_role;
 END
 $$ LANGUAGE PLPGSQL;
 

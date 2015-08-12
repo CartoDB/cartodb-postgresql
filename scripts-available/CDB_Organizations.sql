@@ -31,9 +31,10 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Organization_Admin_Role_Name()
     RETURNS TEXT
-AS 'SELECT ''cdb_org_admin''::text || ''_'' || md5(current_database());'
+AS 'SELECT current_database() || ''_admin''::text;'
 LANGUAGE SQL IMMUTABLE;
 
+-- Administrator role creation on extension install
 DO LANGUAGE 'plpgsql' $$
 DECLARE
     cdb_org_admin_role_name TEXT;
