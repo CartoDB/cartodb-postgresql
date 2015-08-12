@@ -102,6 +102,15 @@ BEGIN
       RAISE EXCEPTION '% gist indices found on the_geom and the_geom_webmercator, expected 2', tmp;
   END IF;
 
+  -- Check null constraint on cartodb_id, created_at, updated_at
+  SELECT count(*) FROM pg_attribute a, pg_class c WHERE c.oid = tabname::oid
+    AND a.attrelid = c.oid AND NOT a.attisdropped AND a.attname in
+      ( 'cartodb_id' )
+    AND NOT a.attnotnull INTO strict tmp;
+  IF tmp > 0 THEN
+      RAISE EXCEPTION 'cartodb_id is missing not-null constraint';
+  END IF;
+
   -- Cleanup
   sql := 'DELETE FROM ' || tabname::text || ' WHERE cartodb_id = ' || id;
   EXECUTE sql;
