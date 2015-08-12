@@ -1202,7 +1202,8 @@ BEGIN
       -- their tables to invalidate the SQL API 
       -- cache on update/insert/delete.
       geom_column_source := '';
-
+      sql := sql || ',NULL::geometry(Geometry,4326) AS ' || const.geomcol;
+      sql := sql || ',NULL::geometry(Geometry,3857) AS ' || const.mercgeomcol;
     ELSE
 
       -- table_srid = _CDB_Geometry_SRID(reloid, rec.attname);
