@@ -21,13 +21,6 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select 1 as i INTO c.t3;
 
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i
-from c.t3;
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -38,11 +31,6 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 -- Table with cartodb_id field, see
 -- http://github.com/CartoDB/cartodb-postgresql/issues/32
 select 1 as cartodb_id INTO c.t4;
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator
-from c.t4;
 
 RESET SESSION AUTHORIZATION;
 select
@@ -58,13 +46,6 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc;
 
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc
-from c.t3;
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -74,13 +55,6 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
-
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2
-from c.t3;
 
 RESET SESSION AUTHORIZATION;
 select
@@ -95,13 +69,6 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 drop column the_geom_webmercator;
 
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2
-from c.t3;
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -114,13 +81,6 @@ FROM CDB_TableMetadata WHERE tabname = 'c.t3'::regclass;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select pg_sleep(.1);
 alter table c.t3 add column id2 int;
-
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2, id2
-from c.t3;
 
 RESET SESSION AUTHORIZATION;
 select
