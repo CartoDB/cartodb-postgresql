@@ -6,29 +6,8 @@
 --   * _CDB_UserQuotaInBytes() function, installed by rails
 --     (user.rebuild_quota_trigger, called by rake task cartodb:db:update_test_quota_trigger)
 
--- 1) Required checks before running cartodbfication
--- Either will pass silenty or raise an exception
-CREATE OR REPLACE FUNCTION _CDB_check_prerequisites(schema_name TEXT, reloid REGCLASS)
-RETURNS void
-AS $$
-DECLARE
-  sql TEXT;
-BEGIN
-  IF cartodb.schema_exists(schema_name) = false THEN
-    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
-  END IF;
 
-  -- TODO: Check that user quota is set ?
-  BEGIN
-    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
-    EXCEPTION WHEN undefined_function THEN
-      RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
-  END;
-END;
-$$ LANGUAGE PLPGSQL;
-
-
--- 2) Drop cartodb triggers (might prevent changing columns)
+-- Drop cartodb triggers (might prevent changing columns)
 CREATE OR REPLACE FUNCTION _CDB_drop_triggers(reloid REGCLASS)
   RETURNS void
 AS $$
@@ -52,7 +31,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 
--- 3) Cartodb_id creation & validation or renaming if invalid
+-- Cartodb_id creation & validation or renaming if invalid
 CREATE OR REPLACE FUNCTION _CDB_create_cartodb_id_column(reloid REGCLASS)
   RETURNS void
 AS $$
@@ -201,156 +180,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 
-
--- 5) the_geom and the_geom_webmercator creation & validation or renaming if invalid
-CREATE OR REPLACE FUNCTION _CDB_create_the_geom_columns(reloid REGCLASS)
-  RETURNS BOOLEAN[]
-AS $$
-DECLARE
-  sql TEXT;
-  rec RECORD;
-  rec2 RECORD;
-  had_column BOOLEAN;
-  i INTEGER;
-  new_name TEXT;
-  exists_geom_cols BOOLEAN[];
-BEGIN
-  -- We need the_geom and the_geom_webmercator
-  FOR rec IN SELECT * FROM ( VALUES ('the_geom',4326), ('the_geom_webmercator',3857) ) t(cname,csrid) LOOP --{
-    << column_setup >> LOOP --{
-      BEGIN
-        sql := 'ALTER TABLE ' || reloid::text || ' ADD ' || rec.cname
-               || ' GEOMETRY(geometry,' || rec.csrid || ')';
-        RAISE DEBUG 'Running %', sql;
-        EXECUTE sql;
-        sql := 'CREATE INDEX ON ' || reloid::text || ' USING GIST ( ' || rec.cname || ')';
-        RAISE DEBUG 'Running %', sql;
-        EXECUTE sql;
-        exists_geom_cols := array_append(exists_geom_cols, false);
-        EXIT column_setup;
-        EXCEPTION
-        WHEN duplicate_column THEN
-          exists_geom_cols := array_append(exists_geom_cols, true);
-          RAISE NOTICE 'Column % already exists', rec.cname;
-        WHEN others THEN
-          RAISE EXCEPTION 'Cartodbfying % (%): % (%)', reloid, rec.cname, SQLERRM, SQLSTATE;
-      END;
-
-      << column_fixup >>
-      LOOP --{
-        -- Check data type is a GEOMETRY
-        SELECT t.typname, t.oid, a.attnotnull,
-          postgis_typmod_srid(a.atttypmod) as srid,
-          postgis_typmod_type(a.atttypmod) as gtype
-        FROM pg_type t, pg_attribute a
-        WHERE a.atttypid = t.oid AND a.attrelid = reloid AND NOT a.attisdropped AND a.attname = rec.cname
-        INTO STRICT rec2;
-
-        IF rec2.typname NOT IN ('geometry') THEN -- {
-          RAISE NOTICE 'Existing % field is of invalid type % (need geometry), renaming', rec.cname, rec2.typname;
-          EXIT column_fixup; -- cannot fix
-        END IF; -- }
-
-        IF rec2.srid != rec.csrid THEN -- {
-          BEGIN
-            sql := 'ALTER TABLE ' || reloid::text || ' ALTER ' || rec.cname
-                   || ' TYPE geometry(' || rec2.gtype || ',' || rec.csrid || ') USING ST_Transform('
-                   || rec.cname || ',' || rec.csrid || ')';
-            RAISE DEBUG 'Running %', sql;
-            EXECUTE sql;
-            EXCEPTION
-            WHEN others THEN
-              RAISE NOTICE 'Could not enforce SRID % to column %: %, renaming', rec.csrid, rec.cname, SQLERRM;
-              EXIT column_fixup; -- cannot fix, will rename
-          END;
-        END IF; -- }
-
-        -- add gist indices if not there already
-        IF NOT EXISTS ( SELECT ir.relname
-                        FROM pg_am am, pg_class ir,
-                          pg_class c, pg_index i,
-                          pg_attribute a
-                        WHERE c.oid  = reloid AND i.indrelid = c.oid
-                              AND a.attname = rec.cname
-                              AND i.indexrelid = ir.oid AND i.indnatts = 1
-                              AND i.indkey[0] = a.attnum AND a.attrelid = c.oid
-                              AND NOT a.attisdropped AND am.oid = ir.relam
-                              AND am.amname = 'gist' )
-        THEN -- {
-          BEGIN
-            sql := 'CREATE INDEX ON ' || reloid::text || ' USING GIST ( ' || rec.cname || ')';
-            RAISE DEBUG 'Running %', sql;
-            EXECUTE sql;
-            EXCEPTION
-            WHEN others THEN
-              RAISE EXCEPTION 'Cartodbfying % (% index): % (%)', reloid, rec.cname, SQLERRM, SQLSTATE;
-          END;
-        END IF; -- }
-
-        -- if we reached this line, all went good
-        EXIT column_setup;
-      END LOOP; -- } column_fixup
-
-      -- invalid column, need rename and re-create it
-      i := 0;
-      << rename_column >>
-      LOOP --{
-        new_name := '_' || rec.cname || i;
-        BEGIN
-          sql := 'ALTER TABLE ' || reloid::text || ' RENAME COLUMN ' || rec.cname || ' TO ' || new_name;
-          RAISE DEBUG 'Running %', sql;
-          EXECUTE sql;
-          EXCEPTION
-          WHEN duplicate_column THEN
-            i := i+1;
-            CONTINUE rename_column;
-          WHEN others THEN
-            RAISE EXCEPTION 'Cartodbfying % (rename %): % (%)', reloid, rec.cname, SQLERRM, SQLSTATE;
-        END;
-        EXIT rename_column;
-      END LOOP; --}
-      CONTINUE column_setup;
-    END LOOP; -- } column_setup
-  END LOOP; -- } on expected geometry columns
-
-  RETURN exists_geom_cols;
-END;
-$$ LANGUAGE PLPGSQL;
-
-
--- 6) Initialize the_geom with values from the_geom_webmercator
--- do this only if the_geom_webmercator was found (not created) and the_geom was NOT found.
-CREATE OR REPLACE FUNCTION _CDB_populate_the_geom_from_the_geom_webmercator(reloid REGCLASS, geom_columns_exist BOOLEAN[])
-  RETURNS void
-AS $$
-DECLARE
-  sql TEXT;
-BEGIN
-  IF geom_columns_exist[2] AND NOT geom_columns_exist[1] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom = ST_Transform(the_geom_webmercator, 4326) ';
-    EXECUTE sql;
-  END IF;
-END;
-$$ LANGUAGE PLPGSQL;
-
-
--- 7) Initialize the_geom_webmercator with values from the_geom
--- do this only if the_geom was found (not created) and the_geom_webmercator was NOT found.
-CREATE OR REPLACE FUNCTION _CDB_populate_the_geom_webmercator_from_the_geom(reloid REGCLASS, geom_columns_exist BOOLEAN[])
-  RETURNS void
-AS $$
-DECLARE
-  sql TEXT;
-BEGIN
-  IF geom_columns_exist[1] AND NOT geom_columns_exist[2] THEN
-    sql := 'UPDATE ' || reloid::text || ' SET the_geom_webmercator = public.CDB_TransformToWebmercator(the_geom) ';
-    EXECUTE sql;
-  END IF;
-END;
-$$ LANGUAGE PLPGSQL;
-
-
--- 8.a) Create all triggers
+-- Create all triggers
 -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
 CREATE OR REPLACE FUNCTION _CDB_create_triggers(schema_name TEXT, reloid REGCLASS)
 RETURNS void
@@ -471,37 +301,6 @@ $$ LANGUAGE PLPGSQL;
 -- ////////////////////////////////////////////////////
 
 -- Ensure a table is a "cartodb" table (See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table)
--- Rails code replicates this call at User.cartodbfy()
-CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(schema_name TEXT, reloid REGCLASS)
-RETURNS void 
-AS $$
-DECLARE
-  exists_geom_cols BOOLEAN[];
-  is_raster BOOLEAN;
-BEGIN
-
-  PERFORM cartodb._CDB_check_prerequisites(schema_name, reloid);
-
-  PERFORM cartodb._CDB_drop_triggers(reloid);
-
-  -- Ensure required fields exist
-  PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
-
-  SELECT cartodb._CDB_is_raster_table(schema_name, reloid) INTO is_raster;
-  IF is_raster THEN
-    PERFORM cartodb._CDB_create_raster_triggers(schema_name, reloid);
-  ELSE
-    SELECT cartodb._CDB_create_the_geom_columns(reloid) INTO exists_geom_cols;
-
-    -- Both only populate if proceeds
-    PERFORM cartodb._CDB_populate_the_geom_from_the_geom_webmercator(reloid, exists_geom_cols);
-    PERFORM cartodb._CDB_populate_the_geom_webmercator_from_the_geom(reloid, exists_geom_cols);
-
-    PERFORM cartodb._CDB_create_triggers(schema_name, reloid);
-  END IF;
-
-END;
-$$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
 RETURNS void
@@ -518,7 +317,7 @@ $$ LANGUAGE PLPGSQL;
 --
 -- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 --
---  CDB_CartodbfyTable2(reloid REGCLASS, destschema TEXT DEFAULT NULL)
+--  CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
 --    
 --     Main function, calls the following functions, with a little
 --     logic before the table re-write to avoid re-writing if the table
@@ -1289,7 +1088,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-CREATE OR REPLACE FUNCTION CDB_CartodbfyTable2(reloid REGCLASS, destschema TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
 RETURNS void 
 AS $$
 DECLARE
