@@ -106,8 +106,8 @@ BEGIN
   newtable := Format('%s.%s', rel.nspname, rel.relname)::regclass;
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
-  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
-  WHERE tabname = newtable; 
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
+  WHERE tabname = event_info.relation; 
 
 END; $$;
 -- }
@@ -152,8 +152,8 @@ BEGIN
   newtable := Format('%s.%s', rel.nspname, rel.relname)::regclass;
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
-  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
-  WHERE tabname = newtable;
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
+  WHERE tabname = event_info.relation;
 
 END; $$;
 -- }
