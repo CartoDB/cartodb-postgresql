@@ -351,6 +351,9 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
 }
 
 function test_cdb_usertables_should_work_with_orgusers() {
+
+    # This test validates the changes proposed in https://github.com/CartoDB/cartodb/pull/5021
+
     # create tables
     sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
     sql cdb_testmember_1 "INSERT INTO test_perms_pub (a) values (1);"
@@ -365,7 +368,7 @@ function test_cdb_usertables_should_work_with_orgusers() {
 
 
     # this is required to enable select from other schema
-    sql postgres "GRANT USAGE ON SCHEMA cdb_testmember_1 TO cdb_testmember_2";
+    sql postgres "GRANT USAGE ON SCHEMA cdb_testmember_1 TO publicuser";
 
 
     # test CDB_UserTables with publicuser
