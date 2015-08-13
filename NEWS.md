@@ -1,3 +1,7 @@
+0.8.3 (2015-mm-dd)
+------------------
+* Fixes CDB_UserDataSize failing due `ERROR: relation "*" does not exist.` [#108](https://github.com/CartoDB/cartodb-postgresql/issues/108)
+
 0.8.2 (2015-07-27)
 ------------------
 * Fix for CDB_UserTables returning wrong listings when publicuser is used

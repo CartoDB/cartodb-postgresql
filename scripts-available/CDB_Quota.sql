@@ -1,3 +1,22 @@
+CREATE OR REPLACE FUNCTION cartodb._CDB_total_relation_size(_schema_name TEXT, _table_name TEXT)
+RETURNS bigint AS
+$$
+BEGIN
+  IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_catalog = current_database()
+        AND table_schema = _schema_name
+        AND table_name = _table_name
+  )
+  THEN
+    RETURN pg_total_relation_size(format('"%s"."%s"', _schema_name, _table_name));
+  ELSE
+    RETURN 0;
+  END IF;
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
 -- Return the estimated size of user data. Used for quota checking.
 CREATE OR REPLACE FUNCTION CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
@@ -24,7 +43,7 @@ BEGIN
     FROM user_tables
   ),
   sizes AS (
-    SELECT COALESCE(INT8(SUM(pg_total_relation_size('"' || schema_name || '"."' || table_name || '"')))) table_size,
+    SELECT COALESCE(INT8(SUM(cartodb._CDB_total_relation_size(schema_name, table_name)))) table_size,
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
