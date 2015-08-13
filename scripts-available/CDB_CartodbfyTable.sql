@@ -973,6 +973,15 @@ BEGIN
   sql := Format('DROP TABLE %s', reloid::text);
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
   
+  -- If the table is being created by a SECURITY DEFINER function
+  -- make sure the user is set back to the user who is connected
+  IF current_user != session_user THEN
+    sql := Format('ALTER TABLE IF EXISTS %s OWNER TO %s', copyname, session_user);
+    PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+    sql := Format('ALTER SEQUENCE IF EXISTS %s OWNER TO %s', destseq, session_user);
+    PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+  END IF;
+  
   -- If we used a temporary destination table
   -- we can now rename it into place
   IF destschema = relschema THEN

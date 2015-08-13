@@ -12,6 +12,7 @@ DECLARE
   tmp INTEGER;
   ogc_geom geometry_columns; -- old the_geom record in geometry_columns
   ogc_merc geometry_columns; -- old the_geom_webmercator record in geometry_columns
+  tabtext TEXT;
 BEGIN
 
   -- Save current constraints on geometry columns, if any
@@ -30,7 +31,10 @@ BEGIN
     END IF;
   END LOOP;
 
+  tabtext := Format('%s.%s','public',tabname);
+  RAISE NOTICE 'CARTODBFYING % !!!!', tabtext;
   PERFORM CDB_CartodbfyTable('public', tabname);
+  tabname := tabtext::regclass;
 
   sql := 'INSERT INTO ' || tabname::text || '(the_geom) values ( CDB_LatLng(2,1) ) RETURNING cartodb_id';
   EXECUTE sql INTO STRICT id;
@@ -121,9 +125,8 @@ $$
 LANGUAGE 'plpgsql';
 
 -- table with single non-geometrical column
-CREATE TABLE t AS SELECT 1::int as a;
-SELECT CDB_CartodbfyTable('public', 't'); -- should fail
 SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
+CREATE TABLE t AS SELECT 1::int as a;
 SELECT CDB_CartodbfyTableCheck('t', 'single non-geometrical column');
 DROP TABLE t;
 
