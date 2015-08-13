@@ -2,10 +2,12 @@
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
     RETURNS VOID AS $$
+DECLARE
+    cdb_group_role TEXT;
 BEGIN
-    EXECUTE 'CREATE ROLE "' || cartodb._CDB_Group_GroupRole(group_name) || '" NOLOGIN;';
+    EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Drops group and everything that role owns
 -- TODO: LIMITATION: in order to drop a role all its owned objects must be dropped before.
@@ -22,7 +24,7 @@ BEGIN
     EXECUTE 'DROP OWNED BY "' || cdb_group_role || '"';
     EXECUTE 'DROP ROLE IF EXISTS "' || cdb_group_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Renames a group
 CREATE OR REPLACE
@@ -31,7 +33,7 @@ FUNCTION cartodb.CDB_Group_RenameGroup(old_group_name text, new_group_name text)
 BEGIN
     EXECUTE 'ALTER ROLE "' || cartodb._CDB_Group_GroupRole(old_group_name) || '" RENAME TO "' || cartodb._CDB_Group_GroupRole(new_group_name) || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Adds a user to a group
 CREATE OR REPLACE
@@ -45,7 +47,7 @@ BEGIN
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
     EXECUTE 'GRANT "' || cdb_group_role || '" TO "' || cdb_user_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Removes a user from a group
 CREATE OR REPLACE
@@ -59,7 +61,7 @@ BEGIN
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
     EXECUTE 'REVOKE "' || cdb_group_role || '" FROM "' || cdb_user_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Grants table read permission to a group
 CREATE OR REPLACE
@@ -72,7 +74,7 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || username || '" TO "' || cdb_group_role || '"';
     EXECUTE 'GRANT SELECT ON TABLE "' || username || '"."' || table_name || '" TO "' || cdb_group_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Grants table write permission to a group
 CREATE OR REPLACE
@@ -85,7 +87,7 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || username || '" TO "' || cdb_group_role || '"';
     EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "' || username || '"."' || table_name || '" TO "' || cdb_group_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Revokes all permissions on a table from a group
 CREATE OR REPLACE
@@ -97,7 +99,7 @@ BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE 'REVOKE ALL ON TABLE "' || username || '"."' || table_name || '" FROM "' || cdb_group_role || '"';
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 -----------------------
 -- Private functions
@@ -121,7 +123,7 @@ BEGIN
     END IF;
     RETURN group_role;
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
 
 -- Returns the first owner of the schema matching username. Organization user schemas must have one only owner.
 CREATE OR REPLACE
@@ -135,4 +137,4 @@ BEGIN
     EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
     RETURN user_role;
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL IMMUTABLE;

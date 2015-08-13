@@ -164,6 +164,7 @@ function setup() {
     log_info "########################### BOOTSTRAP ###########################"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups_API.sql
 
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_org_admin
