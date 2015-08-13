@@ -13,6 +13,11 @@ SELECT CDB_CartodbfyTable('big');
 INSERT INTO big SELECT generate_series(1,2048);
 INSERT INTO big SELECT generate_series(1,2048);
 INSERT INTO big SELECT generate_series(1,2048);
+-- Test for #108: https://github.com/CartoDB/cartodb-postgresql/issues/108
+SELECT CDB_UserDataSize();
+SELECT cartodb._CDB_total_relation_size('public', 'big');
+SELECT cartodb._CDB_total_relation_size('public', 'nonexistent_table_name');
+-- END Test for #108
 SELECT CDB_SetUserQuotaInBytes(2);
 INSERT INTO big VALUES (1);
 SELECT CDB_SetUserQuotaInBytes(0);
