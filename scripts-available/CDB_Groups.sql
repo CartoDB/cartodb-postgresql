@@ -3,9 +3,11 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
+    group_role TEXT;
 BEGIN
-    EXECUTE 'CREATE ROLE "' || cdb_group_role || '" NOLOGIN;';
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    PERFORM cartodb._CDB_Group_CreateGroup_API(current_database(), group_name, group_role);
+    EXECUTE 'CREATE ROLE "' || group_role || '" NOLOGIN;';
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -21,6 +23,7 @@ DECLARE
     cdb_group_role TEXT;
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
+    PERFORM cartodb._CDB_Group_DropGroup_API(current_database(), group_name);
     EXECUTE 'DROP OWNED BY "' || cdb_group_role || '"';
     EXECUTE 'DROP ROLE IF EXISTS "' || cdb_group_role || '"';
 END
@@ -110,16 +113,18 @@ FUNCTION cartodb._CDB_Group_GroupRole(group_name text)
     RETURNS TEXT AS $$
 DECLARE
     group_role TEXT;
-    max_length constant INTEGER := 60;
+    prefix TEXT;
+    max_length constant INTEGER := 63;
 BEGIN
     IF group_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$'
     THEN
         RAISE EXCEPTION 'Group name (%) must be a valid identifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS', group_name;
     END IF;
-    group_role := current_database() || '_g_' || group_name;
+    prefix = cartodb._CDB_Group_ShortDatabaseName() || '_g_';
+    group_role := prefix || group_name;
     IF LENGTH(group_role) > max_length
     THEN
-        RAISE EXCEPTION 'Group name should be shorter. Resulting role must have less than % characters, but it is longer: %', max_length, group_role;
+        RAISE EXCEPTION 'Group name must be shorter. It can''t have more than % characters, but it is longer (%): %', max_length - LENGTH(prefix), length(group_name), group_name;
     END IF;
     RETURN group_role;
 END
@@ -136,5 +141,17 @@ BEGIN
     --EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
     EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
     RETURN user_role;
+END
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Database names are too long, we need a shorter version for composing role names
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_ShortDatabaseName()
+    RETURNS TEXT AS $$
+DECLARE
+    short_database_name TEXT;
+BEGIN
+    EXECUTE 'SELECT md5(current_database())' INTO short_database_name;
+    RETURN short_database_name;
 END
 $$ LANGUAGE PLPGSQL IMMUTABLE;

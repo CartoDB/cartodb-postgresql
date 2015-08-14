@@ -1,34 +1,34 @@
 -- This will trigger NOTICE if CDB_CONF already exists
 DO LANGUAGE 'plpgsql' $$
 BEGIN
-    CREATE TABLE IF NOT EXISTS CDB_CONF ( PARAM TEXT PRIMARY KEY, VALUE TEXT NOT NULL );
+    CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( PARAM TEXT PRIMARY KEY, CONF TEXT NOT NULL );
 END
 $$;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_SetParam(param text, value text)
+FUNCTION cartodb.CDB_Conf_SetConf(param text, conf text)
     RETURNS void AS $$
 BEGIN
-    PERFORM cartodb.CDB_Conf_RemoveParam(param);
-    EXECUTE 'INSERT INTO CDB_CONF (PARAM, VALUE) VALUES ($1, $2);' USING param, value;
+    PERFORM cartodb.CDB_Conf_RemoveConf(param);
+    EXECUTE 'INSERT INTO cartodb.CDB_CONF (PARAM, CONF) VALUES ($1, $2);' USING param, conf;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_RemoveParam(param text)
+FUNCTION cartodb.CDB_Conf_RemoveConf(param text)
     RETURNS void AS $$
 BEGIN
-    EXECUTE 'DELETE FROM CDB_CONF WHERE PARAM = $1;' USING param;
+    EXECUTE 'DELETE FROM cartodb.CDB_CONF WHERE PARAM = $1;' USING param;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_GetParam(param text)
+FUNCTION cartodb.CDB_Conf_GetConf(param text)
     RETURNS TEXT AS $$
 DECLARE
-    value TEXT;
+    conf TEXT;
 BEGIN
-    EXECUTE 'SELECT VALUE FROM CDB_CONF WHERE PARAM = $1;' INTO value USING param;
-    RETURN value;
+    EXECUTE 'SELECT CONF FROM cartodb.CDB_CONF WHERE PARAM = $1;' INTO conf USING param;
+    RETURN conf;
 END
 $$ LANGUAGE PLPGSQL STABLE;

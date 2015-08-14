@@ -159,9 +159,11 @@ function create_table() {
 function setup() {
     ${CMD} -c "CREATE DATABASE ${DATABASE}"
     sql "CREATE SCHEMA cartodb;"
+    sql "CREATE EXTENSION plpythonu;"
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
 
     log_info "########################### BOOTSTRAP ###########################"
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups_API.sql
@@ -378,21 +380,18 @@ function test_user_can_read_when_it_has_permission_after_organization_permission
 }
 
 function test_cdb_querytables_returns_schema_and_table_name() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
 }
 
 function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
 function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
@@ -519,9 +518,9 @@ function test_org_admin_cant_grant_permissions_on_tables_he_does_not_own() {
 }
 
 function test_valid_group_names() {
-    sql "select cartodb._CDB_Group_GroupRole('group_1$_a');"
-    sql "select cartodb._CDB_Group_GroupRole('GROUP_1$_A');"
-    sql "select cartodb._CDB_Group_GroupRole('_group_1$_a');"
+    sql postgres "select cartodb._CDB_Group_GroupRole('group_1$_a');"
+    sql postgres "select cartodb._CDB_Group_GroupRole('GROUP_1$_A');"
+    sql postgres "select cartodb._CDB_Group_GroupRole('_group_1$_a');"
 }
 
 function test_not_valid_group_names() {
@@ -536,6 +535,13 @@ function test_not_valid_group_names() {
 
 function test_administrator_name_generation() {
     sql postgres "select cartodb._CDB_Organization_Admin_Role_Name();"
+}
+
+function test_conf() {
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('test_conf', 'test_val')"
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should 'test_val'
+    sql postgres "SELECT cartodb.CDB_Conf_RemoveConf('test_conf')"
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
 }
 
 #################################################### TESTS END HERE ####################################################
