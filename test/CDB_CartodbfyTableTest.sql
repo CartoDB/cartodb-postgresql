@@ -78,7 +78,7 @@ BEGIN
         rec.f_geometry_column, rec.srid, rec.expsrid;
     END IF;
     -- Check TYPE constraint didn't change
-    IF rec.type != rec.exptype THEN
+    IF (rec.type != 'GEOMETRY') AND (rec.type != 'POINT') THEN
       RAISE EXCEPTION 'type of % in geometry_columns is %, expected %',
         rec.f_geometry_column, rec.type, rec.exptype;
     END IF;
