@@ -10,6 +10,7 @@ create schema c;
 
 SELECT CDB_SetUserQuotaInBytes('c', 0);
 
+DROP USER IF EXISTS cartodb_postgresql_unpriv_user;
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
@@ -96,5 +97,6 @@ RESET SESSION AUTHORIZATION;
 drop schema c cascade;
 select count(*) from CDB_TableMetadata;
 
-DROP USER cartodb_postgresql_unpriv_user;
+DROP OWNED BY cartodb_postgresql_unpriv_user;
+DROP ROLE cartodb_postgresql_unpriv_user;
 DROP FUNCTION _CDB_UserQuotaInBytes();

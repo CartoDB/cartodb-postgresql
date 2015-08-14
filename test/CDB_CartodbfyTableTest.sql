@@ -12,6 +12,7 @@ DECLARE
   tmp INTEGER;
   ogc_geom geometry_columns; -- old the_geom record in geometry_columns
   ogc_merc geometry_columns; -- old the_geom_webmercator record in geometry_columns
+  tabtext TEXT;
 BEGIN
 
   -- Save current constraints on geometry columns, if any
@@ -30,7 +31,10 @@ BEGIN
     END IF;
   END LOOP;
 
+  tabtext := Format('%s.%s','public',tabname);
+  RAISE NOTICE 'CARTODBFYING % !!!!', tabtext;
   PERFORM CDB_CartodbfyTable('public', tabname);
+  tabname := tabtext::regclass;
 
   sql := 'INSERT INTO ' || tabname::text || '(the_geom) values ( CDB_LatLng(2,1) ) RETURNING cartodb_id';
   EXECUTE sql INTO STRICT id;
@@ -74,7 +78,7 @@ BEGIN
         rec.f_geometry_column, rec.srid, rec.expsrid;
     END IF;
     -- Check TYPE constraint didn't change
-    IF rec.type != rec.exptype THEN
+    IF (rec.type != 'GEOMETRY') AND (rec.type != 'POINT') THEN
       RAISE EXCEPTION 'type of % in geometry_columns is %, expected %',
         rec.f_geometry_column, rec.type, rec.exptype;
     END IF;
@@ -160,17 +164,19 @@ SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
 SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
--- table with existing cartodb_id field of type text
-CREATE TABLE t AS SELECT 10::text as cartodb_id;
-SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
-select cartodb_id/2 FROM t; 
-DROP TABLE t;
+-- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
+-- -- table with existing cartodb_id field of type text
+-- CREATE TABLE t AS SELECT 10::text as cartodb_id;
+-- SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
+-- select cartodb_id/2 FROM t;
+-- DROP TABLE t;
 
--- table with existing cartodb_id field of type text not casting
-CREATE TABLE t AS SELECT 'nan' as cartodb_id;
-SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
-select cartodb_id,_cartodb_id0 FROM t; 
-DROP TABLE t;
+-- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
+-- -- table with existing cartodb_id field of type text not casting
+-- CREATE TABLE t AS SELECT 'nan' as cartodb_id;
+-- SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
+-- select cartodb_id,_cartodb_id0 FROM t;
+-- DROP TABLE t;
 
 -- table with existing cartodb_id field of type int4 not sequenced
 CREATE TABLE t AS SELECT 1::int4 as cartodb_id;

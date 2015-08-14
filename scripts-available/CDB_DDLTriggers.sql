@@ -4,17 +4,23 @@ CREATE OR REPLACE FUNCTION cartodb.cdb_handle_create_table ()
 RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
-  rel_namespace TEXT;
+  rel RECORD;
+  newtable REGCLASS;
 BEGIN
   event_info := schema_triggers.get_relation_create_eventinfo();
 
   -- We're only interested in real relations
   IF (event_info.new).relkind != 'r' THEN RETURN; END IF;
 
-  SELECT nspname FROM pg_namespace WHERE oid=(event_info.new).relnamespace INTO rel_namespace;
+  SELECT c.relname, c.relnamespace, c.relkind, n.nspname 
+  FROM pg_class c
+  JOIN pg_namespace n 
+  ON c.relnamespace = n.oid
+  WHERE c.oid = event_info.relation
+  INTO rel;
 
   RAISE DEBUG 'Relation % of kind % created in table % namespace % (oid %)',
-	 event_info.relation, (event_info.new).relkind, (event_info.new).relname::TEXT, rel_namespace, (event_info.new).relnamespace;
+	 event_info.relation, rel.relkind, rel.relname, rel.nspname, rel.relnamespace;
 
   -- We don't want to react to alters triggered by superuser,
   IF current_setting('is_superuser') = 'on' THEN
@@ -25,15 +31,15 @@ BEGIN
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
   RAISE DEBUG 'Inserting into cartodb.CDB_TableMetadata';
 
   -- Add entry to CDB_TableMetadata (should CartodbfyTable do this?)
-  INSERT INTO cartodb.CDB_TableMetadata(tabname,updated_at) 
-  VALUES (event_info.relation, now());
+  INSERT INTO cartodb.CDB_TableMetadata(tabname, updated_at) 
+  VALUES (newtable, now());
 
 END; $$;
 -- }
@@ -66,14 +72,19 @@ RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
   rel RECORD;
-  rel_namespace TEXT;
+  newtable REGCLASS;
 BEGIN
   event_info := schema_triggers.get_column_alter_eventinfo();
 
-  SELECT oid,* FROM pg_class WHERE oid = event_info.relation INTO rel;
+  SELECT c.relname, c.relnamespace, c.relkind, n.nspname 
+  FROM pg_class c
+  JOIN pg_namespace n 
+  ON c.relnamespace = n.oid
+  WHERE c.oid = event_info.relation
+  INTO rel;
 
   RAISE DEBUG 'Column % altered by % (superuser? %) in relation % of kind %',
-	 (event_info.old).attname, current_user, current_setting('is_superuser'), event_info.relation::regclass, rel.relkind;
+	 (event_info.old).attname, current_user, current_setting('is_superuser'), rel.relname, rel.relkind;
 
   -- We're only interested in real relations
   IF rel.relkind != 'r' THEN RETURN; END IF;
@@ -84,16 +95,14 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT nspname FROM pg_namespace WHERE oid = rel.relnamespace INTO rel_namespace;
-
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
-  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
   WHERE tabname = event_info.relation; 
 
 END; $$;
@@ -106,14 +115,19 @@ RETURNS event_trigger SECURITY DEFINER LANGUAGE plpgsql AS $$
 DECLARE
   event_info RECORD;
   rel RECORD;
-  rel_namespace TEXT;
+  newtable REGCLASS;
 BEGIN
   event_info := schema_triggers.get_column_drop_eventinfo();
 
-  SELECT oid,* FROM pg_class WHERE oid = event_info.relation INTO rel;
+  SELECT c.relname, c.relnamespace, c.relkind, n.nspname 
+  FROM pg_class c
+  JOIN pg_namespace n 
+  ON c.relnamespace = n.oid
+  WHERE c.oid = event_info.relation
+  INTO rel;
 
   RAISE DEBUG 'Column % drop by % (superuser? %) in relation % of kind %',
-	 (event_info.old).attname, current_user, current_setting('is_superuser'), event_info.relation::regclass, rel.relkind;
+	 (event_info.old).attname, current_user, current_setting('is_superuser'), rel.relname, rel.relkind;
 
   -- We're only interested in real relations
   IF rel.relkind != 'r' THEN RETURN; END IF;
@@ -124,17 +138,16 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT nspname FROM pg_namespace WHERE oid = rel.relnamespace INTO rel_namespace;
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel_namespace, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
-  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW()
-  WHERE tabname = event_info.relation; 
+  UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
+  WHERE tabname = event_info.relation;
 
 END; $$;
 -- }
@@ -149,10 +162,15 @@ DECLARE
 BEGIN
   event_info := schema_triggers.get_column_add_eventinfo();
 
-  SELECT oid,* FROM pg_class WHERE oid = event_info.relation INTO rel;
+  SELECT c.relname, c.relnamespace, c.relkind, n.nspname 
+  FROM pg_class c
+  JOIN pg_namespace n 
+  ON c.relnamespace = n.oid
+  WHERE c.oid = event_info.relation
+  INTO rel;
 
   RAISE DEBUG 'Column % added by % (superuser? %) in relation % of kind %',
-	 (event_info.new).attname, current_user, current_setting('is_superuser'), event_info.relation::regclass, rel.relkind;
+	 (event_info.new).attname, current_user, current_setting('is_superuser'), rel.relname, rel.relkind;
 
   -- We're only interested in real relations
   IF rel.relkind != 'r' THEN RETURN; END IF;
