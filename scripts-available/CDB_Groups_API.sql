@@ -1,3 +1,5 @@
+-- Requires configuration parameter. Example: SELECT cartodb.CDB_Conf_SetConf('groups_api', '{ "host": "127.0.0.1", "port": 3000, "timeout": 10, "username": "superadmin", "password": "monkey" }');
+
 -- Sends the create group request
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_CreateGroup_API(database_name text, group_name text, group_role text)
