@@ -125,8 +125,9 @@ $$
 LANGUAGE 'plpgsql';
 
 -- table with single non-geometrical column
-SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
 CREATE TABLE t AS SELECT 1::int as a;
+SELECT CDB_CartodbfyTable('public', 't'); -- should fail
+SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
 SELECT CDB_CartodbfyTableCheck('t', 'single non-geometrical column');
 DROP TABLE t;
 

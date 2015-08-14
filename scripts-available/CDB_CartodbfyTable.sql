@@ -6,6 +6,26 @@
 --   * _CDB_UserQuotaInBytes() function, installed by rails
 --     (user.rebuild_quota_trigger, called by rake task cartodb:db:update_test_quota_trigger)
 
+-- 1) Required checks before running cartodbfication
+-- Either will pass silenty or raise an exception
+CREATE OR REPLACE FUNCTION _CDB_check_prerequisites(schema_name TEXT, reloid REGCLASS)
+RETURNS void
+AS $$
+DECLARE
+  sql TEXT;
+BEGIN
+  IF cartodb.schema_exists(schema_name) = false THEN
+    RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
+  END IF;
+
+  -- TODO: Check that user quota is set ?
+  BEGIN
+    EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name::text) INTO sql;
+    EXCEPTION WHEN undefined_function THEN
+      RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
+  END;
+END;
+$$ LANGUAGE PLPGSQL;
 
 -- Drop cartodb triggers (might prevent changing columns)
 CREATE OR REPLACE FUNCTION _CDB_drop_triggers(reloid REGCLASS)
@@ -1118,6 +1138,8 @@ BEGIN
   INTO STRICT relschema, relname, destname
   FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid 
   WHERE c.oid = reloid;
+
+  PERFORM cartodb._CDB_check_prerequisites(destschema, reloid);
 
   -- Check destination schema exists
   -- Throws an exception of there is no matching schema
