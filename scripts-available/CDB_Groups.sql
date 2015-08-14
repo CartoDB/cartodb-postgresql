@@ -6,8 +6,8 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    PERFORM cartodb._CDB_Group_CreateGroup_API(current_database(), group_name, group_role);
     EXECUTE 'CREATE ROLE "' || group_role || '" NOLOGIN;';
+    PERFORM cartodb._CDB_Group_CreateGroup_API(current_database(), group_name, group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -23,9 +23,9 @@ DECLARE
     cdb_group_role TEXT;
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    PERFORM cartodb._CDB_Group_DropGroup_API(current_database(), group_name);
     EXECUTE 'DROP OWNED BY "' || cdb_group_role || '"';
     EXECUTE 'DROP ROLE IF EXISTS "' || cdb_group_role || '"';
+    PERFORM cartodb._CDB_Group_DropGroup_API(current_database(), group_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
