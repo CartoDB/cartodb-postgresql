@@ -25,6 +25,8 @@ SELECT CDB_SetUserQuotaInBytes('c', 0);
                        0
 (1 row)
 
+DROP USER IF EXISTS cartodb_postgresql_unpriv_user;
+NOTICE:  role "cartodb_postgresql_unpriv_user" does not exist, skipping
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
@@ -62,9 +64,6 @@ NOTICE:  trigger "track_updates" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "update_the_geom_webmercator_trigger" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "test_quota" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "test_quota_per_row" for table "c.t4" does not exist, skipping
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
-NOTICE:  Trying to recover data from _cartodb_id0 column
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
@@ -92,8 +91,6 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
@@ -118,8 +115,6 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
@@ -147,8 +142,6 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 drop column the_geom_webmercator;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
