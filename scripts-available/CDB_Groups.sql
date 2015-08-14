@@ -116,10 +116,6 @@ DECLARE
     prefix TEXT;
     max_length constant INTEGER := 63;
 BEGIN
-    IF group_name !~ '^[a-zA-Z_][a-zA-Z0-9_]*$'
-    THEN
-        RAISE EXCEPTION 'Group name (%) must be a valid identifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS', group_name;
-    END IF;
     prefix = format('%s_g_', cartodb._CDB_Group_ShortDatabaseName());
     group_role := format('%s%s', prefix, group_name);
     IF LENGTH(group_role) > max_length
