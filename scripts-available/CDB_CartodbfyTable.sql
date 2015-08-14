@@ -323,10 +323,10 @@ $$ LANGUAGE PLPGSQL;
 -- Ensure a table is a "cartodb" table (See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table)
 
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
-RETURNS void
+RETURNS REGCLASS
 AS $$
 BEGIN
-  PERFORM cartodb.CDB_CartodbfyTable('public', reloid);
+  RETURN cartodb.CDB_CartodbfyTable('public', reloid);
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -342,6 +342,10 @@ $$ LANGUAGE PLPGSQL;
 --     Main function, calls the following functions, with a little
 --     logic before the table re-write to avoid re-writing if the table
 --     already has all the necessary columns in place.
+--
+--     It returns the destoid of the table. If no rewritting is needed
+--     the return value will be equal to reloid.
+--
 --
 -- (0) _CDB_check_prerequisites
 --     As before, this checks the prerequisites before trying to cartodbfy
@@ -1121,7 +1125,7 @@ $$ LANGUAGE 'plpgsql';
 
 
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
-RETURNS void 
+RETURNS REGCLASS
 AS $$
 DECLARE
   
@@ -1184,6 +1188,7 @@ BEGIN
     PERFORM _CDB_create_triggers(destschema, destoid);
 
   END IF;
-  
+
+  RETURN (destschema || '.' || destname)::regclass;
 END;
 $$ LANGUAGE 'plpgsql';
