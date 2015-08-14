@@ -31,13 +31,11 @@ BEGIN
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
   -- CDB_CartodbfyTable must not create tables, or infinite loop will happen
-  PERFORM cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
 
   RAISE DEBUG 'Inserting into cartodb.CDB_TableMetadata';
-
-  newtable := Format('%s.%s', rel.nspname, rel.relname)::regclass;
 
   -- Add entry to CDB_TableMetadata (should CartodbfyTable do this?)
   INSERT INTO cartodb.CDB_TableMetadata(tabname, updated_at) 
@@ -99,11 +97,9 @@ BEGIN
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
-
-  newtable := Format('%s.%s', rel.nspname, rel.relname)::regclass;
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
   UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
@@ -145,11 +141,9 @@ BEGIN
 
   PERFORM cartodb.cdb_disable_ddl_hooks();
 
-  PERFORM cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
+  newtable := cartodb.CDB_CartodbfyTable(rel.nspname, event_info.relation);
 
   PERFORM cartodb.cdb_enable_ddl_hooks();
-
-  newtable := Format('%s.%s', rel.nspname, rel.relname)::regclass;
 
   -- update CDB_TableMetadata.updated_at (should invalidate varnish)
   UPDATE cartodb.CDB_TableMetadata SET updated_at = NOW(), tabname = newtable
