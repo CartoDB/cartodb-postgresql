@@ -343,6 +343,9 @@ $$ LANGUAGE PLPGSQL;
 --     logic before the table re-write to avoid re-writing if the table
 --     already has all the necessary columns in place.
 --
+-- (0) _CDB_check_prerequisites
+--     As before, this checks the prerequisites before trying to cartodbfy
+--
 -- (1) _CDB_drop_triggers
 --     As before, this drops all the metadata and geom sync triggers
 --
