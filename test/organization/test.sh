@@ -163,8 +163,8 @@ function setup() {
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
 
     log_info "########################### BOOTSTRAP ###########################"
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups_API.sql
 

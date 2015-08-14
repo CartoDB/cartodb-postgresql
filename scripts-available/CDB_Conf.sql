@@ -2,6 +2,7 @@
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( PARAM TEXT PRIMARY KEY, CONF TEXT NOT NULL );
+    EXECUTE format('GRANT SELECT ON cartodb.CDB_CONF TO %s', cartodb.CDB_Organization_Member_Group_Role_Member_Name());
 END
 $$;
 
