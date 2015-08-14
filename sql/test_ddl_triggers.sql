@@ -97,5 +97,6 @@ RESET SESSION AUTHORIZATION;
 drop schema c cascade;
 select count(*) from CDB_TableMetadata;
 
-DROP USER cartodb_postgresql_unpriv_user;
+DROP OWNED BY cartodb_postgresql_unpriv_user;
+DROP ROLE cartodb_postgresql_unpriv_user;
 DROP FUNCTION _CDB_UserQuotaInBytes();
