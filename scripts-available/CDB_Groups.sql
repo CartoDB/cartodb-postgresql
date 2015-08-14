@@ -6,7 +6,7 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE 'CREATE ROLE "' || group_role || '" NOLOGIN;';
+    EXECUTE format('CREATE ROLE "%s" NOLOGIN;', group_role);
     PERFORM cartodb._CDB_Group_CreateGroup_API(current_database(), group_name, group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -20,11 +20,11 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_DropGroup(group_name text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
+    group_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE 'DROP OWNED BY "' || cdb_group_role || '"';
-    EXECUTE 'DROP ROLE IF EXISTS "' || cdb_group_role || '"';
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE format('DROP OWNED BY "%s"', group_role);
+    EXECUTE format('DROP ROLE IF EXISTS "%s"', group_role);
     PERFORM cartodb._CDB_Group_DropGroup_API(current_database(), group_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -34,7 +34,7 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RenameGroup(old_group_name text, new_group_name text)
     RETURNS VOID AS $$
 BEGIN
-    EXECUTE 'ALTER ROLE "' || cartodb._CDB_Group_GroupRole(old_group_name) || '" RENAME TO "' || cartodb._CDB_Group_GroupRole(new_group_name) || '"';
+    EXECUTE format('ALTER ROLE "%s" RENAME TO "%s"', cartodb._CDB_Group_GroupRole(old_group_name), cartodb._CDB_Group_GroupRole(new_group_name));
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -48,7 +48,7 @@ DECLARE
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE 'GRANT "' || cdb_group_role || '" TO "' || cdb_user_role || '"';
+    EXECUTE format('GRANT "%s" TO "%s"', cdb_group_role, cdb_user_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -62,7 +62,7 @@ DECLARE
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE 'REVOKE "' || cdb_group_role || '" FROM "' || cdb_user_role || '"';
+    EXECUTE format('REVOKE "%s" FROM "%s"', cdb_group_role, cdb_user_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -74,8 +74,8 @@ DECLARE
     cdb_group_role TEXT;
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE 'GRANT USAGE ON SCHEMA "' || username || '" TO "' || cdb_group_role || '"';
-    EXECUTE 'GRANT SELECT ON TABLE "' || username || '"."' || table_name || '" TO "' || cdb_group_role || '"';
+    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, cdb_group_role);
+    EXECUTE format('GRANT SELECT ON TABLE "%s"."%s" TO "%s"', username, table_name, cdb_group_role );
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -87,8 +87,8 @@ DECLARE
     cdb_group_role TEXT;
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE 'GRANT USAGE ON SCHEMA "' || username || '" TO "' || cdb_group_role || '"';
-    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "' || username || '"."' || table_name || '" TO "' || cdb_group_role || '"';
+    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, cdb_group_role);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, cdb_group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -100,7 +100,7 @@ DECLARE
     cdb_group_role TEXT;
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE 'REVOKE ALL ON TABLE "' || username || '"."' || table_name || '" FROM "' || cdb_group_role || '"';
+    EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, cdb_group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -120,8 +120,8 @@ BEGIN
     THEN
         RAISE EXCEPTION 'Group name (%) must be a valid identifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS', group_name;
     END IF;
-    prefix = cartodb._CDB_Group_ShortDatabaseName() || '_g_';
-    group_role := prefix || group_name;
+    prefix = format('%s_g_', cartodb._CDB_Group_ShortDatabaseName());
+    group_role := format('%s%s', prefix, group_name);
     IF LENGTH(group_role) > max_length
     THEN
         RAISE EXCEPTION 'Group name must be shorter. It can''t have more than % characters, but it is longer (%): %', max_length - LENGTH(prefix), length(group_name), group_name;

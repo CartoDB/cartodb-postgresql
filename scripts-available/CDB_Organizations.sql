@@ -42,7 +42,7 @@ BEGIN
     cdb_org_admin_role_name := cartodb._CDB_Organization_Admin_Role_Name();
     IF NOT EXISTS ( SELECT * FROM pg_roles WHERE rolname= cdb_org_admin_role_name )
     THEN
-        EXECUTE 'CREATE ROLE "' || cdb_org_admin_role_name || '" CREATEROLE NOLOGIN;';
+        EXECUTE format('CREATE ROLE "%s" CREATEROLE NOLOGIN;', cdb_org_admin_role_name);
     END IF;
 END
 $$;
@@ -57,9 +57,9 @@ DECLARE
 BEGIN
     cdb_admin_role := cartodb._CDB_Organization_Admin_Role_Name();
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE 'GRANT "' || cdb_admin_role || '" TO "' || cdb_user_role || '" WITH ADMIN OPTION';
+    EXECUTE format('GRANT "%s" TO "%s" WITH ADMIN OPTION', cdb_admin_role, cdb_user_role);
     -- CREATEROLE is not inherited, and is needed for user creation
-    EXECUTE 'ALTER ROLE "' || cdb_user_role || '" CREATEROLE';
+    EXECUTE format('ALTER ROLE "%s" CREATEROLE', cdb_user_role);
 END
 $$ LANGUAGE PLPGSQL;
 
@@ -73,8 +73,8 @@ DECLARE
 BEGIN
     cdb_admin_role := cartodb._CDB_Organization_Admin_Role_Name();
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE 'ALTER ROLE "' || cdb_user_role || '" NOCREATEROLE';
-    EXECUTE 'REVOKE "' || cdb_admin_role || '" FROM "' || cdb_user_role || '"';
+    EXECUTE format('ALTER ROLE "%s" NOCREATEROLE', cdb_user_role);
+    EXECUTE format('REVOKE "%s" FROM "%s"', cdb_admin_role, cdb_user_role);
 END
 $$ LANGUAGE PLPGSQL;
 
