@@ -1,3 +1,4 @@
+-- This will trigger NOTICE if CDB_CONF already exists
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     CREATE TABLE IF NOT EXISTS CDB_CONF ( PARAM TEXT PRIMARY KEY, VALUE TEXT NOT NULL );
