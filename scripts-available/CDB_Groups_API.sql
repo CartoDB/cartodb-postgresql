@@ -9,21 +9,19 @@ $$
     import string
 
     try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.username, c.password from cartodb._CDB_Group_API_Conf() c;")[0]
+      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
       if params['host'] is None:
         return
 
       client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
       body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
-      auth = plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
-      headers = { 'Authorization': ('Basic %s' % auth), 'Content-Type': 'application/json' }
+      headers = { 'Authorization': ('Basic %s' % params['auth']), 'Content-Type': 'application/json' }
       client.request('POST', '/api/v1/databases/%s/groups' % database_name, body, headers)
       response = client.getresponse()
       assert response.status == 200
     except Exception as err:
       plpy.warning('group creation error: ' + str(err))
       raise err
-    
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -34,20 +32,18 @@ $$
     import string
 
     try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.username, c.password from cartodb._CDB_Group_API_Conf() c;")[0]
+      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
       if params['host'] is None:
         return
 
       client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      auth = plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
-      headers = { 'Authorization': ('Basic %s' % auth), 'Content-Type': 'application/json' }
+      headers = { 'Authorization': ('Basic %s' % params['auth']), 'Content-Type': 'application/json' }
       client.request('DELETE', '/api/v1/databases/%s/groups/%s' % (database_name, group_name), '', headers)
       response = client.getresponse()
       assert response.status == 200
     except Exception as err:
       plpy.warning('group creation error: ' + str(err))
       raise err
-    
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 DO LANGUAGE 'plpgsql' $$
@@ -61,8 +57,7 @@ CREATE TYPE _CDB_Group_API_Params AS (
     host text,
     port int,
     timeout int,
-    username text,
-    password text
+    auth text
 );
 
 -- This must be explicitally extracted because "composite types are currently not supported".
@@ -77,7 +72,8 @@ $$
     else:
       import json
       params = json.loads(conf)
-      return { "host": params['host'], "port": params['port'], 'timeout': params['timeout'], 'username': params['username'], 'password': params['password'] }
+      auth = plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
+      return { "host": params['host'], "port": params['port'], 'timeout': params['timeout'], 'auth': auth }
       # return params
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
