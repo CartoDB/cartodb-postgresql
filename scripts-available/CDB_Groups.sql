@@ -49,16 +49,16 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_AddMember(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
-    cdb_user_role TEXT;
+    group_role TEXT;
+    user_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    IF(cdb_group_role IS NULL OR cdb_user_role IS NULL)
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    user_role := cartodb._CDB_User_RoleFromUsername(username);
+    IF(group_role IS NULL OR user_role IS NULL)
     THEN
-      RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', cdb_group_role, cdb_user_role;
+      RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
     END IF;
-    EXECUTE format('GRANT "%s" TO "%s"', cdb_group_role, cdb_user_role);
+    EXECUTE format('GRANT "%s" TO "%s"', group_role, user_role);
     PERFORM cartodb._CDB_Group_AddMember_API(current_database(), group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -68,12 +68,12 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RemoveMember(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
-    cdb_user_role TEXT;
+    group_role TEXT;
+    user_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE format('REVOKE "%s" FROM "%s"', cdb_group_role, cdb_user_role);
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    user_role := cartodb._CDB_User_RoleFromUsername(username);
+    EXECUTE format('REVOKE "%s" FROM "%s"', group_role, user_role);
     PERFORM cartodb._CDB_Group_RemoveMember_API(current_database(), group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -83,11 +83,11 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table_name text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
+    group_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, cdb_group_role);
-    EXECUTE format('GRANT SELECT ON TABLE "%s"."%s" TO "%s"', username, table_name, cdb_group_role );
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
+    EXECUTE format('GRANT SELECT ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role );
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -96,11 +96,11 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, table_name text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
+    group_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, cdb_group_role);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, cdb_group_role);
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -109,10 +109,10 @@ CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table_name text)
     RETURNS VOID AS $$
 DECLARE
-    cdb_group_role TEXT;
+    group_role TEXT;
 BEGIN
-    cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, cdb_group_role);
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
