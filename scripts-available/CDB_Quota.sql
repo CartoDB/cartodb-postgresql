@@ -7,7 +7,7 @@ BEGIN
     SELECT pg_total_relation_size(format('"%s"."%s"', _schema_name, _table_name)) INTO relation_size;
   EXCEPTION
     WHEN undefined_table OR OTHERS THEN
-      RAISE NOTICE 'caught undefined_table: "%"."%"', _schema_name, _table_name;
+      RAISE NOTICE 'cartodb._CDB_total_relation_size(''%'', ''%'') caught error: % (%)', _schema_name, _table_name, SQLERRM, SQLSTATE;
   END;
   RETURN relation_size;
 END;
