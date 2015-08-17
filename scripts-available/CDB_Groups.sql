@@ -33,8 +33,14 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RenameGroup(old_group_name text, new_group_name text)
     RETURNS VOID AS $$
+DECLARE
+    old_group_role TEXT;
+    new_group_role TEXT;
 BEGIN
-    EXECUTE format('ALTER ROLE "%s" RENAME TO "%s"', cartodb._CDB_Group_GroupRole(old_group_name), cartodb._CDB_Group_GroupRole(new_group_name));
+    old_group_role = cartodb._CDB_Group_GroupRole(old_group_name);
+    new_group_role = cartodb._CDB_Group_GroupRole(new_group_name);
+    EXECUTE format('ALTER ROLE "%s" RENAME TO "%s"', old_group_role, new_group_role);
+    PERFORM cartodb._CDB_Group_RenameGroup_API(current_database(), old_group_name, new_group_name, new_group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 

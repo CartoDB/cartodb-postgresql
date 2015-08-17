@@ -46,6 +46,29 @@ $$
       raise err
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_RenameGroup_API(database_name text, old_group_name text, new_group_name text, new_group_role text)
+    RETURNS VOID AS
+$$
+    import httplib
+    import string
+
+    try:
+      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
+      if params['host'] is None:
+        return
+
+      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+      body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
+      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
+      client.request('PUT', '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name), body, headers)
+      response = client.getresponse()
+      assert response.status == 200
+    except Exception as err:
+      plpy.warning('group creation error: ' + str(err))
+      raise err
+$$ LANGUAGE 'plpythonu' VOLATILE;
+
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
