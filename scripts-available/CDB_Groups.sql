@@ -59,6 +59,7 @@ BEGIN
       RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', cdb_group_role, cdb_user_role;
     END IF;
     EXECUTE format('GRANT "%s" TO "%s"', cdb_group_role, cdb_user_role);
+    PERFORM cartodb._CDB_Group_AddMember_API(current_database(), group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
