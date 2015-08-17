@@ -322,6 +322,7 @@ $$ LANGUAGE PLPGSQL;
 
 -- Ensure a table is a "cartodb" table (See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table)
 
+DROP FUNCTION IF EXISTS CDB_CartodbfyTable(reloid REGCLASS);
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
 RETURNS REGCLASS
 AS $$
@@ -1123,7 +1124,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-
+DROP FUNCTION IF EXISTS CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS);
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
 RETURNS REGCLASS
 AS $$
