@@ -54,6 +54,10 @@ DECLARE
 BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
+    IF(cdb_group_role IS NULL OR cdb_user_role IS NULL)
+    THEN
+      RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', cdb_group_role, cdb_user_role;
+    END IF;
     EXECUTE format('GRANT "%s" TO "%s"', cdb_group_role, cdb_user_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
