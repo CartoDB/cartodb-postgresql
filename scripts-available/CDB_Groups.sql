@@ -74,6 +74,7 @@ BEGIN
     cdb_group_role := cartodb._CDB_Group_GroupRole(group_name);
     cdb_user_role := cartodb._CDB_User_RoleFromUsername(username);
     EXECUTE format('REVOKE "%s" FROM "%s"', cdb_group_role, cdb_user_role);
+    PERFORM cartodb._CDB_Group_RemoveMember_API(current_database(), group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 

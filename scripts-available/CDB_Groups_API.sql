@@ -92,6 +92,28 @@ $$
       raise err
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_RemoveMember_API(database_name text, group_name text, username text)
+    RETURNS VOID AS
+$$
+    import httplib
+    import string
+
+    try:
+      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
+      if params['host'] is None:
+        return
+
+      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
+      client.request('DELETE', '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username), '', headers)
+      response = client.getresponse()
+      assert response.status == 200
+    except Exception as err:
+      plpy.warning('group creation error: ' + str(err))
+      raise err
+$$ LANGUAGE 'plpythonu' VOLATILE;
+
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
