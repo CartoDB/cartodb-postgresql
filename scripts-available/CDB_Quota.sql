@@ -1,18 +1,15 @@
 CREATE OR REPLACE FUNCTION cartodb._CDB_total_relation_size(_schema_name TEXT, _table_name TEXT)
 RETURNS bigint AS
 $$
+DECLARE relation_size bigint := 0;
 BEGIN
-  IF EXISTS (
-      SELECT 1 FROM information_schema.tables
-      WHERE table_catalog = current_database()
-        AND table_schema = _schema_name
-        AND table_name = _table_name
-  )
-  THEN
-    RETURN pg_total_relation_size(format('"%s"."%s"', _schema_name, _table_name));
-  ELSE
-    RETURN 0;
-  END IF;
+  BEGIN
+    SELECT pg_total_relation_size(format('"%s"."%s"', _schema_name, _table_name)) INTO relation_size;
+  EXCEPTION
+    WHEN undefined_table OR OTHERS THEN
+      RAISE NOTICE 'caught undefined_table: "%"."%"', _schema_name, _table_name;
+  END;
+  RETURN relation_size;
 END;
 $$
 LANGUAGE 'plpgsql' VOLATILE;
