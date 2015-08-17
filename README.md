@@ -11,7 +11,7 @@ See https://github.com/CartoDB/cartodb/wiki/CartoDB-PostgreSQL-extension
 Dependencies
 ------------
 
- * PostgreSQL 9.3+ (with plpythonu extension)
+ * PostgreSQL 9.3+ (with plpythonu extension and xml support)
  * [PostGIS extension](http://postgis.net) 
  * [Schema triggers extension]
    (https://bitbucket.org/malloclabs/pg_schema_triggers)
@@ -37,6 +37,8 @@ NOTE: if ``test_ddl_triggers`` fails it's likely due to an incomplete
 
 NOTE: you need to run the installcheck as a superuser, use PGUSER
       env variable if needed, like: PGUSER=postgres make installcheck
+      
+NOTE: the tests need to run against a **clean postgres instance**, if you have some roles already created test will likely fail due `publicuser` not being dropped.
 
 Enable database
 ---------------

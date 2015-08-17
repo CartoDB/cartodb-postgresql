@@ -1,3 +1,29 @@
+0.8.3 (2015-mm-dd)
+------------------
+* Fixes CDB_UserDataSize failing due `ERROR: relation "*" does not exist.` [#108](https://github.com/CartoDB/cartodb-postgresql/issues/108)
+
+0.8.2 (2015-07-27)
+------------------
+* Fix for CDB_UserTables returning wrong listings when publicuser is used
+
+0.8.1 (2015-06-30)
+------------------
+* Fix for [#95](https://github.com/CartoDB/cartodb-postgresql/issues/95) *cdb_usertables should return public tables when the user is publicuser*
+
+0.8.0 (2015-06-30)
+------------------
+* Adds new function CDB_QueryTablesText that can deal with "schema.table_name"
+  longer than 63 chars.
+* Adds a set of statistical functions:
+  - CDB_DistType
+  - CDB_DistinctMeasure
+  - CDB_EqualIntervalBins
+* Fix for CDB_UserTables returns 0 entries for multiuser accounts [#64](https://github.com/CartoDB/cartodb-postgresql/issues/64)
+
+0.7.4 (2015-06-29)
+------------------
+Dummy transitional version.
+
 0.7.3 (2015-03-03)
 ------------------
 * Fix upgrade of CDB_StringToDate function

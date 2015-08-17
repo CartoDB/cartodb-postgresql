@@ -142,6 +142,8 @@ function setup() {
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
+    sql "CREATE ROLE publicuser LOGIN;"
+    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -168,9 +170,11 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
+    sql 'DROP ROLE publicuser;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -345,6 +349,50 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
+
+function test_cdb_usertables_should_work_with_orgusers() {
+
+    # This test validates the changes proposed in https://github.com/CartoDB/cartodb/pull/5021
+
+    # create tables
+    sql cdb_testmember_1 "CREATE TABLE test_perms_pub (a int)"
+    sql cdb_testmember_1 "INSERT INTO test_perms_pub (a) values (1);"
+    sql cdb_testmember_1 "GRANT SELECT ON TABLE test_perms_pub TO publicuser"
+    
+    sql cdb_testmember_1 "CREATE TABLE test_perms_priv (a int)"
+
+
+    # this is what we need to make public tables available in CDB_UserTables
+    sql postgres "grant publicuser to cdb_testmember_1;"
+    sql postgres "grant publicuser to cdb_testmember_2;"
+
+
+    # this is required to enable select from other schema
+    sql postgres "GRANT USAGE ON SCHEMA cdb_testmember_1 TO publicuser";
+
+
+    # test CDB_UserTables with publicuser
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
+
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('all')" should 1
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('public')" should 1
+    sql publicuser "SELECT count(*) FROM CDB_UserTables('private')" should 0
+    sql publicuser "SELECT * FROM CDB_UserTables('all')" should "test_perms_pub"
+    sql publicuser "SELECT * FROM CDB_UserTables('public')" should "test_perms_pub"
+    sql publicuser "SELECT * FROM CDB_UserTables('private')" should ""
+    # the following tests are for https://github.com/CartoDB/cartodb-postgresql/issues/98
+    # cdb_testmember_2 is already owner of `bar` table
+    sql cdb_testmember_2 "select string_agg(t,',') from (select cdb_usertables('all') t order by t) as s" should "bar,test_perms_pub"
+    sql cdb_testmember_2 "SELECT * FROM CDB_UserTables('public')" should "test_perms_pub"
+    sql cdb_testmember_2 "SELECT * FROM CDB_UserTables('private')" should "bar"
+
+    # test cdb_testmember_2 can select from cdb_testmember_1's public table
+    sql cdb_testmember_2 "SELECT * FROM cdb_testmember_1.test_perms_pub" should 1
+
+    sql cdb_testmember_1 "DROP TABLE test_perms_pub"
+    sql cdb_testmember_1 "DROP TABLE test_perms_priv"
+}
+
 
 #################################################### TESTS END HERE ####################################################
 
