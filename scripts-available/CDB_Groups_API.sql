@@ -15,7 +15,7 @@ $$
 
       client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
       body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
-      headers = { 'Authorization': ('Basic %s' % params['auth']), 'Content-Type': 'application/json' }
+      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
       client.request('POST', '/api/v1/databases/%s/groups' % database_name, body, headers)
       response = client.getresponse()
       assert response.status == 200
@@ -37,7 +37,7 @@ $$
         return
 
       client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      headers = { 'Authorization': ('Basic %s' % params['auth']), 'Content-Type': 'application/json' }
+      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
       client.request('DELETE', '/api/v1/databases/%s/groups/%s' % (database_name, group_name), '', headers)
       response = client.getresponse()
       assert response.status == 200
@@ -72,7 +72,7 @@ $$
     else:
       import json
       params = json.loads(conf)
-      auth = plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
+      auth = 'Basic %s' % plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
       return { "host": params['host'], "port": params['port'], 'timeout': params['timeout'], 'auth': auth }
       # return params
 $$ LANGUAGE 'plpythonu' VOLATILE;
