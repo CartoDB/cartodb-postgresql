@@ -10,7 +10,7 @@ $$
     url = '/api/v1/databases/%s/groups' % database_name
     body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
-    plpy.execute(query)[0]['response_status']
+    plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -21,7 +21,7 @@ $$
 
     url = '/api/v1/databases/%s/groups/%s' % (database_name, group_name)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
-    plpy.execute(query)[0]['response_status']
+    plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -33,7 +33,7 @@ $$
     url = '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name)
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
     query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s') as response_status" % (url, body)
-    plpy.execute(query)[0]['response_status']
+    plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -45,7 +45,7 @@ $$
     url = '/api/v1/databases/%s/groups/%s/users' % (database_name, group_name)
     body = '{ "username": "%s" }' % username
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
-    plpy.execute(query)[0]['response_status']
+    plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -56,7 +56,7 @@ $$
 
     url = '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
-    plpy.execute(query)[0]['response_status']
+    plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 DO LANGUAGE 'plpgsql' $$
@@ -129,4 +129,6 @@ $$
     if last_err is not None:
       plpy.error('Fatal Group API error: ' + str(last_err))
       raise last_err
+
+    return None
 $$ LANGUAGE 'plpythonu' VOLATILE;

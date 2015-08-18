@@ -173,8 +173,8 @@ function setup() {
     sql "SELECT cartodb.CDB_Organization_AddAdmin('cdb_org_admin');"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
-    #publicuser# sql "CREATE ROLE publicuser LOGIN;"
-    #publicuser# sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
+    sql "CREATE ROLE publicuser LOGIN;"
+    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
@@ -217,12 +217,12 @@ function tear_down() {
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
-    #publicuser# sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_org_admin;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
-    #publicuser# sql 'DROP ROLE publicuser;'
+    sql 'DROP ROLE publicuser;'
     sql 'DROP ROLE cdb_org_admin;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
@@ -397,7 +397,7 @@ function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
-function xtest_cdb_usertables_should_work_with_orgusers() {
+function test_cdb_usertables_should_work_with_orgusers() {
 
     # This test validates the changes proposed in https://github.com/CartoDB/cartodb/pull/5021
 
@@ -529,10 +529,17 @@ function test_administrator_name_generation() {
 
 function test_conf() {
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
+
     sql postgres "SELECT cartodb.CDB_Conf_SetConf('test_conf', 'test_val')"
+
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should 'test_val'
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
+
     sql postgres "SELECT cartodb.CDB_Conf_RemoveConf('test_conf')"
+
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
 }
 
 #################################################### TESTS END HERE ####################################################
