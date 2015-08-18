@@ -9,7 +9,7 @@ $$
 
     url = '/api/v1/databases/%s/groups' % database_name
     body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
-    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
+    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
@@ -20,7 +20,7 @@ $$
     import string
 
     url = '/api/v1/databases/%s/groups/%s' % (database_name, group_name)
-    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
@@ -32,7 +32,7 @@ $$
 
     url = '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name)
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
-    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s') as response_status" % (url, body)
+    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
@@ -44,7 +44,7 @@ $$
 
     url = '/api/v1/databases/%s/groups/%s/users' % (database_name, group_name)
     body = '{ "username": "%s" }' % username
-    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
+    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
@@ -55,7 +55,7 @@ $$
     import string
 
     url = '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username)
-    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
@@ -99,7 +99,7 @@ $$
 $$ LANGUAGE 'plpythonu' IMMUTABLE;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_API_Request(method text, url text, body text)
+FUNCTION cartodb._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
 $$
     import httplib
@@ -118,7 +118,7 @@ $$
         client = SD['groups_api_client'] = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
         client.request(method, url, body, headers)
         response = client.getresponse()
-        assert response.status in [ 200, 409 ]
+        assert response.status in valid_return_codes
         return response.status
       except Exception as err:
         retry -= 1
