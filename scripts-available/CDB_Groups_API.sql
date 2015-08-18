@@ -108,7 +108,6 @@ $$
     if params['host'] is None:
       return None
 
-    client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
     headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
 
     retry = 3
@@ -116,6 +115,7 @@ $$
     last_err = None
     while retry > 0:
       try:
+        client = GD['groups_api_client'] = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
         client.request(method, url, body, headers)
         response = client.getresponse()
         assert response.status in [ 200, 409 ]
@@ -124,6 +124,7 @@ $$
         retry -= 1
         last_err = err
         plpy.warning('Retrying after: ' + str(err))
+        client = GD['groups_api_client'] = None
 
     if last_err is not None:
       plpy.error('Fatal Group API error: ' + str(last_err))
