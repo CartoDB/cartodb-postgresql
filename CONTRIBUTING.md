@@ -49,12 +49,16 @@ also installs migration scripts to go from "V" to "V"next and from "V"next
 to "V". Example to upgrade a 0.2.0dev version:
 
 ```sql
-ALTER EXTENSION cartodb UPDATE TO '0.2.0devnext';
+ALTER EXTENSION cartodb UPDATE TO '0.2.0next';
 ALTER EXTENSION cartodb UPDATE TO '0.2.0dev';
 ```
-
 Starting with 0.2.0, the in-place reload can be done with an ad-hoc function:
 
 ```sql
 SELECT cartodb.cdb_extension_reload();
+```
+
+A useful query:
+```sql
+SELECT * FROM pg_extension_update_paths('cartodb') WHERE path IS NOT NULL AND source = cdb_version();
 ```
