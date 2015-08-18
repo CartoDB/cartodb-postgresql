@@ -60,5 +60,5 @@ SELECT cartodb.cdb_extension_reload();
 
 A useful query:
 ```sql
-SELECT * FROM pg_extension_update_paths('cartodb') WHERE path IS NOT NULL;
+SELECT * FROM pg_extension_update_paths('cartodb') WHERE path IS NOT NULL AND source = cdb_version();
 ```
