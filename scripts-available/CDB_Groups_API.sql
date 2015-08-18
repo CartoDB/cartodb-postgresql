@@ -32,7 +32,7 @@ $$
 
     url = '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name)
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
-    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200}') as response_status" % (url, body)
+    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
