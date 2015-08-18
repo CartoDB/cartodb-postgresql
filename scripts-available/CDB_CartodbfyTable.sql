@@ -35,17 +35,17 @@ DECLARE
   sql TEXT;
 BEGIN
   -- "track_updates"
-  sql := 'DROP TRIGGER IF EXISTS track_updates ON ' || reloid::text;
+  sql := Format('DROP TRIGGER IF EXISTS track_updates ON %s', reloid::text);
   EXECUTE sql;
 
   -- "update_the_geom_webmercator"
-  sql := 'DROP TRIGGER IF EXISTS update_the_geom_webmercator_trigger ON ' || reloid::text;
+  sql := Format('DROP TRIGGER IF EXISTS update_the_geom_webmercator_trigger ON %s', reloid::text);
   EXECUTE sql;
 
   -- "test_quota" and "test_quota_per_row"
-  sql := 'DROP TRIGGER IF EXISTS test_quota ON ' || reloid::text;
+  sql := Format('DROP TRIGGER IF EXISTS test_quota ON %s', reloid::text);
   EXECUTE sql;
-  sql := 'DROP TRIGGER IF EXISTS test_quota_per_row ON ' || reloid::text;
+  sql := Format('DROP TRIGGER IF EXISTS test_quota_per_row ON %s', reloid::text);
   EXECUTE sql;
 END;
 $$ LANGUAGE PLPGSQL;
@@ -68,7 +68,7 @@ BEGIN
   LOOP --{
     had_column := FALSE;
     BEGIN
-      sql := 'ALTER TABLE ' || reloid::text || ' ADD cartodb_id SERIAL NOT NULL UNIQUE';
+      sql := Format('ALTER TABLE %s ADD cartodb_id SERIAL NOT NULL UNIQUE', reloid::text);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
       cartodb_id_name := 'cartodb_id';
@@ -98,7 +98,7 @@ BEGIN
       ELSIF rec.seq IS NULL THEN -- }{
         RAISE NOTICE 'Existing cartodb_id field does not have an associated sequence, renaming';
       ELSE -- }{
-        sql := 'ALTER TABLE ' || reloid::text || ' ALTER COLUMN cartodb_id SET NOT NULL';
+	sql := Format('ALTER TABLE %s ALTER COLUMN cartodb_id SET NOT NULL', reloid::text);
         IF NOT EXISTS ( SELECT c.conname FROM pg_constraint c, pg_attribute a
         WHERE c.conkey = ARRAY[a.attnum] AND c.conrelid = reloid
               AND a.attrelid = reloid
@@ -127,7 +127,7 @@ BEGIN
       LOOP --{
         new_name := '_cartodb_id' || i;
         BEGIN
-          sql := 'ALTER TABLE ' || reloid::text || ' RENAME COLUMN cartodb_id TO ' || new_name;
+	  sql := Format('ALTER TABLE %s RENAME COLUMN cartodb_id TO %I', reloid::text, new_name);
           RAISE DEBUG 'Running %', sql;
           EXECUTE sql;
           EXCEPTION
@@ -151,14 +151,12 @@ BEGIN
       -- Copy existing values to new field
       -- NOTE: using ALTER is a workaround to a PostgreSQL bug and is also known to be faster for tables with many rows
       -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-      sql := 'ALTER TABLE ' || reloid::text
-             || ' ALTER cartodb_id TYPE int USING '
-             || new_name || '::int4';
+      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I', reloid::text, new_name);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
       -- Find max value
-      sql := 'SELECT max(cartodb_id) FROM ' || reloid::text;
+      sql := Format('SELECT max(cartodb_id) FROM %s', reloid::text);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql INTO rec;
 
@@ -167,13 +165,12 @@ BEGIN
         AS seq INTO rec2;
 
       -- Reset sequence name
-      sql := 'ALTER SEQUENCE ' || rec2.seq::text
-             || ' RESTART WITH ' || rec.max + 1;
+      sql := Format('ALTER SEQUENCE %s RESTART WITH %d', rec2.seq::text, rec.max + 1);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
       -- Drop old column (all went fine if we got here)
-      sql := 'ALTER TABLE ' || reloid::text || ' DROP ' || new_name;
+      sql := Format('ALTER TABLE %s DROP %I', reloid::text, new_name);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
@@ -189,7 +186,7 @@ BEGIN
     RAISE EXCEPTION 'Cartodbfying % (Didnt get cartodb_id field name)', reloid;
   END IF;
   BEGIN
-    sql := 'ALTER TABLE ' || reloid::text || ' ADD PRIMARY KEY (cartodb_id)';
+    sql := Format('ALTER TABLE %s ADD PRIMARY KEY (cartodb_id)', reloid::text);
     EXECUTE sql;
     EXCEPTION
     WHEN others THEN
@@ -513,7 +510,7 @@ BEGIN
 
   RAISE DEBUG 'CDB(%): %', '_CDB_Geometry_SRID', 'entered function';
   
-  EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', columnname, reloid::text)
+  EXECUTE Format('SELECT ST_SRID(%I) AS srid FROM %s LIMIT 1', columnname, reloid::text)
   INTO rec;
 
   IF FOUND THEN 
@@ -600,9 +597,9 @@ BEGIN
             Format('found non-unique ''%s'', renaming it', const.pkey);
 
           PERFORM _CDB_SQL(
-            Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
-              reloid::text, rec.attname, 
-              _CDB_Unique_Column_Name(reloid, const.pkey)), 
+            Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
+              reloid::text, rec.attname,
+              _CDB_Unique_Column_Name(reloid, const.pkey)),
             '_CDB_Has_Usable_Primary_ID');
         
         END IF;
@@ -618,8 +615,8 @@ BEGIN
         Format('found non-integer ''%s'', renaming it', const.pkey);
 
       PERFORM _CDB_SQL(
-        Format('ALTER TABLE %s RENAME COLUMN %s TO %s', 
-                reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, const.pkey)), 
+        Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
+                reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, const.pkey)),
                 '_CDB_Has_Usable_Primary_ID');
     
     END IF;
@@ -700,7 +697,7 @@ BEGIN
     -- Name collision: right name but wrong type, rename it!
     IF r1.typname != 'geometry' AND r1.attname = r1.desired_attname THEN
       str := _CDB_Unique_Column_Name(reloid, r1.attname);
-      sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, r1.attname, str);
+      sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
       PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
       RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
         Format('%s is the wrong type, renamed to %s', r1.attname, str);
@@ -824,7 +821,7 @@ BEGIN
   IF has_usable_primary_key AND has_usable_geoms AND destschema != relschema THEN
   
     RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
-    PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %s', reloid::text, destschema), '_CDB_Rewrite_Table');
+    PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
     RETURN true;
 
   -- Don't move anything, just make sure our destination information is set right
@@ -843,18 +840,20 @@ BEGIN
   -- is unique
   destseq := relname || '_' || const.pkey || '_seq';
   destseq := _CDB_Unique_Relation_Name(destschema, destseq);
-  destseq := Format('"%s"."%s"', destschema, destseq);
+  destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Salt a temporary table name if we are re-writing in place
+  -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := destschema || '.' || destname || '_' || salt;
+    copyname := Format('%I.%I', destschema, Format('%s_%s', destname, salt));
   ELSE
-    copyname := destschema || '.' || destname;
+    --copyname := destschema || '.' || destname;
+    copyname := Format('%I.%I', destschema, destname);
   END IF;
   
   -- Start building the SQL!
-  sql := 'CREATE TABLE ' || copyname || ' AS SELECT ';
+  sql := Format('CREATE TABLE %s AS SELECT ', copyname);
 
   -- Add cartodb ID!
   IF has_usable_primary_key THEN
@@ -988,7 +987,7 @@ BEGIN
   END IF;
 
   -- Make the primary key use the sequence as its default value
-  sql := Format('ALTER TABLE %s ALTER COLUMN %I SET DEFAULT nextval(''%s'')', 
+  sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')', 
           copyname, const.pkey, destseq);
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
 
@@ -1013,7 +1012,7 @@ BEGIN
   -- If we used a temporary destination table
   -- we can now rename it into place
   IF destschema = relschema THEN
-    sql := Format('ALTER TABLE %s RENAME TO %s', copyname, destname);
+    sql := Format('ALTER TABLE %s RENAME TO %I', copyname, destname);
     PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
   END IF;
 
