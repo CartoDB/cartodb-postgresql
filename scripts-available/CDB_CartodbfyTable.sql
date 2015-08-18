@@ -843,7 +843,7 @@ BEGIN
   -- is unique
   destseq := relname || '_' || const.pkey || '_seq';
   destseq := _CDB_Unique_Relation_Name(destschema, destseq);
-  destseq := Format('%s.%s', destschema, destseq);
+  destseq := Format('"%s"."%s"', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Salt a temporary table name if we are re-writing in place
