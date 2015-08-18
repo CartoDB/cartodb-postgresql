@@ -5,113 +5,58 @@ CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_CreateGroup_API(database_name text, group_name text, group_role text)
     RETURNS VOID AS
 $$
-    import httplib
     import string
 
-    try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
-      if params['host'] is None:
-        return
-
-      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
-      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
-      client.request('POST', '/api/v1/databases/%s/groups' % database_name, body, headers)
-      response = client.getresponse()
-      assert response.status == 200
-    except Exception as err:
-      plpy.warning('group creation error: ' + str(err))
-      raise err
+    url = '/api/v1/databases/%s/groups' % database_name
+    body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
+    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
+    plpy.execute(query)[0]['response_status']
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_DropGroup_API(database_name text, group_name text)
     RETURNS VOID AS
 $$
-    import httplib
     import string
 
-    try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
-      if params['host'] is None:
-        return
-
-      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
-      client.request('DELETE', '/api/v1/databases/%s/groups/%s' % (database_name, group_name), '', headers)
-      response = client.getresponse()
-      assert response.status == 200
-    except Exception as err:
-      plpy.warning('group creation error: ' + str(err))
-      raise err
+    url = '/api/v1/databases/%s/groups/%s' % (database_name, group_name)
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
+    plpy.execute(query)[0]['response_status']
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_RenameGroup_API(database_name text, old_group_name text, new_group_name text, new_group_role text)
     RETURNS VOID AS
 $$
-    import httplib
     import string
 
-    try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
-      if params['host'] is None:
-        return
-
-      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
-      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
-      client.request('PUT', '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name), body, headers)
-      response = client.getresponse()
-      assert response.status == 200
-    except Exception as err:
-      plpy.warning('group creation error: ' + str(err))
-      raise err
+    url = '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name)
+    body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
+    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s') as response_status" % (url, body)
+    plpy.execute(query)[0]['response_status']
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_AddMember_API(database_name text, group_name text, username text)
     RETURNS VOID AS
 $$
-    import httplib
     import string
 
-    try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
-      if params['host'] is None:
-        return
-
-      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      body = '{ "username": "%s" }' % username
-      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
-      client.request('POST', '/api/v1/databases/%s/groups/%s/users' % (database_name, group_name), body, headers)
-      response = client.getresponse()
-      assert response.status == 200
-    except Exception as err:
-      plpy.warning('group creation error: ' + str(err))
-      raise err
+    url = '/api/v1/databases/%s/groups/%s/users' % (database_name, group_name)
+    body = '{ "username": "%s" }' % username
+    query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s') as response_status" % (url, body)
+    plpy.execute(query)[0]['response_status']
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_RemoveMember_API(database_name text, group_name text, username text)
     RETURNS VOID AS
 $$
-    import httplib
     import string
 
-    try:
-      params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
-      if params['host'] is None:
-        return
-
-      client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-      headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
-      client.request('DELETE', '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username), '', headers)
-      response = client.getresponse()
-      assert response.status == 200
-    except Exception as err:
-      plpy.warning('group creation error: ' + str(err))
-      raise err
+    url = '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username)
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '') as response_status" % url
+    plpy.execute(query)[0]['response_status']
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 DO LANGUAGE 'plpgsql' $$
@@ -152,3 +97,35 @@ $$
     import base64
     base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
 $$ LANGUAGE 'plpythonu' IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_API_Request(method text, url text, body text)
+    RETURNS int AS
+$$
+    import httplib
+
+    params = plpy.execute("select c.host, c.port, c.timeout, c.auth from cartodb._CDB_Group_API_Conf() c;")[0]
+    if params['host'] is None:
+      return None
+
+    client = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+    headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
+
+    retry = 3
+
+    last_err = None
+    while retry > 0:
+      try:
+        client.request(method, url, body, headers)
+        response = client.getresponse()
+        assert response.status in [ 200, 409 ]
+        return response.status
+      except Exception as err:
+        retry -= 1
+        last_err = err
+        plpy.warning('Retrying after: ' + str(err))
+
+    if last_err is not None:
+      plpy.error('Fatal Group API error: ' + str(last_err))
+      raise last_err
+$$ LANGUAGE 'plpythonu' VOLATILE;
