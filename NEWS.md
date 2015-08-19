@@ -1,3 +1,7 @@
+0.9.1 (2015-08-19)
+------------------
+* Fix for transformation to webmercator in corner cases [#116](https://github.com/CartoDB/cartodb-postgresql/issues/116)
+
 0.9.0 (2015-08-19)
 ------------------
 * Re-implementation of `CDB_CartodbfyTable` functions
