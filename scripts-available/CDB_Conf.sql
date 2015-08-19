@@ -1,3 +1,10 @@
+----------------------------------
+-- CONF MANAGEMENT FUNCTIONS
+--
+-- Meant to be used by superadmin user.
+-- Functions needing reading configuration should use SECURITY DEFINER.
+----------------------------------
+
 -- This will trigger NOTICE if CDB_CONF already exists
 DO LANGUAGE 'plpgsql' $$
 BEGIN
@@ -32,7 +39,7 @@ BEGIN
     EXECUTE 'select cartodb._CDB_Conf_Cache(''get'', $1) as conf;' INTO conf USING param;
     RETURN conf;
 END
-$$ LANGUAGE PLPGSQL STABLE SECURITY DEFINER;
+$$ LANGUAGE PLPGSQL STABLE;
 
 -- Single cache function allowing SD private dict usage
 CREATE OR REPLACE

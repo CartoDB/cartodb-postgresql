@@ -66,6 +66,8 @@ $$ LANGUAGE 'plpythonu' VOLATILE;
 
 DO LANGUAGE 'plpgsql' $$
 BEGIN
+    -- Needed for dropping type
+    DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
     DROP TYPE IF EXISTS _CDB_Group_API_Params;
 END
 $$;
@@ -136,4 +138,4 @@ $$
       raise last_err
 
     return None
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
