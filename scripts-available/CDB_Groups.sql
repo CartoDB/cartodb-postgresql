@@ -1,3 +1,9 @@
+----------------------------------
+-- GROUP MANAGEMENT FUNCTIONS
+--
+-- Meant to be used by org admin. See CDB_Organization_AddAdmin.
+----------------------------------
+
 -- Creates a new group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_CreateGroup(group_name text)
@@ -78,6 +84,12 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+----------------------------------
+-- TABLE MANAGEMENT FUNCTIONS
+--
+-- Meant to be used by table owners.
+----------------------------------
+
 -- Grants table read permission to a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table_name text)
@@ -117,7 +129,7 @@ END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 -----------------------
--- Private functions
+-- Helper functions
 -----------------------
 -- Given a group name returns a role. group_name must be a valid PostgreSQL idenfifier. See http://www.postgresql.org/docs/9.2/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 CREATE OR REPLACE
