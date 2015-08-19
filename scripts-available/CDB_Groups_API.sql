@@ -72,6 +72,45 @@ BEGIN
 END
 $$;
 
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_Table_GrantPermission_API(group_name text, username text, table_name text, access text)
+    RETURNS VOID AS
+$$
+    import string
+
+    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', group_name, username, table_name)
+    body = '{ "access": "%s" }' % access
+    query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
+    plpy.execute(query)
+$$ LANGUAGE 'plpythonu' VOLATILE;
+
+DO LANGUAGE 'plpgsql' $$
+BEGIN
+    -- Needed for dropping type
+    DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
+    DROP TYPE IF EXISTS _CDB_Group_API_Params;
+END
+$$;
+
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name text, username text, table_name text)
+    RETURNS VOID AS
+$$
+    import string
+
+    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', group_name, username, table_name)
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
+    plpy.execute(query)
+$$ LANGUAGE 'plpythonu' VOLATILE;
+
+DO LANGUAGE 'plpgsql' $$
+BEGIN
+    -- Needed for dropping type
+    DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
+    DROP TYPE IF EXISTS _CDB_Group_API_Params;
+END
+$$;
+
 CREATE TYPE _CDB_Group_API_Params AS (
     host text,
     port int,

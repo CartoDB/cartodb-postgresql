@@ -100,6 +100,7 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
     EXECUTE format('GRANT SELECT ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role );
+    PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'r');
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -113,6 +114,7 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role);
+    PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'w');
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -125,6 +127,7 @@ DECLARE
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, group_role);
+    PERFORM cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name, username, table_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -158,7 +161,7 @@ DECLARE
     user_role TEXT;
 BEGIN
     -- This was preferred, but non-superadmins won't get results
-    --EXECUTE 'SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1' INTO user_role USING username;
+    -- SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1'
     EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
     RETURN user_role;
 END
