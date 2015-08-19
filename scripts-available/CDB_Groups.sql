@@ -40,7 +40,7 @@ BEGIN
     old_group_role = cartodb._CDB_Group_GroupRole(old_group_name);
     new_group_role = cartodb._CDB_Group_GroupRole(new_group_name);
     EXECUTE format('ALTER ROLE "%s" RENAME TO "%s"', old_group_role, new_group_role);
-    PERFORM cartodb._CDB_Group_RenameGroup_API(current_database(), old_group_name, new_group_name, new_group_role);
+    PERFORM cartodb._CDB_Group_RenameGroup_API(old_group_name, new_group_name, new_group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -59,7 +59,7 @@ BEGIN
       RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
     END IF;
     EXECUTE format('GRANT "%s" TO "%s"', group_role, user_role);
-    PERFORM cartodb._CDB_Group_AddMember_API(current_database(), group_name, username);
+    PERFORM cartodb._CDB_Group_AddMember_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -74,7 +74,7 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     user_role := cartodb._CDB_User_RoleFromUsername(username);
     EXECUTE format('REVOKE "%s" FROM "%s"', group_role, user_role);
-    PERFORM cartodb._CDB_Group_RemoveMember_API(current_database(), group_name, username);
+    PERFORM cartodb._CDB_Group_RemoveMember_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
