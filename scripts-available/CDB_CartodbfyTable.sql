@@ -909,11 +909,9 @@ BEGIN
         || ',4326)::Geometry(' 
         || postgis_typmod_type(a.atttypmod) 
         || ', 4326) AS '
-        || const.geomcol 
-        || ', ST_Transform(' 
-        || a.attname 
-        || ',3857)::Geometry('
-        || postgis_typmod_type(a.atttypmod) 
+        || const.geomcol
+        || ', cartodb.CDB_TransformToWebmercator(' || a.attname || ')::Geometry('
+        || postgis_typmod_type(a.atttypmod)
         || ', 3857) AS '
         || const.mercgeomcol,
         a.attname
