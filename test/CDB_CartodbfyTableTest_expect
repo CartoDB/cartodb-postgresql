@@ -2,8 +2,8 @@ SET
 CREATE FUNCTION
 SELECT 1
 ERROR:  Please set user quota before cartodbfying tables.
-CONTEXT:  SQL statement "SELECT cartodb._CDB_check_prerequisites(schema_name, reloid)"
-PL/pgSQL function cdb_cartodbfytable(text,regclass) line 7 at PERFORM
+CONTEXT:  SQL statement "SELECT cartodb._CDB_check_prerequisites(destschema, reloid)"
+PL/pgSQL function cdb_cartodbfytable(text,regclass) line 21 at PERFORM
 0
 single non-geometrical column cartodbfied fine
 DROP TABLE
@@ -28,30 +28,12 @@ trigger-protected the_geom cartodbfied fine
 extent|BOX(1 1,2 2)
 DROP TABLE
 SELECT 1
-text timestamps cartodbfied fine
-0|0
-CREATE VIEW
-cartodbfied with view cartodbfied fine
-DROP VIEW
-DROP TABLE
-SELECT 1
-text cartodb_id cartodbfied fine
-5
-DROP TABLE
-SELECT 1
-uncasting text cartodb_id cartodbfied fine
-1|nan
-DROP TABLE
-SELECT 1
 unsequenced cartodb_id cartodbfied fine
 1
 DROP TABLE
 CREATE TABLE
 cartodb_id serial primary key cartodbfied fine
 t_pkey|cartodb_id
-DROP TABLE
-CREATE TABLE
-null geom and timestamp values cartodbfied fine
 DROP TABLE
 DROP FUNCTION
 DROP FUNCTION
