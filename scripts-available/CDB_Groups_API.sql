@@ -2,59 +2,59 @@
 
 -- Sends the create group request
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_CreateGroup_API(database_name text, group_name text, group_role text)
+FUNCTION cartodb._CDB_Group_CreateGroup_API(group_name text, group_role text)
     RETURNS VOID AS
 $$
     import string
 
-    url = '/api/v1/databases/%s/groups' % database_name
+    url = '/api/v1/databases/%s/groups'
     body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_DropGroup_API(database_name text, group_name text)
+FUNCTION cartodb._CDB_Group_DropGroup_API(group_name text)
     RETURNS VOID AS
 $$
     import string
 
-    url = '/api/v1/databases/%s/groups/%s' % (database_name, group_name)
+    url = '/api/v1/databases/%s/groups/%s' % ('%s', group_name)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_RenameGroup_API(database_name text, old_group_name text, new_group_name text, new_group_role text)
+FUNCTION cartodb._CDB_Group_RenameGroup_API(old_group_name text, new_group_name text, new_group_role text)
     RETURNS VOID AS
 $$
     import string
 
-    url = '/api/v1/databases/%s/groups/%s' % (database_name, old_group_name)
+    url = '/api/v1/databases/%s/groups/%s' % ('%s', old_group_name)
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
     query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_AddMember_API(database_name text, group_name text, username text)
+FUNCTION cartodb._CDB_Group_AddMember_API(group_name text, username text)
     RETURNS VOID AS
 $$
     import string
 
-    url = '/api/v1/databases/%s/groups/%s/users' % (database_name, group_name)
+    url = '/api/v1/databases/%s/groups/%s/users' % ('%s', group_name)
     body = '{ "username": "%s" }' % username
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_RemoveMember_API(database_name text, group_name text, username text)
+FUNCTION cartodb._CDB_Group_RemoveMember_API(group_name text, username text)
     RETURNS VOID AS
 $$
     import string
 
-    url = '/api/v1/databases/%s/groups/%s/users/%s' % (database_name, group_name, username)
+    url = '/api/v1/databases/%s/groups/%s/users/%s' % ('%s', group_name, username)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE;
@@ -116,7 +116,8 @@ $$
     while retry > 0:
       try:
         client = SD['groups_api_client'] = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
-        client.request(method, url, body, headers)
+        database_name = plpy.execute("select current_database();")[0]['current_database']
+        client.request(method, url % database_name, body, headers)
         response = client.getresponse()
         assert response.status in valid_return_codes
         return response.status
