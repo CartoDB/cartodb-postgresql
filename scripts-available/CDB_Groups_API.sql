@@ -1,4 +1,9 @@
+----------------------------------
+-- GROUP METADATA API FUNCTIONS
+--
+-- Meant to be used by CDB_Group_* functions to sync data with the editor.
 -- Requires configuration parameter. Example: SELECT cartodb.CDB_Conf_SetConf('groups_api', '{ "host": "127.0.0.1", "port": 3000, "timeout": 10, "username": "superadmin", "password": "monkey" }');
+----------------------------------
 
 -- Sends the create group request
 CREATE OR REPLACE
