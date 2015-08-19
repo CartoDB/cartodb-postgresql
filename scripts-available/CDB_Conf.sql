@@ -2,7 +2,6 @@
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( PARAM TEXT PRIMARY KEY, CONF TEXT NOT NULL );
-    EXECUTE format('GRANT SELECT ON cartodb.CDB_CONF TO %s', cartodb.CDB_Organization_Member_Group_Role_Member_Name());
 END
 $$;
 
@@ -33,7 +32,7 @@ BEGIN
     EXECUTE 'select cartodb._CDB_Conf_Cache(''get'', $1) as conf;' INTO conf USING param;
     RETURN conf;
 END
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL STABLE SECURITY DEFINER;
 
 -- Single cache function allowing SD private dict usage
 CREATE OR REPLACE
