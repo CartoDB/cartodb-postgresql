@@ -12,6 +12,7 @@ DECLARE
   tmp INTEGER;
   ogc_geom geometry_columns; -- old the_geom record in geometry_columns
   ogc_merc geometry_columns; -- old the_geom_webmercator record in geometry_columns
+  tabtext TEXT;
 BEGIN
 
   -- Save current constraints on geometry columns, if any
@@ -30,23 +31,16 @@ BEGIN
     END IF;
   END LOOP;
 
+  tabtext := Format('%s.%s','public',tabname);
+  RAISE NOTICE 'CARTODBFYING % !!!!', tabtext;
   PERFORM CDB_CartodbfyTable('public', tabname);
+  tabname := tabtext::regclass;
 
   sql := 'INSERT INTO ' || tabname::text || '(the_geom) values ( CDB_LatLng(2,1) ) RETURNING cartodb_id';
   EXECUTE sql INTO STRICT id;
-  sql := 'SELECT created_at,updated_at,the_geom_webmercator FROM '
+  sql := 'SELECT the_geom_webmercator FROM '
     || tabname::text || ' WHERE cartodb_id = ' || id;
   EXECUTE sql INTO STRICT rec;
-
-  -- Check created_at and updated_at at creation time
-  lag = rec.created_at - now();
-  IF lag > '1 second' THEN
-    RAISE EXCEPTION 'created_at not defaulting to now() after insert [ valued % ago ]', lag;
-  END IF;
-  lag = rec.updated_at - now();
-  IF lag > '1 second' THEN
-    RAISE EXCEPTION 'updated_at not defaulting to now() after insert [ valued % ago ]', lag;
-  END IF;
 
   -- Check the_geom_webmercator trigger
   IF round(st_x(rec.the_geom_webmercator)) != 111319 THEN
@@ -84,7 +78,7 @@ BEGIN
         rec.f_geometry_column, rec.srid, rec.expsrid;
     END IF;
     -- Check TYPE constraint didn't change
-    IF rec.type != rec.exptype THEN
+    IF (rec.type != 'GEOMETRY') AND (rec.type != 'POINT') THEN
       RAISE EXCEPTION 'type of % in geometry_columns is %, expected %',
         rec.f_geometry_column, rec.type, rec.exptype;
     END IF;
@@ -115,10 +109,10 @@ BEGIN
   -- Check null constraint on cartodb_id, created_at, updated_at
   SELECT count(*) FROM pg_attribute a, pg_class c WHERE c.oid = tabname::oid
     AND a.attrelid = c.oid AND NOT a.attisdropped AND a.attname in
-      ( 'cartodb_id', 'created_at', 'updated_at' )
+      ( 'cartodb_id' )
     AND NOT a.attnotnull INTO strict tmp;
   IF tmp > 0 THEN
-      RAISE EXCEPTION 'cartodb_id or created_at or updated_at are missing not-null constraint';
+      RAISE EXCEPTION 'cartodb_id is missing not-null constraint';
   END IF;
 
   -- Cleanup
@@ -170,29 +164,19 @@ SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
 SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
--- table with existing updated_at and created_at fields ot type text
-CREATE TABLE t AS SELECT NOW()::text as created_at,
-                         NOW()::text as updated_at,
-                         NOW() as reftime;
-SELECT CDB_CartodbfyTableCheck('t', 'text timestamps');
-SELECT extract(secs from reftime-created_at),
-       extract(secs from reftime-updated_at) FROM t;
-CREATE VIEW v AS SELECT * FROM t;
-SELECT CDB_CartodbfyTableCheck('t', 'cartodbfied with view');
-DROP VIEW v;
-DROP TABLE t;
+-- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
+-- -- table with existing cartodb_id field of type text
+-- CREATE TABLE t AS SELECT 10::text as cartodb_id;
+-- SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
+-- select cartodb_id/2 FROM t;
+-- DROP TABLE t;
 
--- table with existing cartodb_id field of type text
-CREATE TABLE t AS SELECT 10::text as cartodb_id;
-SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
-select cartodb_id/2 FROM t; 
-DROP TABLE t;
-
--- table with existing cartodb_id field of type text not casting
-CREATE TABLE t AS SELECT 'nan' as cartodb_id;
-SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
-select cartodb_id,_cartodb_id0 FROM t; 
-DROP TABLE t;
+-- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
+-- -- table with existing cartodb_id field of type text not casting
+-- CREATE TABLE t AS SELECT 'nan' as cartodb_id;
+-- SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
+-- select cartodb_id,_cartodb_id0 FROM t;
+-- DROP TABLE t;
 
 -- table with existing cartodb_id field of type int4 not sequenced
 CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
@@ -206,22 +190,6 @@ SELECT CDB_CartodbfyTableCheck('t', 'cartodb_id serial primary key');
 SELECT c.conname, a.attname FROM pg_constraint c, pg_attribute a
 WHERE c.conrelid = 't'::regclass and a.attrelid = c.conrelid
 AND c.conkey[1] = a.attnum AND NOT a.attisdropped;
-DROP TABLE t;
-
--- table with existing the_geom and created_at and containing null values
--- Really, a test for surviving an longstanding PostgreSQL bug:
--- http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-CREATE TABLE t (
-    the_geom geometry(Geometry,4326),
-    created_at timestamptz,
-    updated_at timestamptz
-);
-COPY t (the_geom, created_at, updated_at) FROM stdin;
-0106000020E610000001000000010300000001000000050000009EB8244146435BC017B65E062AD343409EB8244146435BC0F51AF6E2708044400B99891683765AC0F51AF6E2708044400B99891683765AC017B65E062AD343409EB8244146435BC017B65E062AD34340	2012-06-06 21:59:08	2013-06-10 20:17:20
-0106000020E61000000100000001030000000100000005000000DA7763431A1A5CC0FBCEE869313C3A40DA7763431A1A5CC09C1B8F55BC494440F9F4A9C7993356C09C1B8F55BC494440F9F4A9C7993356C0FBCEE869313C3A40DA7763431A1A5CC0FBCEE869313C3A40	2012-06-06 21:59:08	2013-06-10 20:17:20
-\N	\N	\N
-\.
-SELECT CDB_CartodbfyTableCheck('t', 'null geom and timestamp values');
 DROP TABLE t;
 
 -- TODO: table with existing custom-triggered the_geom

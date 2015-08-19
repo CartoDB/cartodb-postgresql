@@ -2,7 +2,22 @@ X.Y.Z (2015-mm-dd)
 ------------------
 * Groups API
 
-0.8.3 (2015-mm-dd)
+0.9.0 (2015-08-19)
+------------------
+* Re-implementation of `CDB_CartodbfyTable` functions
+  - The signature of the main function changes to
+    ```
+    FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
+    RETURNS REGCLASS
+    ```
+    - The `destschema` does not need to match the origin schema of `reloid`
+	- It returns the `regclass` of the cartodbfy'ed table, if it needs to be rewritten.
+  - There are many optimizations
+  - The columns `created_at` and `updated_at` will no longer be added
+* Fix for CDB_UserDataSize failing due `ERROR: relation "*" does not exist.` #110
+* Review test to validate permissions in public tables [#112](https://github.com/CartoDB/cartodb-postgresql/pull/112)
+
+0.8.3 (2015-08-14)
 ------------------
 * Fixes CDB_UserDataSize failing due `ERROR: relation "*" does not exist.` [#108](https://github.com/CartoDB/cartodb-postgresql/issues/108)
 

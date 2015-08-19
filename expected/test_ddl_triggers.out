@@ -25,6 +25,8 @@ SELECT CDB_SetUserQuotaInBytes('c', 0);
                        0
 (1 row)
 
+DROP USER IF EXISTS cartodb_postgresql_unpriv_user;
+NOTICE:  role "cartodb_postgresql_unpriv_user" does not exist, skipping
 CREATE USER cartodb_postgresql_unpriv_user;
 GRANT ALL ON SCHEMA c to cartodb_postgresql_unpriv_user;
 SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
@@ -36,7 +38,6 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select 1 as i INTO c.t3;
 NOTICE:  trigger "track_updates" for table "c.t3" does not exist, skipping
 NOTICE:  trigger "update_the_geom_webmercator_trigger" for table "c.t3" does not exist, skipping
-NOTICE:  trigger "update_updated_at_trigger" for table "c.t3" does not exist, skipping
 NOTICE:  trigger "test_quota" for table "c.t3" does not exist, skipping
 NOTICE:  trigger "test_quota_per_row" for table "c.t3" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
@@ -45,17 +46,6 @@ NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 NOTICE:  cdb_invalidate_varnish(c.t3) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i
-from c.t3;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i 
-------------+-----+------+----------+----------------------+---
-          1 | t   | t    |          |                      | 1
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -72,28 +62,14 @@ SET SESSION AUTHORIZATION 'cartodb_postgresql_unpriv_user';
 select 1 as cartodb_id INTO c.t4;
 NOTICE:  trigger "track_updates" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "update_the_geom_webmercator_trigger" for table "c.t4" does not exist, skipping
-NOTICE:  trigger "update_updated_at_trigger" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "test_quota" for table "c.t4" does not exist, skipping
 NOTICE:  trigger "test_quota_per_row" for table "c.t4" does not exist, skipping
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
-NOTICE:  Trying to recover data from _cartodb_id0 column
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 NOTICE:  cdb_invalidate_varnish(c.t4) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator
-from c.t4;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator 
-------------+-----+------+----------+----------------------
-          1 | t   | t    |          | 
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -115,27 +91,12 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column created_at already exists
-NOTICE:  Column updated_at already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 NOTICE:  cdb_invalidate_varnish(c.t3) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc
-from c.t3;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc 
-------------+-----+------+----------+----------------------+---+---------
-          1 | t   | t    |          |                      | 1 | 
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -154,27 +115,12 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column created_at already exists
-NOTICE:  Column updated_at already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 NOTICE:  cdb_invalidate_varnish(c.t3) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2
-from c.t3;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 
-------------+-----+------+----------+----------------------+---+---------+----------
-          1 | t   | t    |          |                      | 1 |         | 
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -196,27 +142,12 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 drop column the_geom_webmercator;
-NOTICE:  Column cartodb_id already exists
-NOTICE:  Column created_at already exists
-NOTICE:  Column updated_at already exists
-NOTICE:  Column the_geom already exists
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_drop_column" does not exist, skipping
 NOTICE:  event trigger "cdb_on_add_column" does not exist, skipping
 NOTICE:  cdb_invalidate_varnish(c.t3) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2
-from c.t3;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 
-------------+-----+------+----------+----------------------+---+---------+----------
-          1 | t   | t    |          |                      | 1 |         | 
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -239,17 +170,6 @@ select pg_sleep(.1);
 
 alter table c.t3 add column id2 int;
 NOTICE:  cdb_invalidate_varnish(c.t3) called
-select
- cartodb_id, created_at=updated_at as "c=u",
- NOW() - updated_at < '1 secs' as "u<1s",
- the_geom, the_geom_webmercator,
- i, webmerc, webmerc2, id2
-from c.t3;
- cartodb_id | c=u | u<1s | the_geom | the_geom_webmercator | i | webmerc | webmerc2 | id2 
-------------+-----+------+----------+----------------------+---+---------+----------+-----
-          1 | t   | t    |          |                      | 1 |         |          |    
-(1 row)
-
 RESET SESSION AUTHORIZATION;
 select
  tabname::text,
@@ -272,5 +192,6 @@ select count(*) from CDB_TableMetadata;
      0
 (1 row)
 
-DROP USER cartodb_postgresql_unpriv_user;
+DROP OWNED BY cartodb_postgresql_unpriv_user;
+DROP ROLE cartodb_postgresql_unpriv_user;
 DROP FUNCTION _CDB_UserQuotaInBytes();
