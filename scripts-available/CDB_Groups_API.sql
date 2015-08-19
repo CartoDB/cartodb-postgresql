@@ -66,7 +66,6 @@ $$ LANGUAGE 'plpythonu' VOLATILE;
 
 DO LANGUAGE 'plpgsql' $$
 BEGIN
-    DROP FUNCTION IF EXISTS cartodb._CDB_Group_API_Conf();
     DROP TYPE IF EXISTS _CDB_Group_API_Params;
 END
 $$;
@@ -92,7 +91,6 @@ $$
       params = json.loads(conf)
       auth = 'Basic %s' % plpy.execute("SELECT cartodb._CDB_Group_API_Auth('%s', '%s') as auth" % (params['username'], params['password']))[0]['auth']
       return { "host": params['host'], "port": params['port'], 'timeout': params['timeout'], 'auth': auth }
-      # return params
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 CREATE OR REPLACE
@@ -103,6 +101,7 @@ $$
     base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
 $$ LANGUAGE 'plpythonu' IMMUTABLE;
 
+-- url must contain a '%s' placeholder that will be replaced by current_database, for security reasons.
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
