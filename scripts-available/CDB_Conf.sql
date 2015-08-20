@@ -58,7 +58,6 @@ $$
         # Execute returns string, not json :(
         response = plpy.execute("SELECT value FROM cartodb.CDB_CONF WHERE KEY = '%s'" % key);
         if len(response) > 0:
-          import json
           value = response[0]['value']
         SD['conf'][key] = value
       return SD['conf'][key]
