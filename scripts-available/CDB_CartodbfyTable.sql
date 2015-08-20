@@ -925,12 +925,15 @@ BEGIN
       AND t.typname = 'geometry'
       AND a.attnum > 0
       AND NOT a.attisdropped
-      AND (postgis_typmod_srid(a.atttypmod) > 0 OR srid.srid > 0)
+      AND ((postgis_typmod_srid(a.atttypmod) > 0 OR srid.srid > 0) OR (a.attname = const.geomcol))
       ORDER BY a.attnum
       LIMIT 1;
     
       IF FOUND THEN
         sql := sql || geom_transform_sql;
+      ELSE
+        RAISE NOTICE 'rtorre: spetial tricky one';
+	geom_column_source := '';
       END IF;
 
     END IF;
