@@ -16,7 +16,7 @@ $$
     body = '{ "name": "%s", "database_role": "%s" }' % (group_name, group_role)
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_DropGroup_API(group_name text)
@@ -27,7 +27,7 @@ $$
     url = '/api/v1/databases/%s/groups/%s' % ('%s', group_name)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_RenameGroup_API(old_group_name text, new_group_name text, new_group_role text)
@@ -39,7 +39,7 @@ $$
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
     query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_AddMember_API(group_name text, username text)
@@ -51,7 +51,7 @@ $$
     body = '{ "username": "%s" }' % username
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_RemoveMember_API(group_name text, username text)
@@ -62,7 +62,7 @@ $$
     url = '/api/v1/databases/%s/groups/%s/users/%s' % ('%s', group_name, username)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 DO LANGUAGE 'plpgsql' $$
 BEGIN
@@ -82,7 +82,7 @@ $$
     body = '{ "access": "%s" }' % access
     query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 DO LANGUAGE 'plpgsql' $$
 BEGIN
@@ -101,7 +101,7 @@ $$
     url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', group_name, username, table_name)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
-$$ LANGUAGE 'plpythonu' VOLATILE;
+$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 DO LANGUAGE 'plpgsql' $$
 BEGIN
@@ -177,4 +177,5 @@ $$
       raise last_err
 
     return None
-$$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
+$$ LANGUAGE 'plpythonu' VOLATILE;
+revoke all on function cartodb._CDB_Group_API_Request(text, text, text, int[]) from public;
