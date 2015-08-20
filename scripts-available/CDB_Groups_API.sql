@@ -139,8 +139,8 @@ FUNCTION cartodb._CDB_Group_API_Auth(username text, password text)
     RETURNS TEXT AS
 $$
     import base64
-    base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
-$$ LANGUAGE 'plpythonu' IMMUTABLE;
+    return base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+$$ LANGUAGE 'plpythonu' VOLATILE;
 
 -- url must contain a '%s' placeholder that will be replaced by current_database, for security reasons.
 CREATE OR REPLACE
