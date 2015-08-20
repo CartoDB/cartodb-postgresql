@@ -9,6 +9,7 @@
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( KEY TEXT PRIMARY KEY, VALUE JSON NOT NULL );
+    PERFORM pg_catalog.pg_extension_config_dump('cartodb.CDB_CONF', '');
 END
 $$;
 
