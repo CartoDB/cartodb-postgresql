@@ -531,9 +531,9 @@ function test_conf() {
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
 
-    sql postgres "SELECT cartodb.CDB_Conf_SetConf('test_conf', 'test_val')"
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('test_conf', '{ \"a_key\": \"test_val\" }')"
 
-    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should 'test_val'
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should '{ "a_key": "test_val" }'
     sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
 
     sql postgres "SELECT cartodb.CDB_Conf_RemoveConf('test_conf')"
