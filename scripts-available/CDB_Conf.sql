@@ -47,7 +47,7 @@ FUNCTION cartodb._CDB_Conf_Cache(operation text, key text)
     RETURNS JSON AS
 $$
     if 'conf' not in SD:
-      SD['conf'] = dict()
+      SD['conf'] = {}
 
     if operation == 'remove':
       if key in SD['conf']:
