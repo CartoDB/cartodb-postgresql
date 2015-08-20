@@ -8,57 +8,60 @@
 -- This will trigger NOTICE if CDB_CONF already exists
 DO LANGUAGE 'plpgsql' $$
 BEGIN
-    CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( PARAM TEXT PRIMARY KEY, CONF TEXT NOT NULL );
+    CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( KEY TEXT PRIMARY KEY, VALUE JSON NOT NULL );
 END
 $$;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_SetConf(param text, conf text)
+FUNCTION cartodb.CDB_Conf_SetConf(key TEXT, value JSON)
     RETURNS void AS $$
 BEGIN
-    PERFORM cartodb.CDB_Conf_RemoveConf(param);
-    EXECUTE 'INSERT INTO cartodb.CDB_CONF (PARAM, CONF) VALUES ($1, $2);' USING param, conf;
+    PERFORM cartodb.CDB_Conf_RemoveConf(key);
+    EXECUTE 'INSERT INTO cartodb.CDB_CONF (KEY, VALUE) VALUES ($1, $2);' USING key, value;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_RemoveConf(param text)
+FUNCTION cartodb.CDB_Conf_RemoveConf(key text)
     RETURNS void AS $$
 BEGIN
-    PERFORM cartodb._CDB_Conf_Cache('remove', param);
-    EXECUTE 'DELETE FROM cartodb.CDB_CONF WHERE PARAM = $1;' USING param;
+    PERFORM cartodb._CDB_Conf_Cache('remove', key);
+    EXECUTE 'DELETE FROM cartodb.CDB_CONF WHERE KEY = $1;' USING key;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Conf_GetConf(param text)
-    RETURNS TEXT AS $$
+FUNCTION cartodb.CDB_Conf_GetConf(key text)
+    RETURNS JSON AS $$
 DECLARE
-    conf TEXT;
+    value JSON;
 BEGIN
-    EXECUTE 'select cartodb._CDB_Conf_Cache(''get'', $1) as conf;' INTO conf USING param;
-    RETURN conf;
+    EXECUTE 'select cartodb._CDB_Conf_Cache(''get'', $1);' INTO value USING key;
+    RETURN value;
 END
 $$ LANGUAGE PLPGSQL STABLE;
 
 -- Single cache function allowing SD private dict usage
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Conf_Cache(operation text, param text)
-    RETURNS TEXT AS
+FUNCTION cartodb._CDB_Conf_Cache(operation text, key text)
+    RETURNS JSON AS
 $$
     if 'conf' not in SD:
       SD['conf'] = dict()
 
     if operation == 'remove':
-      SD['conf'][param] = None
+      if key in SD['conf']:
+        del(SD['conf'][key])
     elif operation == 'get':
-      if param not in SD['conf']:
+      if key not in SD['conf'] or SD['conf'][key] == None:
         value = None
-        response = plpy.execute("SELECT conf FROM cartodb.CDB_CONF WHERE PARAM = '%s'" % param);
+        # Execute returns string, not json :(
+        response = plpy.execute("SELECT value FROM cartodb.CDB_CONF WHERE KEY = '%s'" % key);
         if len(response) > 0:
-          value = response[0]['conf']
-        SD['conf'][param] = value
-      return SD['conf'][param]
+          import json
+          value = response[0]['value']
+        SD['conf'][key] = value
+      return SD['conf'][key]
     else:
       raise Exception('Unknown operation: %s' % operation)
 $$ LANGUAGE 'plpythonu' VOLATILE;
