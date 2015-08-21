@@ -654,17 +654,29 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
+DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(regclass);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
-  RETURNS BOOLEAN
+RETURNS RECORD
 AS $$
 DECLARE
   r1 RECORD;
   r2 RECORD;
+  rv RECORD;
+
   const RECORD;
+  
   has_geom BOOLEAN := false;
   has_mercgeom BOOLEAN := false;
   has_geom_name TEXT;
   has_mercgeom_name TEXT;
+  
+  -- In case 'the_geom' is a text column
+  text_geom_column BOOLEAN := false;
+  text_geom_column_name TEXT := '';
+  text_geom_column_srid BOOLEAN := true;
+
+  -- Utility variables
+  srid INTEGER;
   str TEXT;
   sql TEXT;
 BEGIN
@@ -694,13 +706,50 @@ BEGIN
   
     RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('checking column ''%s''', r1.attname);
 
-    -- Name collision: right name but wrong type, rename it!
+    -- Name collision: right name (the_geom, the_geomwebmercator?)  but wrong type...
     IF r1.typname != 'geometry' AND r1.attname = r1.desired_attname THEN
-      str := _CDB_Unique_Column_Name(reloid, r1.attname);
-      sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
-      PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-      RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
-        Format('%s is the wrong type, renamed to %s', r1.attname, str);
+    
+      -- Maybe it's a geometry column hiding in a text column?
+      IF r1.typname IN ('text','varchar','char') THEN
+
+        RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('column ''%s'' is a text column', r1.attname);
+
+        BEGIN
+          sql := Format('SELECT Max(ST_SRID(%I::geometry)) AS srid FROM %I', r1.attname, reloid::text);
+          EXECUTE sql INTO srid;
+          -- This gets skipped if EXCEPTION happens
+          -- Let the table writer know we need to convert from text
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('column ''%s'' can be cast from text to geometry', r1.attname);
+          text_geom_column := true;
+          text_geom_column_name := r1.attname;
+          -- Let the table writer know we need to force an SRID
+          IF srid = 0 THEN
+            text_geom_column_srid := false;
+          END IF;
+        -- Nope, the text in the column can't be converted into geometry
+        -- so rename it out of the way
+        EXCEPTION 
+          WHEN others THEN
+            IF SQLERRM = 'parse error - invalid geometry' THEN
+              text_geom_column := false;
+              str := _CDB_Unique_Column_Name(reloid, r1.attname);
+              sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
+              PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
+              RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
+                Format('Text column %s is not convertible to geometry, renamed to %s', r1.attname, str);
+            ELSE
+              RAISE EXCEPTION 'CDB(_CDB_Has_Usable_Geom) UNEXPECTED ERROR';
+            END IF;
+        END;
+
+      -- Just change its name so we can write a new column into that name.
+      ELSE
+        str := _CDB_Unique_Column_Name(reloid, r1.attname);
+        sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
+        PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
+        RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
+          Format('%s is the wrong type, renamed to %s', r1.attname, str);
+      END IF;
 
     -- Found a geometry column!
     ELSIF r1.typname = 'geometry' THEN
@@ -718,6 +767,12 @@ BEGIN
           has_mercgeom := true;
           has_mercgeom_name := r1.attname;
         END IF;
+        
+      -- If it's an unknown SRID, we need to know that too
+      ELSIF r1.srid = 0 OR _CDB_Geometry_SRID(reloid, r1.attname) = 0 THEN
+        
+        -- Unknown SRID, we'll have to fill it in later
+        text_geom_column_srid := true;
         
       END IF;
       
@@ -737,12 +792,19 @@ BEGIN
     PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
   END IF;
   
-  -- If table is perfect (no transforms required), return TRUE!
-  RETURN has_geom AND has_mercgeom;
+  SELECT 
+    -- If table is perfect (no transforms required), return TRUE!
+    has_geom AND has_mercgeom AS has_usable_geoms,
+    -- If the geometry column is hiding in a text field, return enough info to deal w/ it.
+    text_geom_column, text_geom_column_name, text_geom_column_srid
+    INTO rv;
 
+  RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('returning %s', rv);
+  
+  RETURN rv;
+    
 END;
 $$ LANGUAGE 'plpgsql';
-
 
 -- Create a copy of the table. Assumes that the "Has usable" functions
 -- have already been run, so that if there is a 'cartodb_id' column, it is
@@ -771,12 +833,13 @@ DECLARE
 
   rec RECORD;
   const RECORD;
+  gc RECORD;
   sql TEXT;
   str TEXT;
   table_srid INTEGER;
+  geom_srid INTEGER;
   
   has_usable_primary_key BOOLEAN;
-  has_usable_geoms BOOLEAN;
   
 BEGIN
 
@@ -799,7 +862,7 @@ BEGIN
   -- See if there is a primary key column we need to carry along to the
   -- new table. If this is true, it implies there is an indexed
   -- primary key of integer type named (by default) cartodb_id
-  SELECT _CDB_Has_Usable_Primary_ID(reloid) AS has_usable_primary_key
+  SELECT _CDB_Has_Usable_Primary_ID(reloid)
   INTO STRICT has_usable_primary_key;
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_primary_key %', has_usable_primary_key;
@@ -808,24 +871,29 @@ BEGIN
   -- on the table. If they are, we don't need to do any bulk
   -- transformation of the table, we can just ensure proper
   -- indexes are in place and apply a rename
-  SELECT _CDB_Has_Usable_Geom(reloid) AS has_usable_geoms
-  INTO STRICT has_usable_geoms;
+  SELECT *
+  FROM _CDB_Has_Usable_Geom(reloid) 
+  AS (has_usable_geoms boolean, 
+      text_geom_column boolean, 
+      text_geom_column_name text, 
+      text_geom_column_srid boolean)
+  INTO STRICT gc;
 
-  RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', has_usable_geoms;
+  RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', gc.has_usable_geoms;
 
   -- We can only avoid a rewrite if both the key and 
   -- geometry are usable
 
   -- No table re-write is required, BUT a rename is required to 
   -- a destination schema, so do that now
-  IF has_usable_primary_key AND has_usable_geoms AND destschema != relschema THEN
+  IF has_usable_primary_key AND gc.has_usable_geoms AND destschema != relschema THEN
   
     RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
     PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
     RETURN true;
 
   -- Don't move anything, just make sure our destination information is set right
-  ELSIF has_usable_primary_key AND has_usable_geoms AND destschema = relschema THEN
+  ELSIF has_usable_primary_key AND gc.has_usable_geoms AND destschema = relschema THEN
 
     RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
     RETURN true;
@@ -848,7 +916,6 @@ BEGIN
   IF destschema = relschema THEN
     copyname := Format('%I.%I', destschema, Format('%s_%s', destname, salt));
   ELSE
-    --copyname := destschema || '.' || destname;
     copyname := Format('%I.%I', destschema, destname);
   END IF;
   
@@ -863,78 +930,133 @@ BEGIN
   END IF;
 
   -- Add the geometry columns!
-  IF has_usable_geoms THEN
+  IF gc.has_usable_geoms THEN
     sql := sql || ',' || const.geomcol || ',' || const.mercgeomcol;
   ELSE
-    
-    -- This gets complicated: we have to make sure the 
-    -- geometry column we are using can be transformed into
-    -- geographics, which means it needs to have a valid
-    -- SRID.  
-    SELECT a.attname
-    INTO rec
-    FROM pg_class c 
-    JOIN pg_attribute a ON a.attrelid = c.oid 
-    JOIN pg_type t ON a.atttypid = t.oid
-    WHERE c.oid = reloid
-    AND t.typname = 'geometry'
-    AND a.attnum > 0
-    AND NOT a.attisdropped
-    ORDER BY a.attnum
-    LIMIT 1;
-    
-    IF NOT FOUND THEN
-      -- If there is no geometry column, we continue making a 
-      -- non-spatial table. This is important for folks who want
-      -- their tables to invalidate the SQL API 
-      -- cache on update/insert/delete.
-      geom_column_source := '';
-      sql := sql || ',NULL::geometry(Geometry,4326) AS ' || const.geomcol;
-      sql := sql || ',NULL::geometry(Geometry,3857) AS ' || const.mercgeomcol;
+
+    -- Arg, this "geometry" column is actually text!!
+    -- OK, we tested back in our geometry column research that it could
+    -- be safely cast to geometry, so let's do that.  
+    IF gc.text_geom_column THEN
+
+      WITH t AS (
+        SELECT 
+          a.attname,
+          CASE WHEN NOT gc.text_geom_column_srid THEN 'ST_SetSRID(' ELSE '' END AS missing_srid_start,
+          CASE WHEN NOT gc.text_geom_column_srid THEN ',4326)' ELSE '' END AS missing_srid_end
+        FROM pg_class c 
+        JOIN pg_attribute a ON a.attrelid = c.oid 
+        JOIN pg_type t ON a.atttypid = t.oid
+        WHERE c.oid = reloid
+        AND t.typname IN ('text','varchar','char')
+        AND a.attnum > 0
+        AND a.attname = gc.text_geom_column_name
+        AND NOT a.attisdropped
+        ORDER BY a.attnum
+        LIMIT 1
+      )
+      SELECT ', ST_Transform('
+            || t.missing_srid_start || t.attname || '::geometry' || t.missing_srid_end
+            || ',4326)::Geometry(GEOMETRY,4326) AS '
+            || const.geomcol
+            || ', cartodb.CDB_TransformToWebmercator(' 
+            || t.missing_srid_start || t.attname || '::geometry' || t.missing_srid_end
+            || ')::Geometry(GEOMETRY,3857) AS '
+            || const.mercgeomcol,
+            t.attname
+      INTO geom_transform_sql, geom_column_source
+      FROM t;
+
+      IF NOT FOUND THEN
+        -- We checked that this column existed already, it bloody well
+        -- better be found.
+        RAISE EXCEPTION 'CDB(_CDB_Rewrite_Table): Text column % is missing!', gc.text_geom_column_name;
+      ELSE
+        sql := sql || geom_transform_sql;  
+      END IF;
+
+    -- There is at least one true geometry column in here, we'll
+    -- reproject that into the projections we need.  
     ELSE
 
-      -- table_srid = _CDB_Geometry_SRID(reloid, rec.attname);
-       
-      EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', rec.attname, reloid::text)
-      INTO rec;
-    
+      -- Find the column we are going to be working with (the first
+      -- column with type "geometry")
+      SELECT a.attname
+      INTO rec
+      FROM pg_class c 
+      JOIN pg_attribute a ON a.attrelid = c.oid 
+      JOIN pg_type t ON a.atttypid = t.oid
+      WHERE c.oid = reloid
+      AND t.typname = 'geometry'
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      ORDER BY a.attnum
+      LIMIT 1;
+
+      -- The SRID could be undeclared at the table level, but still
+      -- exist in the geometries themselves. We first find our geometry 
+      -- column and read the first SRID off it it, if there is a row
+      -- to read.
+      IF FOUND THEN
+        EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', rec.attname, reloid::text) 
+        INTO geom_srid;
+      ELSE
+        geom_srid := 0;
+      END IF;
+  
       -- The geometry columns weren't in the right projection,
       -- so we need to find the first decent geometry column
       -- in the table and wrap it in two transforms, one to 4326
       -- and another to 3857. Then remember its name so we can
       -- ignore it when we build the list of other columns to
       -- add to the output table
-      SELECT ',ST_Transform(' 
-        || a.attname 
-        || ',4326)::Geometry(' 
-        || postgis_typmod_type(a.atttypmod) 
-        || ', 4326) AS '
-        || const.geomcol
-        || ', cartodb.CDB_TransformToWebmercator(' || a.attname || ')::Geometry('
-        || postgis_typmod_type(a.atttypmod)
-        || ', 3857) AS '
-        || const.mercgeomcol,
-        a.attname
+      WITH t AS (
+        SELECT 
+          a.attname, 
+          postgis_typmod_type(a.atttypmod) AS geomtype, 
+          CASE WHEN postgis_typmod_srid(a.atttypmod) = 0 AND srid.srid = 0 THEN 'ST_SetSRID(' ELSE '' END AS missing_srid_start,
+          CASE WHEN postgis_typmod_srid(a.atttypmod) = 0 AND srid.srid = 0 THEN ',4326)' ELSE '' END AS missing_srid_end
+        FROM pg_class c 
+        JOIN pg_attribute a ON a.attrelid = c.oid 
+        JOIN pg_type t ON a.atttypid = t.oid,
+        ( SELECT geom_srid AS srid ) AS srid
+        WHERE c.oid = reloid
+        AND t.typname = 'geometry'
+        AND a.attnum > 0
+        AND NOT a.attisdropped
+        ORDER BY a.attnum
+        LIMIT 1
+      )
+      SELECT ', ST_Transform(' 
+            || t.missing_srid_start || t.attname || t.missing_srid_end
+            || ',4326)::Geometry(' 
+            || t.geomtype 
+            || ',4326) AS '
+            || const.geomcol
+            || ', cartodb.CDB_TransformToWebmercator(' 
+            || t.missing_srid_start || t.attname || t.missing_srid_end
+            || ')::Geometry('
+            || t.geomtype
+            || ',3857) AS '
+            || const.mercgeomcol,
+            t.attname
       INTO geom_transform_sql, geom_column_source
-      FROM pg_class c 
-      JOIN pg_attribute a ON a.attrelid = c.oid 
-      JOIN pg_type t ON a.atttypid = t.oid,
-      ( SELECT rec.srid AS srid ) AS srid
-      -- ( SELECT table_srid AS srid ) AS srid
-      WHERE c.oid = reloid
-      AND t.typname = 'geometry'
-      AND a.attnum > 0
-      AND NOT a.attisdropped
-      AND (postgis_typmod_srid(a.atttypmod) > 0 OR srid.srid > 0)
-      ORDER BY a.attnum
-      LIMIT 1;
-    
-      IF FOUND THEN
+      FROM t;
+  
+      IF NOT FOUND THEN
+        -- If there are no geometry columns, we continue making a 
+        -- non-spatial table. This is important for folks who want
+        -- their tables to invalidate the SQL API 
+        -- cache on update/insert/delete.
+        geom_column_source := '';
+        sql := sql || ',NULL::geometry(Geometry,4326) AS ' || const.geomcol;
+        sql := sql || ',NULL::geometry(Geometry,3857) AS ' || const.mercgeomcol;
+      ELSE
         sql := sql || geom_transform_sql;
       END IF;
 
     END IF;
-    
+
   END IF;
 
   -- Add now add all the rest of the columns
