@@ -98,7 +98,7 @@ BEGIN
       ELSIF rec.seq IS NULL THEN -- }{
         RAISE NOTICE 'Existing cartodb_id field does not have an associated sequence, renaming';
       ELSE -- }{
-	sql := Format('ALTER TABLE %s ALTER COLUMN cartodb_id SET NOT NULL', reloid::text);
+        sql := Format('ALTER TABLE %s ALTER COLUMN cartodb_id SET NOT NULL', reloid::text);
         IF NOT EXISTS ( SELECT c.conname FROM pg_constraint c, pg_attribute a
         WHERE c.conkey = ARRAY[a.attnum] AND c.conrelid = reloid
               AND a.attrelid = reloid
@@ -127,7 +127,7 @@ BEGIN
       LOOP --{
         new_name := '_cartodb_id' || i;
         BEGIN
-	  sql := Format('ALTER TABLE %s RENAME COLUMN cartodb_id TO %I', reloid::text, new_name);
+          sql := Format('ALTER TABLE %s RENAME COLUMN cartodb_id TO %I', reloid::text, new_name);
           RAISE DEBUG 'Running %', sql;
           EXECUTE sql;
           EXCEPTION

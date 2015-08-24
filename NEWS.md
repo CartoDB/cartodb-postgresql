@@ -1,3 +1,7 @@
+0.9.2 (2015-08-24)
+------------------
+* Fix for `the_geom` column present but not SRID (EWKT) and other corner cases [#121](https://github.com/CartoDB/cartodb-postgresql/pull/121)
+
 0.9.1 (2015-08-19)
 ------------------
 * Fix for transformation to webmercator in corner cases [#116](https://github.com/CartoDB/cartodb-postgresql/issues/116)
