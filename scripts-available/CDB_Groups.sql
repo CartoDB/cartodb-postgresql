@@ -114,7 +114,33 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role);
+    PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, true);
     PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'w');
+END
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+-- Granting and revoking permissions on sequences
+CREATE OR REPLACE
+FUNCTION cartodb._CDB_Group_TableSequences_Permission(group_name text, username text, table_name text, do_grant bool)
+    RETURNS VOID AS $$
+DECLARE
+    column_name TEXT;
+    sequence_name TEXT;
+    group_role TEXT;
+BEGIN
+    group_role := cartodb._CDB_Group_GroupRole(group_name);
+    FOR column_name IN EXECUTE 'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = current_database() AND TABLE_SCHEMA = $1 AND TABLE_NAME = $2 AND COLUMN_DEFAULT LIKE ''nextval%''' USING username, table_name
+    LOOP
+        EXECUTE 'SELECT PG_GET_SERIAL_SEQUENCE($1, $2)' USING table_name, column_name INTO sequence_name;
+        IF sequence_name IS NOT NULL THEN
+          IF do_grant THEN
+            EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %s TO "%s"', sequence_name, group_role);
+          ELSE
+            EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM "%s"', sequence_name, group_role);
+          END IF;
+        END IF;
+    END LOOP;
+    RETURN;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -127,6 +153,7 @@ DECLARE
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, group_role);
+    PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, false);
     PERFORM cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name, username, table_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
