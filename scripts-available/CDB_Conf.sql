@@ -9,6 +9,12 @@
 DO LANGUAGE 'plpgsql' $$
 BEGIN
     CREATE TABLE IF NOT EXISTS cartodb.CDB_CONF ( KEY TEXT PRIMARY KEY, VALUE JSON NOT NULL );
+END
+$$;
+
+-- This can only be called from an SQL script executed by CREATE EXTENSION
+DO LANGUAGE 'plpgsql' $$
+BEGIN
     PERFORM pg_catalog.pg_extension_config_dump('cartodb.CDB_CONF', '');
 END
 $$;
