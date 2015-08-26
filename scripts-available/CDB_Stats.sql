@@ -5,9 +5,10 @@
 --
 -- Returns: statistical quantity chosen
 -- 
+-- References: http://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
 --
 
--- Calculate Pearson's moment coefficient of kurtosis
+-- Calculate kurtosis
 CREATE OR REPLACE FUNCTION CDB_Kurtosis ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
 DECLARE
     a numeric;
@@ -19,7 +20,7 @@ BEGIN
 
     RAISE NOTICE 'avg: %, cnt: %, std: %', a, c, s;
 
-    EXECUTE 'SELECT sum(power($1 - e, 4)) / ( $2 * power($3, 4))
+    EXECUTE 'SELECT sum(power($1 - e, 4)) / ( $2 * power($3, 4)) - 3
              FROM (SELECT unnest($4) e ) x'
     INTO k
     USING a, c, s, in_array;
@@ -28,7 +29,7 @@ BEGIN
 END;
 $$ language plpgsql IMMUTABLE;
 
--- Calculate Pearson's moment coefficient of skewness
+-- Calculate skewness
 CREATE OR REPLACE FUNCTION CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
 DECLARE
     a numeric;
