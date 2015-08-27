@@ -137,7 +137,7 @@ BEGIN
             -- Here %s is needed since sequence_name has quotes
             EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %s TO %I', sequence_name, group_role);
           ELSE
-            EXECUTE format('REVOKE ALL ON SEQUENCE %I FROM %I', sequence_name, group_role);
+            EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM %I', sequence_name, group_role);
           END IF;
         END IF;
     END LOOP;
