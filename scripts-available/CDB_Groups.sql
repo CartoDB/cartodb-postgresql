@@ -134,7 +134,8 @@ BEGIN
         EXECUTE 'SELECT PG_GET_SERIAL_SEQUENCE($1, $2)' USING table_name, column_name INTO sequence_name;
         IF sequence_name IS NOT NULL THEN
           IF do_grant THEN
-            EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %I TO %I', sequence_name, group_role);
+            -- Here %s is needed since sequence_name has quotes
+            EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %s TO %I', sequence_name, group_role);
           ELSE
             EXECUTE format('REVOKE ALL ON SEQUENCE %I FROM %I', sequence_name, group_role);
           END IF;
