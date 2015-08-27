@@ -1,3 +1,7 @@
+0.9.4 (2015-08-28)
+------------------
+* Fixed issue with indices when renaming tables [#123](https://github.com/CartoDB/cartodb-postgresql/issues/123)
+
 0.9.3 (2015-08-27)
 ------------------
 * Modify sampling of quota trigger [#126](https://github.com/CartoDB/cartodb-postgresql/issues/126)

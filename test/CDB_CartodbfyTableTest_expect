@@ -51,5 +51,12 @@ CREATE TABLE
 cartodb_id serial primary key cartodbfied fine
 t_pkey|cartodb_id
 DROP TABLE
+CREATE TABLE
+original
+ALTER TABLE
+CREATE TABLE
+original
+DROP TABLE
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION
