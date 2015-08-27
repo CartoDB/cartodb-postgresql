@@ -12,7 +12,7 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('CREATE ROLE "%s" NOLOGIN;', group_role);
+    EXECUTE format('CREATE ROLE %I NOLOGIN;', group_role);
     PERFORM cartodb._CDB_Group_CreateGroup_API(group_name, group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -29,8 +29,8 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('DROP OWNED BY "%s"', group_role);
-    EXECUTE format('DROP ROLE IF EXISTS "%s"', group_role);
+    EXECUTE format('DROP OWNED BY %I', group_role);
+    EXECUTE format('DROP ROLE IF EXISTS %I', group_role);
     PERFORM cartodb._CDB_Group_DropGroup_API(group_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -45,7 +45,7 @@ DECLARE
 BEGIN
     old_group_role = cartodb._CDB_Group_GroupRole(old_group_name);
     new_group_role = cartodb._CDB_Group_GroupRole(new_group_name);
-    EXECUTE format('ALTER ROLE "%s" RENAME TO "%s"', old_group_role, new_group_role);
+    EXECUTE format('ALTER ROLE %I RENAME TO %I', old_group_role, new_group_role);
     PERFORM cartodb._CDB_Group_RenameGroup_API(old_group_name, new_group_name, new_group_role);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -64,7 +64,7 @@ BEGIN
     THEN
       RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
     END IF;
-    EXECUTE format('GRANT "%s" TO "%s"', group_role, user_role);
+    EXECUTE format('GRANT %I TO %I', group_role, user_role);
     PERFORM cartodb._CDB_Group_AddMember_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -79,7 +79,7 @@ DECLARE
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE format('REVOKE "%s" FROM "%s"', group_role, user_role);
+    EXECUTE format('REVOKE %I FROM %I', group_role, user_role);
     PERFORM cartodb._CDB_Group_RemoveMember_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -98,8 +98,8 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
-    EXECUTE format('GRANT SELECT ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role );
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', username, group_role);
+    EXECUTE format('GRANT SELECT ON TABLE %I.%I TO %I', username, table_name, group_role );
     PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'r');
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -112,8 +112,8 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('GRANT USAGE ON SCHEMA "%s" TO "%s"', username, group_role);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "%s"."%s" TO "%s"', username, table_name, group_role);
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', username, group_role);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE %I.%I TO %I', username, table_name, group_role);
     PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, true);
     PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'w');
 END
@@ -134,9 +134,9 @@ BEGIN
         EXECUTE 'SELECT PG_GET_SERIAL_SEQUENCE($1, $2)' USING table_name, column_name INTO sequence_name;
         IF sequence_name IS NOT NULL THEN
           IF do_grant THEN
-            EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %s TO "%s"', sequence_name, group_role);
+            EXECUTE format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE %I TO %I', sequence_name, group_role);
           ELSE
-            EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM "%s"', sequence_name, group_role);
+            EXECUTE format('REVOKE ALL ON SEQUENCE %I FROM %I', sequence_name, group_role);
           END IF;
         END IF;
     END LOOP;
@@ -152,7 +152,7 @@ DECLARE
     group_role TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    EXECUTE format('REVOKE ALL ON TABLE "%s"."%s" FROM "%s"', username, table_name, group_role);
+    EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM %I', username, table_name, group_role);
     PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, false);
     PERFORM cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name, username, table_name);
 END
