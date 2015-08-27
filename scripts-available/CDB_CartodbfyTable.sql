@@ -1234,7 +1234,7 @@ BEGIN
     AND c.oid = reloid
     AND am.amname != 'gist'
   LOOP
-    sql := Format('CREATE INDEX %s_%s_gix ON %s USING GIST (%s)', relname, rec.attname, reloid::text, rec.attname);
+    sql := Format('CREATE INDEX ON %s USING GIST (%s)', reloid::text, rec.attname);
     PERFORM _CDB_SQL(sql, '_CDB_Add_Indexes');
   END LOOP;
     

@@ -216,6 +216,15 @@ WHERE c.conrelid = 't'::regclass and a.attrelid = c.conrelid
 AND c.conkey[1] = a.attnum AND NOT a.attisdropped;
 DROP TABLE t;
 
+-- tables can be renamed and there's no index name clashing #123
+CREATE TABLE original();
+SELECT CDB_CartodbfyTable('original');
+ALTER TABLE original RENAME TO original_renamed;
+CREATE TABLE original();
+SELECT CDB_CartodbfyTable('original');
+DROP TABLE original_renamed;
+DROP TABLE original;
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);
