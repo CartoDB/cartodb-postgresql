@@ -1,6 +1,9 @@
 set client_min_messages to error;
 \set VERBOSITY default
 
+-- See the dice
+SELECT setseed(0.5);
+
 CREATE TABLE big(a int);
 -- Try the legacy interface
 -- See https://github.com/CartoDB/cartodb-postgresql/issues/13
@@ -18,6 +21,7 @@ SELECT CDB_UserDataSize();
 SELECT cartodb._CDB_total_relation_size('public', 'big');
 SELECT cartodb._CDB_total_relation_size('public', 'nonexistent_table_name');
 -- END Test for #108
+SELECT setseed(0.9);
 SELECT CDB_SetUserQuotaInBytes(2);
 INSERT INTO big VALUES (8193);
 SELECT CDB_SetUserQuotaInBytes(0);

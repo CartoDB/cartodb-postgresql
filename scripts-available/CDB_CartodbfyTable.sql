@@ -222,7 +222,7 @@ BEGIN
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
          || reloid::text
-         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
+         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(0.1, ''-1'', '''
          || schema_name::text
          || ''')';
   EXECUTE sql;
