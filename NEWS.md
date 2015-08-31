@@ -1,3 +1,7 @@
+next (2015-??-??)
+-----------------
+* Removed `DROP FUNCTION IF EXISTS cdb_usertables(text);` [#129](https://github.com/CartoDB/cartodb-postgresql/pull/129). This was needed for upgrading between 0.7.4 to 0.8.0 but is no longer needed.
+
 0.9.4 (2015-08-28)
 ------------------
 * Fixed issue with indices when renaming tables [#123](https://github.com/CartoDB/cartodb-postgresql/issues/123)
