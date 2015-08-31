@@ -31,9 +31,32 @@ SELECT 1
 unsequenced cartodb_id cartodbfied fine
 1
 DROP TABLE
+SELECT 1
+text the_geom column cartodbfied fine
+1
+DROP TABLE
+SELECT 1
+text the_geom column, no srs cartodbfied fine
+1
+DROP TABLE
+SELECT 1
+text the_geom column, srs = 26819 cartodbfied fine
+1
+DROP TABLE
+SELECT 1
+text the_geom column, unparseable content cartodbfied fine
+1
+DROP TABLE
 CREATE TABLE
 cartodb_id serial primary key cartodbfied fine
 t_pkey|cartodb_id
+DROP TABLE
+CREATE TABLE
+original
+ALTER TABLE
+CREATE TABLE
+original
+DROP TABLE
 DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

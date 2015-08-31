@@ -181,7 +181,31 @@ DROP TABLE t;
 -- table with existing cartodb_id field of type int4 not sequenced
 CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
-select cartodb_id FROM t; 
+SELECT cartodb_id FROM t; 
+DROP TABLE t;
+
+-- table with text geometry column
+CREATE TABLE t AS SELECT 'SRID=4326;POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column');
+SELECT cartodb_id FROM t; 
+DROP TABLE t;
+
+-- table with text geometry column, no SRS
+CREATE TABLE t AS SELECT 'POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, no srs');
+SELECT cartodb_id FROM t; 
+DROP TABLE t;
+
+-- table with text geometry column, unusual SRS
+CREATE TABLE t AS SELECT 'SRID=26910;POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, srs = 26819');
+SELECT cartodb_id FROM t; 
+DROP TABLE t;
+
+-- table with text unparseable geometry column
+CREATE TABLE t AS SELECT 'SRID=26910;PONT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, unparseable content');
+SELECT cartodb_id FROM t; 
 DROP TABLE t;
 
 -- table with existing cartodb_id serial primary key
@@ -191,6 +215,15 @@ SELECT c.conname, a.attname FROM pg_constraint c, pg_attribute a
 WHERE c.conrelid = 't'::regclass and a.attrelid = c.conrelid
 AND c.conkey[1] = a.attnum AND NOT a.attisdropped;
 DROP TABLE t;
+
+-- tables can be renamed and there's no index name clashing #123
+CREATE TABLE original();
+SELECT CDB_CartodbfyTable('original');
+ALTER TABLE original RENAME TO original_renamed;
+CREATE TABLE original();
+SELECT CDB_CartodbfyTable('original');
+DROP TABLE original_renamed;
+DROP TABLE original;
 
 -- TODO: table with existing custom-triggered the_geom
 
