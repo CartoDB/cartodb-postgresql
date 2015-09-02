@@ -337,6 +337,20 @@ function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
     sql postgres "REVOKE ALL ON CDB_TableMetadata FROM cdb_testmember_1;"
 }
 
+function test_cdb_column_names() {
+    sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_cnames(c int, a int, r int, t int, o int);'
+    sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_cnames(d int, b int);'
+
+    sql cdb_testmember_1 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('table_cnames') c) as s" should "carto"
+    sql cdb_testmember_2 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('table_cnames') c) as s" should "db"
+
+    sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames'::regclass) c) as s" should "carto"
+    sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_2.table_cnames') c) as s" should "db"
+
+    sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_cnames'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
+}
+
 #################################################### TESTS END HERE ####################################################
 
 run_tests $@
