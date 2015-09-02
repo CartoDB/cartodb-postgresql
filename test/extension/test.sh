@@ -347,6 +347,9 @@ function test_cdb_column_names() {
     sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames'::regclass) c) as s" should "carto"
     sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_2.table_cnames') c) as s" should "db"
 
+    # Using schema from owner
+    sql cdb_testmember_1 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames') c) as s" should "carto"
+
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_cnames'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
 }
