@@ -351,6 +351,20 @@ function test_cdb_column_names() {
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
 }
 
+function test_cdb_column_type() {
+    sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_ctype(c int, a int, r int, t int, o int);'
+    sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_ctype(c text, a text, r text, t text, o text);'
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_ColumnType('table_ctype', 'c')" should "integer"
+    sql cdb_testmember_2 "SELECT cartodb.CDB_ColumnType('table_ctype', 'c')" should "text"
+
+    sql postgres "SELECT cartodb.CDB_ColumnType('cdb_testmember_1.table_ctype', 'c')" should "integer"
+    sql postgres "SELECT cartodb.CDB_ColumnType('cdb_testmember_2.table_ctype', 'c')" should "text"
+
+    sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_ctype'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_ctype'
+}
+
 #################################################### TESTS END HERE ####################################################
 
 run_tests $@
