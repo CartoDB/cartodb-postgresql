@@ -350,6 +350,9 @@ function test_cdb_column_names() {
     # Using schema from owner
     sql cdb_testmember_1 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames') c) as s" should "carto"
 
+    ## it's not possible to get column names from a table where you don't have permissions
+    sql cdb_testmember_2 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames') c) as s" fails
+
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_cnames'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
 }
