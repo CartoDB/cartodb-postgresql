@@ -25,7 +25,7 @@ $$
     import string
     import urllib
 
-    url = '/api/v1/databases/%s/groups/%s' % ('%s', urllib.quote_plus(group_name))
+    url = '/api/v1/databases/%s/groups/%s' % ('%s', urllib.quote(group_name))
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
@@ -50,7 +50,7 @@ $$
     import string
     import urllib
 
-    url = '/api/v1/databases/%s/groups/%s/users' % ('%s', urllib.quote_plus(group_name))
+    url = '/api/v1/databases/%s/groups/%s/users' % ('%s', urllib.quote(group_name))
     body = '{ "username": "%s" }' % username
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
@@ -63,7 +63,7 @@ $$
     import string
     import urllib
 
-    url = '/api/v1/databases/%s/groups/%s/users/%s' % ('%s', urllib.quote_plus(group_name), username)
+    url = '/api/v1/databases/%s/groups/%s/users/%s' % ('%s', urllib.quote(group_name), username)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
@@ -83,7 +83,7 @@ $$
     import string
     import urllib
 
-    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', urllib.quote_plus(group_name), username, table_name)
+    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', urllib.quote(group_name), username, table_name)
     body = '{ "access": "%s" }' % access
     query = "select cartodb._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
@@ -104,7 +104,7 @@ $$
     import string
     import urllib
 
-    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', urllib.quote_plus(group_name), username, table_name)
+    url = '/api/v1/databases/%s/groups/%s/permission/%s/tables/%s' % ('%s', urllib.quote(group_name), username, table_name)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
