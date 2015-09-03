@@ -227,7 +227,12 @@ function run_tests() {
     local TESTS
     if [[ $# -ge 1 ]]
     then
-        TESTS="$@"
+        if [[ $# -eq 1 ]]
+        then
+            TESTS=`cat $0 | grep -o "$1[^\(]*"`
+        else
+            TESTS="$@"
+        fi
     else
         TESTS=`cat $0 | perl -n -e'/function (test.*)\(\)/ && print "$1\n"'`
     fi
