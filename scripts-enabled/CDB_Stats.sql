@@ -1,1 +1,1 @@
-scripts-available/CDB_Stats.sql
+../scripts-available/CDB_Stats.sql
