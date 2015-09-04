@@ -3,7 +3,7 @@
 
 With dist As (
   SELECT random()::numeric As val
-  FROM generate_series(1,5000000) t
+  FROM generate_series(1,50000) t
 )
 
 SELECT 
