@@ -50,37 +50,45 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- Adds a user to a group
+-- Adds users to a group, comma-separated
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_AddUser(group_name text, username text)
+FUNCTION cartodb.CDB_Group_AddUsers(group_name text, usernames text)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
     user_role TEXT;
+    username TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    user_role := cartodb._CDB_User_RoleFromUsername(username);
-    IF(group_role IS NULL OR user_role IS NULL)
-    THEN
-      RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
-    END IF;
-    EXECUTE format('GRANT %I TO %I', group_role, user_role);
-    PERFORM cartodb._CDB_Group_AddUser_API(group_name, username);
+    foreach username in array string_to_array(usernames, ',')
+    loop
+      user_role := cartodb._CDB_User_RoleFromUsername(username);
+      IF(group_role IS NULL OR user_role IS NULL)
+      THEN
+        RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
+      END IF;
+      EXECUTE format('GRANT %I TO %I', group_role, user_role);
+    end loop;
+    PERFORM cartodb._CDB_Group_AddUsers_API(group_name, usernames);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Removes a user from a group
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_RemoveUser(group_name text, username text)
+FUNCTION cartodb.CDB_Group_RemoveUsers(group_name text, usernames text)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
     user_role TEXT;
+    username TEXT;
 BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
-    user_role := cartodb._CDB_User_RoleFromUsername(username);
-    EXECUTE format('REVOKE %I FROM %I', group_role, user_role);
-    PERFORM cartodb._CDB_Group_RemoveUser_API(group_name, username);
+    foreach username in array string_to_array(usernames, ',')
+    loop
+      user_role := cartodb._CDB_User_RoleFromUsername(username);
+      EXECUTE format('REVOKE %I FROM %I', group_role, user_role);
+    end loop;
+    PERFORM cartodb._CDB_Group_RemoveUsers_API(group_name, usernames);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
