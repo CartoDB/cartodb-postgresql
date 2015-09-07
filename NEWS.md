@@ -1,3 +1,6 @@
+next (2015-mm-dd)
+-----------------
+
 0.10.0 (2015-09-07)
 -----------------
 * Quote schema and table names returned by CDB_QueryTables [#134](https://github.com/CartoDB/cartodb-postgresql/pull/134). Use quote_ident to quote schema and table names when necessary.
