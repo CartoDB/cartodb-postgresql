@@ -51,27 +51,27 @@ $$
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_AddUsers_API(group_name text, usernames text)
+FUNCTION cartodb._CDB_Group_AddUsers_API(group_name text, usernames text[])
     RETURNS VOID AS
 $$
     import string
     import urllib
 
     url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
-    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames.split(','))
+    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_RemoveUsers_API(group_name text, usernames text)
+FUNCTION cartodb._CDB_Group_RemoveUsers_API(group_name text, usernames text[])
     RETURNS VOID AS
 $$
     import string
     import urllib
 
     url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
-    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames.split(','))
+    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
     query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '%s', '{200, 404}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
