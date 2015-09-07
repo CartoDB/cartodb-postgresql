@@ -535,7 +535,9 @@ DECLARE
   const RECORD;
   i INTEGER;
   sql TEXT;
-  useable_key BOOLEAN = false;
+  seq TEXT;
+  unique_key BOOLEAN = false;
+  has_sequence BOOLEAN = false;
 BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 'entered function';
@@ -556,12 +558,16 @@ BEGIN
 
   -- Found something named right...
   IF FOUND THEN
-  
+
     -- And it's an integer column...
     IF rec.atttypid IN (20,21,23) THEN
+
+      SELECT pg_get_serial_sequence(reloid::text, const.pkey)
+      INTO STRICT seq;
+      has_sequence := seq IS NOT NULL;
           
       -- And it's a unique primary key! Done!
-      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull THEN
+      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull AND has_sequence THEN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
@@ -570,7 +576,7 @@ BEGIN
       ELSE
 
         -- Assume things are OK until proven otherwise...
-        useable_key := true;
+        unique_key := true;
       
         BEGIN
           sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_unique UNIQUE (%s)', reloid::text, const.pkey, const.pkey);
@@ -580,14 +586,14 @@ BEGIN
           -- Failed unique check...
           WHEN unique_violation THEN
             RAISE NOTICE 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
-            useable_key := false;
+            unique_key := false;
           -- Other fatal error
           WHEN others THEN
             PERFORM _CDB_Error(sql, '_CDB_Has_Usable_Primary_ID');          
         END;
   
         -- Clean up test constraint
-        IF useable_key THEN
+        IF unique_key THEN
           PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_unique', reloid::text, const.pkey));
 
         -- Move non-unique column out of the way
@@ -604,7 +610,7 @@ BEGIN
         
         END IF;
         
-        return useable_key;
+        return unique_key AND has_sequence;
 
       END IF;
     
