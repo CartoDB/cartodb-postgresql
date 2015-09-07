@@ -5,6 +5,12 @@
 -- Requires configuration parameter. Example: SELECT cartodb.CDB_Conf_SetConf('groups_api', '{ "host": "127.0.0.1", "port": 3000, "timeout": 10, "username": "extension", "password": "elephant" }');
 ----------------------------------
 
+-- TODO: delete this development cleanup before final merge
+DROP FUNCTION IF EXISTS cartodb.CDB_Group_AddMember(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb.CDB_Group_RemoveMember(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb._CDB_Group_AddMember_API(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb._CDB_Group_RemoveMember_API(group_name text, username text);
+
 -- Sends the create group request
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_CreateGroup_API(group_name text, group_role text)
@@ -45,27 +51,28 @@ $$
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_AddMember_API(group_name text, username text)
+FUNCTION cartodb._CDB_Group_AddUsers_API(group_name text, usernames text[])
     RETURNS VOID AS
 $$
     import string
     import urllib
 
     url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
-    body = '{ "username": "%s" }' % username
+    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
     query = "select cartodb._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_RemoveMember_API(group_name text, username text)
+FUNCTION cartodb._CDB_Group_RemoveUsers_API(group_name text, usernames text[])
     RETURNS VOID AS
 $$
     import string
     import urllib
 
-    url = '/api/v1/databases/{0}/groups/%s/users/%s' % (urllib.pathname2url(group_name), username)
-    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
+    url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
+    body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '%s', '{200, 404}') as response_status" % (url, body)
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
