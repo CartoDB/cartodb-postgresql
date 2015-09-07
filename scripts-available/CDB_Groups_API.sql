@@ -5,6 +5,12 @@
 -- Requires configuration parameter. Example: SELECT cartodb.CDB_Conf_SetConf('groups_api', '{ "host": "127.0.0.1", "port": 3000, "timeout": 10, "username": "extension", "password": "elephant" }');
 ----------------------------------
 
+-- TODO: delete this development cleanup before final merge
+DROP FUNCTION IF EXISTS cartodb.CDB_Group_AddMember(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb.CDB_Group_RemoveMember(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb._CDB_Group_AddMember_API(group_name text, username text);
+DROP FUNCTION IF EXISTS cartodb._CDB_Group_RemoveMember_API(group_name text, username text);
+
 -- Sends the create group request
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_CreateGroup_API(group_name text, group_role text)
