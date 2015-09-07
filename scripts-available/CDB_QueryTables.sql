@@ -41,11 +41,11 @@ BEGIN
           xpath('//x:Relation-Name/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as x,
           xpath('//x:Relation-Name/../x:Schema/text()', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]) as s
       )
-      SELECT unnest(x) as p, unnest(s) as sc from inp
+      SELECT unnest(x)::text as p, unnest(s)::text as sc from inp
     LOOP
       -- RAISE DEBUG 'tab: %', rec2.p;
       -- RAISE DEBUG 'sc: %', rec2.sc;
-      tables := array_append(tables, (rec2.sc || '.' || rec2.p));
+      tables := array_append(tables, format('%s.%s', quote_ident(rec2.sc), quote_ident(rec2.p)));
     END LOOP;
 
     -- RAISE DEBUG 'Tables: %', tables;
