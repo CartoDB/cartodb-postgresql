@@ -45,7 +45,7 @@ $$
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_AddMember_API(group_name text, username text)
+FUNCTION cartodb._CDB_Group_AddUser_API(group_name text, username text)
     RETURNS VOID AS
 $$
     import string
@@ -58,7 +58,7 @@ $$
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE
-FUNCTION cartodb._CDB_Group_RemoveMember_API(group_name text, username text)
+FUNCTION cartodb._CDB_Group_RemoveUser_API(group_name text, username text)
     RETURNS VOID AS
 $$
     import string

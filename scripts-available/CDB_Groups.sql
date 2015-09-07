@@ -52,7 +52,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Adds a user to a group
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_AddMember(group_name text, username text)
+FUNCTION cartodb.CDB_Group_AddUser(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
@@ -65,13 +65,13 @@ BEGIN
       RAISE EXCEPTION 'Group role (%) and user role (%) must be already existing', group_role, user_role;
     END IF;
     EXECUTE format('GRANT %I TO %I', group_role, user_role);
-    PERFORM cartodb._CDB_Group_AddMember_API(group_name, username);
+    PERFORM cartodb._CDB_Group_AddUser_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 -- Removes a user from a group
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_RemoveMember(group_name text, username text)
+FUNCTION cartodb.CDB_Group_RemoveUser(group_name text, username text)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
@@ -80,7 +80,7 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     user_role := cartodb._CDB_User_RoleFromUsername(username);
     EXECUTE format('REVOKE %I FROM %I', group_role, user_role);
-    PERFORM cartodb._CDB_Group_RemoveMember_API(group_name, username);
+    PERFORM cartodb._CDB_Group_RemoveUser_API(group_name, username);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
