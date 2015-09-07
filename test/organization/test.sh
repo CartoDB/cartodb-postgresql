@@ -187,7 +187,7 @@ function setup() {
     sql "SELECT cartodb.CDB_Group_CreateGroup('group_a_tmp')"
     sql "SELECT cartodb.CDB_Group_RenameGroup('group_a_tmp', 'group_a')"
 
-    sql "SELECT cartodb.CDB_Group_AddUsers('group_a', 'cdb_testmember_1')"
+    sql "SELECT cartodb.CDB_Group_AddUsers('group_a', ARRAY['cdb_testmember_1'])"
 
     sql "SELECT cartodb.CDB_Group_CreateGroup('group_b')"
 }
@@ -203,7 +203,7 @@ function tear_down() {
 
     sql "select cartodb.CDB_Group_DropGroup('group_b')"
 
-    sql "SELECT cartodb.CDB_Group_RemoveUsers('group_a', 'cdb_testmember_1')"
+    sql "SELECT cartodb.CDB_Group_RemoveUsers('group_a', ARRAY['cdb_testmember_1'])"
 
     sql "select cartodb.CDB_Group_DropGroup('group_a')"
     sql "SELECT cartodb.CDB_Organization_RemoveAdmin('cdb_org_admin');"
@@ -474,8 +474,8 @@ function test_group_management_functions_cant_be_used_by_normal_members() {
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_CreateGroup('group_x_1');" fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RenameGroup('group_a', 'group_x_2');" fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Group_DropGroup('group_a');" fails
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_AddUsers('group_a', 'cdb_testmember_2');" fails
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RemoveUsers('group_a', 'cdb_testmember_1');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_AddUsers('group_a', ARRAY['cdb_testmember_2']);" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RemoveUsers('group_a', ARRAY['cdb_testmember_1']);" fails
 }
 
 function test_group_permission_functions_cant_be_used_by_normal_members() {
@@ -496,8 +496,8 @@ function test_group_permission_functions_cant_be_used_by_normal_members() {
 function test_group_management_functions_can_be_used_by_org_admin() {
     sql cdb_org_admin "SELECT cartodb.CDB_Group_CreateGroup('group_x_tmp');"
     sql cdb_org_admin "SELECT cartodb.CDB_Group_RenameGroup('group_x_tmp', 'group_x');"
-    sql cdb_org_admin "SELECT cartodb.CDB_Group_AddUsers('group_x', 'cdb_testmember_1');"
-    sql cdb_org_admin "SELECT cartodb.CDB_Group_RemoveUsers('group_x', 'cdb_testmember_1');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_AddUsers('group_x', ARRAY['cdb_testmember_1', 'cdb_testmember_2']);"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_RemoveUsers('group_x', ARRAY['cdb_testmember_1', 'cdb_testmember_2']);"
     # TODO: workaround superadmin limitation
     sql "SELECT cartodb.CDB_Group_DropGroup('group_x');"
 }
