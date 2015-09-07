@@ -1,4 +1,4 @@
-0.10.0 (2015-??-??)
+0.10.0 (2015-09-07)
 -----------------
 * Quote schema and table names returned by CDB_QueryTables [#134](https://github.com/CartoDB/cartodb-postgresql/pull/134). Use quote_ident to quote schema and table names when necessary.
 * Fixed CDB_ColumnNames [#122](https://github.com/CartoDB/cartodb-postgresql/issues/122) and CDB_ColumnType [#130](https://github.com/CartoDB/cartodb-postgresql/issues/130) should honor regclass, returning columns for just the table in the schema and not in any other one [#131](https://github.com/CartoDB/cartodb-postgresql/pull/131).
