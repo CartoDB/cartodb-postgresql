@@ -123,7 +123,7 @@ function create_role_and_schema() {
 
 function drop_role_and_schema() {
     local ROLE=$1
-    sql "DROP SCHEMA \"${ROLE}\";"
+    sql "DROP SCHEMA \"${ROLE}\" CASCADE;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM \"${ROLE}\";"
     sql "DROP ROLE \"${ROLE}\";"
 }
@@ -210,8 +210,8 @@ function tear_down() {
     sql "DROP SCHEMA cartodb CASCADE"
 
     log_info "########################### TEAR DOWN ###########################"
-    sql 'DROP SCHEMA cdb_testmember_1;'
-    sql 'DROP SCHEMA cdb_testmember_2;'
+    sql 'DROP SCHEMA cdb_testmember_1 CASCADE;'
+    sql 'DROP SCHEMA cdb_testmember_2 CASCADE;'
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
