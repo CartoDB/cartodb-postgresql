@@ -50,7 +50,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- Adds users to a group, comma-separated
+-- Adds users to a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_AddUsers(group_name text, usernames text[])
     RETURNS VOID AS $$
@@ -73,7 +73,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- Removes a user from a group
+-- Removes users from a group
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Group_RemoveUsers(group_name text, usernames text[])
     RETURNS VOID AS $$
