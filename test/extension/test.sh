@@ -178,6 +178,7 @@ function setup() {
     sql "CREATE SCHEMA cartodb;"
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
     sql "CREATE EXTENSION postgis;"
+    sql "CREATE EXTENSION plpythonu;"
 
     log_info "########################### BOOTSTRAP ###########################"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
@@ -227,7 +228,12 @@ function run_tests() {
     local TESTS
     if [[ $# -ge 1 ]]
     then
-        TESTS="$@"
+        if [[ $# -eq 1 ]]
+        then
+            TESTS=`cat $0 | grep -o "$1[^\(]*"`
+        else
+            TESTS="$@"
+        fi
     else
         TESTS=`cat $0 | perl -n -e'/function (test.*)\(\)/ && print "$1\n"'`
     fi
@@ -335,6 +341,92 @@ function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
     sql cdb_testmember_1 "SELECT CDB_TableMetadataTouch('touch_example');"
 
     sql postgres "REVOKE ALL ON CDB_TableMetadata FROM cdb_testmember_1;"
+}
+
+function test_cdb_column_names() {
+    sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_cnames(c int, a int, r int, t int, o int);'
+    sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_cnames(d int, b int);'
+
+    sql cdb_testmember_1 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('table_cnames') c) as s" should "carto"
+    sql cdb_testmember_2 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('table_cnames') c) as s" should "db"
+
+    sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames'::regclass) c) as s" should "carto"
+    sql postgres "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_2.table_cnames') c) as s" should "db"
+
+    # Using schema from owner
+    sql cdb_testmember_1 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames') c) as s" should "carto"
+
+    ## it's not possible to get column names from a table where you don't have permissions
+    sql cdb_testmember_2 "SELECT string_agg(c,'') from (SELECT cartodb.CDB_ColumnNames('cdb_testmember_1.table_cnames') c) as s" fails
+
+    sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_cnames'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
+}
+
+function test_cdb_column_type() {
+    sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_ctype(c int, a int, r int, t int, o int);'
+    sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_ctype(c text, a text, r text, t text, o text);'
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_ColumnType('table_ctype', 'c')" should "integer"
+    sql cdb_testmember_2 "SELECT cartodb.CDB_ColumnType('table_ctype', 'c')" should "text"
+
+    sql postgres "SELECT cartodb.CDB_ColumnType('cdb_testmember_1.table_ctype', 'c')" should "integer"
+    sql postgres "SELECT cartodb.CDB_ColumnType('cdb_testmember_2.table_ctype', 'c')" should "text"
+
+    sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.table_ctype'
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_ctype'
+}
+
+function test_cdb_querytables_schema_and_table_names_with_dots() {
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+
+    sql postgres 'CREATE SCHEMA "foo.bar";'
+    sql postgres 'CREATE TABLE "foo.bar"."c.a.r.t.o.d.b" (a int);'
+    sql postgres 'INSERT INTO "foo.bar"."c.a.r.t.o.d.b" values (1);'
+    sql postgres 'SELECT a FROM "foo.bar"."c.a.r.t.o.d.b";' should 1
+
+    sql postgres 'SELECT CDB_QueryTablesText($q$select * from "foo.bar"."c.a.r.t.o.d.b"$q$);' should '{"\"foo.bar\".\"c.a.r.t.o.d.b\""}'
+    sql postgres 'SELECT CDB_QueryTables($q$select * from "foo.bar"."c.a.r.t.o.d.b"$q$);' should '{"\"foo.bar\".\"c.a.r.t.o.d.b\""}'
+
+    sql postgres 'DROP TABLE "foo.bar"."c.a.r.t.o.d.b";'
+    sql postgres 'DROP SCHEMA "foo.bar";'
+}
+
+function test_cdb_querytables_table_name_with_dots() {
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+
+    sql postgres 'CREATE TABLE "w.a.d.u.s" (a int);';
+
+    sql postgres 'SELECT CDB_QueryTablesText($q$select * from "w.a.d.u.s"$q$);' should '{"public.\"w.a.d.u.s\""}'
+    sql postgres 'SELECT CDB_QueryTables($q$select * from "w.a.d.u.s"$q$);' should '{"public.\"w.a.d.u.s\""}'
+
+    sql postgres 'DROP TABLE "w.a.d.u.s";';
+}
+
+function test_cdb_querytables_happy_cases() {
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+
+    sql postgres 'CREATE TABLE wadus (a int);';
+    sql postgres 'CREATE TABLE "FOOBAR" (a int);';
+    sql postgres 'CREATE SCHEMA foo;'
+    sql postgres 'CREATE TABLE foo.wadus (a int);';
+
+    ## See how it does NOT quote anything here
+    sql postgres 'SELECT CDB_QueryTablesText($q$select * from wadus$q$);' should '{public.wadus}'
+    sql postgres 'SELECT CDB_QueryTablesText($q$select * from foo.wadus$q$);' should '{foo.wadus}'
+    sql postgres 'SELECT CDB_QueryTables($q$select * from wadus$q$);' should '{public.wadus}'
+    sql postgres 'SELECT CDB_QueryTables($q$select * from foo.wadus$q$);' should '{foo.wadus}'
+
+    ## But it quotes when it's needed even if table name has no dots but was created with quotes
+    sql postgres 'SELECT CDB_QueryTablesText($q$select * from "FOOBAR"$q$);' should '{"public.\"FOOBAR\""}'
+
+    sql postgres 'DROP TABLE wadus;'
+    sql postgres 'DROP TABLE "FOOBAR";'
+    sql postgres 'DROP TABLE foo.wadus;'
+    sql postgres 'DROP SCHEMA foo;'
 }
 
 #################################################### TESTS END HERE ####################################################

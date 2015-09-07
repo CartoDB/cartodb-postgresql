@@ -3,12 +3,13 @@ CREATE OR REPLACE FUNCTION CDB_ColumnType(REGCLASS, TEXT)
 RETURNS information_schema.character_data
 AS $$
 
-    SELECT data_type 
-      FROM information_schema.columns 
-      WHERE
-        table_name IN (SELECT CDB_UserTables())
-        AND table_name = '' || $1 || ''
-        AND column_name = '' || quote_ident($2) || '';
+    SELECT c.data_type
+      FROM information_schema.columns c, pg_class _tn, pg_namespace _sn
+      WHERE table_name = _tn.relname
+        AND table_schema = _sn.nspname
+        AND column_name = $2
+        AND _tn.oid = $1::oid
+        AND _sn.oid = _tn.relnamespace;
          
 $$ LANGUAGE SQL;
 

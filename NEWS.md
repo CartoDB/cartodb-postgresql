@@ -1,6 +1,13 @@
-X.Y.Z (2015-mm-dd)
-------------------
+next (2015-mm-dd)
+-----------------
 * Groups API
+
+0.10.0 (2015-09-07)
+-----------------
+* Quote schema and table names returned by CDB_QueryTables [#134](https://github.com/CartoDB/cartodb-postgresql/pull/134). Use quote_ident to quote schema and table names when necessary.
+* Fixed CDB_ColumnNames [#122](https://github.com/CartoDB/cartodb-postgresql/issues/122) and CDB_ColumnType [#130](https://github.com/CartoDB/cartodb-postgresql/issues/130) should honor regclass, returning columns for just the table in the schema and not in any other one [#131](https://github.com/CartoDB/cartodb-postgresql/pull/131).
+* Add kurtosis and skewness [#124](https://github.com/CartoDB/cartodb-postgresql/pull/124).
+* Removed `DROP FUNCTION IF EXISTS cdb_usertables(text);` [#129](https://github.com/CartoDB/cartodb-postgresql/pull/129). This was needed for upgrading between 0.7.4 to 0.8.0 but is no longer needed.
 
 0.9.4 (2015-08-28)
 ------------------
