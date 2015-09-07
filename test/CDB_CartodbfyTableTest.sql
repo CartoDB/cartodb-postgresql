@@ -225,6 +225,18 @@ SELECT CDB_CartodbfyTable('original');
 DROP TABLE original_renamed;
 DROP TABLE original;
 
+-- Table always have a default seq value after cartodbfy #123
+CREATE TABLE bug_empty_table_no_seq (
+  cartodb_id integer,
+  the_geom geometry(Geometry,4326),
+  the_geom_webmercator geometry(Geometry,3857),
+  name text,
+  description text
+);
+SELECT CDB_CartodbfyTable('bug_empty_table_no_seq');
+INSERT INTO bug_empty_table_no_seq DEFAULT VALUES;
+DROP TABLE bug_empty_table_no_seq;
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);
