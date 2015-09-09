@@ -33,7 +33,7 @@ $$
 
     url = '/api/v1/databases/{0}/groups/%s' % (urllib.pathname2url(group_name))
 
-    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
+    query = "select cartodb._CDB_Group_API_Request('DELETE', '%s', '', '{204, 404}') as response_status" % url
     plpy.execute(query)
 $$ LANGUAGE 'plpythonu' VOLATILE SECURITY DEFINER;
 
