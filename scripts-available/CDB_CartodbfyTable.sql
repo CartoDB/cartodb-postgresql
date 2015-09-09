@@ -664,6 +664,26 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
+CREATE OR REPLACE FUNCTION _CDB_Has_Usable_PK_Sequence(reloid REGCLASS)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+  seq TEXT;
+  const RECORD;
+  has_sequence BOOLEAN = false;
+BEGIN
+
+  const := _CDB_Columns();
+
+  SELECT pg_get_serial_sequence(reloid::text, const.pkey)
+  INTO STRICT seq;
+  has_sequence := seq IS NOT NULL;
+
+  RETURN has_sequence;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
 DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(regclass);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
 RETURNS RECORD
@@ -850,6 +870,7 @@ DECLARE
   geom_srid INTEGER;
   
   has_usable_primary_key BOOLEAN;
+  has_usable_pk_sequence BOOLEAN;
   
 BEGIN
 
@@ -877,6 +898,14 @@ BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_primary_key %', has_usable_primary_key;
 
+  -- See if the candidate primary key column has a sequence for default
+  -- values. No usable pk implies has_usable_pk_sequence = false.
+  has_usable_pk_sequence := false;
+  IF has_usable_primary_key THEN
+    SELECT _CDB_Has_Usable_PK_Sequence(reloid)
+    INTO STRICT has_usable_pk_sequence;
+  END IF;
+
   -- See if the geometry columns we need are already available
   -- on the table. If they are, we don't need to do any bulk
   -- transformation of the table, we can just ensure proper
@@ -894,18 +923,20 @@ BEGIN
   -- We can only avoid a rewrite if both the key and 
   -- geometry are usable
 
-  -- No table re-write is required, BUT a rename is required to 
+  -- No table re-write is required, BUT a rename is required to
   -- a destination schema, so do that now
-  IF has_usable_primary_key AND gc.has_usable_geoms AND destschema != relschema THEN
-  
-    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
-    PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
-    RETURN true;
+  IF has_usable_primary_key AND has_usable_pk_sequence AND gc.has_usable_geoms THEN
+    IF  destschema != relschema THEN
 
-  -- Don't move anything, just make sure our destination information is set right
-  ELSIF has_usable_primary_key AND gc.has_usable_geoms AND destschema = relschema THEN
+      RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
+      PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
 
-    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
+    ELSE
+
+      RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
+
+    END IF;
+
     RETURN true;
 
   END IF;
@@ -933,11 +964,7 @@ BEGIN
   sql := Format('CREATE TABLE %s AS SELECT ', copyname);
 
   -- Add cartodb ID!
-  IF has_usable_primary_key THEN
-    sql := sql || const.pkey;
-  ELSE
-    sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
-  END IF;
+  sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
 
   -- Add the geometry columns!
   IF gc.has_usable_geoms THEN
@@ -1104,27 +1131,24 @@ BEGIN
   -- Set up the primary key sequence
   -- If we copied the primary key from the original data, we need
   -- to set the sequence to the maximum value of that key
-  IF has_usable_primary_key THEN
+  EXECUTE Format('SELECT max(%s) FROM %s',
+          const.pkey, copyname)
+     INTO destseqmax;
 
-    EXECUTE Format('SELECT max(%s) FROM %s',
-            const.pkey, copyname)
-       INTO destseqmax;
-
-    IF FOUND AND destseqmax IS NOT NULL THEN
-      PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
-    END IF;
-
+  IF FOUND AND destseqmax IS NOT NULL THEN
+    PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
   END IF;
 
-  -- Make the primary key use the sequence as its default value
-  sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')', 
+   -- Make the primary key use the sequence as its default value
+  sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')',
           copyname, const.pkey, destseq);
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
 
-  -- Make the sequence owned by the table, so when the table drops, 
+  -- Make the sequence owned by the table, so when the table drops,
   -- the sequence does too
   sql := Format('ALTER SEQUENCE %s OWNED BY %s.%s', destseq, copyname, const.pkey);
   PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+
   
   -- We just made a copy, so we can drop the original now
   sql := Format('DROP TABLE %s', reloid::text);
