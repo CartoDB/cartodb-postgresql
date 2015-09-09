@@ -280,6 +280,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
+--- Trigger to update the updated_at column. No longer added by default
+--- but kept here for compatibility with old tables which still have this behavior
+--- and have it added
+CREATE OR REPLACE FUNCTION _CDB_update_updated_at()
+  RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at := now();
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
 -- Auxiliary function
 CREATE OR REPLACE FUNCTION cartodb._CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
