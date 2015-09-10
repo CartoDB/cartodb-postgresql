@@ -246,9 +246,9 @@ CREATE table existing_cartodb_id (
   description text
 );
 INSERT INTO existing_cartodb_id (cartodb_id, description) VALUES
-       (1, 'a'),
-       (2, 'b'),
-       (3, 'c');
+       (10, 'a'),
+       (20, 'b'),
+       (30, 'c');
 SELECT CDB_CartodbfyTableCheck('existing_cartodb_id', 'Existing cartodb_id values are respected #138');
 SELECT * from existing_cartodb_id;
 DROP TABLE existing_cartodb_id;
