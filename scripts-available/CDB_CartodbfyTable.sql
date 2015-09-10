@@ -964,7 +964,11 @@ BEGIN
   sql := Format('CREATE TABLE %s AS SELECT ', copyname);
 
   -- Add cartodb ID!
-  sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
+  IF has_usable_primary_key THEN
+    sql := sql || const.pkey;
+  ELSE
+    sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
+  END IF;
 
   -- Add the geometry columns!
   IF gc.has_usable_geoms THEN
