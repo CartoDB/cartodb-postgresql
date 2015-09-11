@@ -58,5 +58,16 @@ CREATE TABLE
 original
 DROP TABLE
 DROP TABLE
+CREATE TABLE
+Table always have a default seq value after cartodbfy #138 cartodbfied fine
+INSERT 0 1
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+Existing cartodb_id values are respected #138 cartodbfied fine
+10|||a|
+20|||b|
+30|||c|
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

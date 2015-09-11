@@ -225,6 +225,36 @@ SELECT CDB_CartodbfyTable('original');
 DROP TABLE original_renamed;
 DROP TABLE original;
 
+-- Table always have a default seq value after cartodbfy #138
+CREATE TABLE bug_empty_table_no_seq (
+  cartodb_id integer,
+  the_geom geometry(Geometry,4326),
+  the_geom_webmercator geometry(Geometry,3857),
+  name text,
+  description text
+);
+SELECT CDB_CartodbfyTableCheck('bug_empty_table_no_seq', 'Table always have a default seq value after cartodbfy #138');
+INSERT INTO bug_empty_table_no_seq DEFAULT VALUES;
+DROP TABLE bug_empty_table_no_seq;
+
+-- Existing cartodb_id values are respected
+CREATE table existing_cartodb_id (
+  cartodb_id integer,
+  the_geom geometry(Geometry,4326),
+  the_geom_webmercator geometry(Geometry,3857),
+  name text,
+  description text
+);
+INSERT INTO existing_cartodb_id (cartodb_id, description) VALUES
+       (10, 'a'),
+       (20, 'b'),
+       (30, 'c');
+SELECT CDB_CartodbfyTableCheck('existing_cartodb_id', 'Existing cartodb_id values are respected #138');
+SELECT * from existing_cartodb_id;
+DROP TABLE existing_cartodb_id;
+
+
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);
