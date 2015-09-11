@@ -253,6 +253,17 @@ SELECT CDB_CartodbfyTableCheck('existing_cartodb_id', 'Existing cartodb_id value
 SELECT * from existing_cartodb_id;
 DROP TABLE existing_cartodb_id;
 
+-- Table with both the_geom and wkb_geometry
+CREATE TABLE many_geometry_columns (
+       the_geom geometry,
+       wkb_geometry geometry(MultiPoint,4326)
+);
+INSERT INTO many_geometry_columns (the_geom, wkb_geometry) VALUES
+       ('0104000020E61000000100000001010000007108B023698052C03CEEA53A2E5D4440', '0104000020E61000000100000001010000007108B023698052C03CEEA53A2E5D4440'),
+       ('0104000020E6100000010000000101000000864C9E57618052C0994F0C7F3C5B4440', '0104000020E6100000010000000101000000864C9E57618052C0994F0C7F3C5B4440');
+SELECT CDB_CartodbfyTableCheck('many_geometry_columns', 'Table with both the_geom and wkb_geometry #141');
+SELECT * FROM many_geometry_columns;
+DROP TABLE many_geometry_columns;
 
 
 -- TODO: table with existing custom-triggered the_geom
