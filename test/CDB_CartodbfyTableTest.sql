@@ -256,7 +256,8 @@ DROP TABLE existing_cartodb_id;
 -- Table with both the_geom and wkb_geometry
 CREATE TABLE many_geometry_columns (
        the_geom geometry,
-       wkb_geometry geometry(MultiPoint,4326)
+       wkb_geometry geometry(MultiPoint,4326),
+       description varchar
 );
 INSERT INTO many_geometry_columns (the_geom, wkb_geometry) VALUES
        ('0104000020E61000000100000001010000007108B023698052C03CEEA53A2E5D4440', '0104000020E61000000100000001010000007108B023698052C03CEEA53A2E5D4440'),
