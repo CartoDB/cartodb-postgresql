@@ -1158,7 +1158,7 @@ BEGIN
           const.pkey, copyname)
      INTO destseqmax;
 
-  IF FOUND AND destseqmax IS NOT NULL THEN
+  IF destseqmax IS NOT NULL THEN
     PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
   END IF;
 
