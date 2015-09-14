@@ -683,8 +683,8 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
--- Return a set of columns that can be candidates to be the_geom
--- with some extra information to filter them out.
+-- Return a set of columns that can be candidates to be the_geom[webmercator]
+-- with some extra information to analyze them.
 CREATE OR REPLACE FUNCTION _cdb_geom_candidate_columns(reloid REGCLASS)
 RETURNS TABLE (attname name, srid integer, typname name, desired_attname text, desired_srid integer)
 AS $$
