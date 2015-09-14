@@ -826,8 +826,10 @@ BEGIN
   END LOOP;
 
   -- If geom is the wrong name, just rename it.
-  IF has_geom AND has_geom_name != const.geomcol THEN  
-    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, has_geom_name, const.geomcol);
+  IF has_geom AND has_geom_name != const.geomcol THEN
+    sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.geomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
+    sql := Format('ALTER TABLE %I RENAME COLUMN %I TO %I', reloid::text, has_geom_name, const.geomcol);
     PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
   END IF;
 
