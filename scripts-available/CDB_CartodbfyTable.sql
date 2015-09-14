@@ -519,16 +519,16 @@ DECLARE
 BEGIN
 
   RAISE DEBUG 'CDB(%): %', '_CDB_Geometry_SRID', 'entered function';
-  
+
   EXECUTE Format('SELECT ST_SRID(%I) AS srid FROM %s LIMIT 1', columnname, reloid::text)
   INTO rec;
 
-  IF FOUND THEN 
+  IF rec IS NOT NULL THEN
     RETURN rec.srid;
   END IF;
 
   RETURN 0;
-  
+
 END;
 $$ LANGUAGE 'plpgsql';
 
