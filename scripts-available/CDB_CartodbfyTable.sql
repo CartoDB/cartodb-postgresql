@@ -683,8 +683,36 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
+-- Return a set of columns that can be candidates to be the_geom
+-- with some extra information to filter them out.
+CREATE OR REPLACE FUNCTION _cdb_geom_candidate_columns(reloid REGCLASS)
+RETURNS TABLE (attname name, srid integer, typname name, desired_attname text, desired_srid integer)
+AS $$
+DECLARE
+  const RECORD;
+BEGIN
 
-DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(regclass);
+  const := _CDB_Columns();
+
+  RETURN QUERY
+    SELECT
+    a.attname,
+    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
+    t.typname,
+    f.desired_attname, f.desired_srid
+    FROM pg_class c
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    JOIN pg_type t ON a.atttypid = t.oid,
+    (VALUES (const.geomcol, 4326), (const.mercgeomcol, 3857) ) as f(desired_attname, desired_srid)
+    WHERE c.oid = reloid
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
+    ORDER BY t.oid ASC;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
 RETURNS RECORD
 AS $$
@@ -718,20 +746,7 @@ BEGIN
 
   -- Do we have a column we can use?
   FOR r1 IN
-    SELECT 
-    a.attname, 
-    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
-    t.typname,
-    f.desired_attname, f.desired_srid
-    FROM pg_class c 
-    JOIN pg_attribute a ON a.attrelid = c.oid 
-    JOIN pg_type t ON a.atttypid = t.oid,
-    (VALUES (const.geomcol, 4326), (const.mercgeomcol, 3857) ) as f(desired_attname, desired_srid)
-    WHERE c.oid = reloid
-    AND a.attnum > 0
-    AND NOT a.attisdropped
-    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
-    ORDER BY t.oid ASC
+    SELECT * FROM _cdb_geom_candidate_columns(reloid)
   LOOP
   
     RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('checking column ''%s''', r1.attname);
