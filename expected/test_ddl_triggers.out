@@ -91,6 +91,7 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc;
+NOTICE:  column "the_geom_webmercator" of relation "t3" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
@@ -115,6 +116,7 @@ select pg_sleep(.1);
 (1 row)
 
 alter table c.t3 rename column the_geom_webmercator to webmerc2;
+NOTICE:  column "the_geom_webmercator" of relation "t3" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_create" does not exist, skipping
 NOTICE:  event trigger "cdb_on_relation_drop" does not exist, skipping
 NOTICE:  event trigger "cdb_on_alter_column" does not exist, skipping
