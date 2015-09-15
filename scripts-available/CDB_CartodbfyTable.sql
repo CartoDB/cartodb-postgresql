@@ -713,8 +713,18 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
+CREATE TYPE _cdb_has_usable_geom_record
+  AS (has_usable_geoms boolean,
+      text_geom_column boolean,
+      text_geom_column_name text,
+      text_geom_column_srid boolean,
+      has_geom boolean,
+      has_geom_name text,
+      has_mercgeom boolean,
+      has_mercgeom_name text);
+
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
-RETURNS RECORD
+RETURNS _cdb_has_usable_geom_record
 AS $$
 DECLARE
   r1 RECORD;
@@ -918,14 +928,6 @@ BEGIN
   -- indexes are in place and apply a rename
   SELECT *
   FROM _CDB_Has_Usable_Geom(reloid) 
-  AS (has_usable_geoms boolean, 
-      text_geom_column boolean, 
-      text_geom_column_name text, 
-      text_geom_column_srid boolean,
-      has_geom boolean,
-      has_geom_name text,
-      has_mercgeom boolean,
-      has_mercgeom_name text)
   INTO STRICT gc;
 
   -- If geom is the wrong name, just rename it.
@@ -937,7 +939,7 @@ BEGIN
   END IF;
 
   -- If mercgeom is the wrong name, just rename it.
-  IF gc.has_mercgeom AND gc.has_mercgeom_name != const.mercgeomcol THEN  
+  IF gc.has_mercgeom AND gc.has_mercgeom_name != const.mercgeomcol THEN
     sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.mercgeomcol);
     PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
     sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, gc.has_mercgeom_name, const.mercgeomcol);
