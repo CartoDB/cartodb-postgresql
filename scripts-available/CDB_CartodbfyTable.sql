@@ -1089,15 +1089,11 @@ BEGIN
       )
       SELECT ', ST_Transform(' 
             || t.missing_srid_start || t.attname || t.missing_srid_end
-            || ',4326)::Geometry(' 
-            || t.geomtype 
-            || ',4326) AS '
+            || ',4326)::Geometry(GEOMETRY,4326) AS'
             || const.geomcol
             || ', cartodb.CDB_TransformToWebmercator(' 
             || t.missing_srid_start || t.attname || t.missing_srid_end
-            || ')::Geometry('
-            || t.geomtype
-            || ',3857) AS '
+            || ')::Geometry(GEOMETRY,3857) AS '
             || const.mercgeomcol,
             t.attname
       INTO geom_transform_sql, geom_column_source
