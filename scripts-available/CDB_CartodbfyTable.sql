@@ -825,27 +825,13 @@ BEGIN
     
   END LOOP;
 
-  -- If geom is the wrong name, just rename it.
-  IF has_geom AND has_geom_name != const.geomcol THEN
-    sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.geomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-    sql := Format('ALTER TABLE %I RENAME COLUMN %I TO %I', reloid::text, has_geom_name, const.geomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-  END IF;
-
-  -- If mercgeom is the wrong name, just rename it.
-  IF has_mercgeom AND has_mercgeom_name != const.mercgeomcol THEN  
-    sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.mercgeomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, has_mercgeom_name, const.mercgeomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-  END IF;
-  
   SELECT 
     -- If table is perfect (no transforms required), return TRUE!
     has_geom AND has_mercgeom AS has_usable_geoms,
     -- If the geometry column is hiding in a text field, return enough info to deal w/ it.
-    text_geom_column, text_geom_column_name, text_geom_column_srid
+    text_geom_column, text_geom_column_name, text_geom_column_srid,
+    -- Return enough info to rename geom columns if needed
+    has_geom, has_geom_name, has_mercgeom, has_mercgeom_name
     INTO rv;
 
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('returning %s', rv);
@@ -854,6 +840,7 @@ BEGIN
     
 END;
 $$ LANGUAGE 'plpgsql';
+
 
 -- Create a copy of the table. Assumes that the "Has usable" functions
 -- have already been run, so that if there is a 'cartodb_id' column, it is
@@ -934,8 +921,29 @@ BEGIN
   AS (has_usable_geoms boolean, 
       text_geom_column boolean, 
       text_geom_column_name text, 
-      text_geom_column_srid boolean)
+      text_geom_column_srid boolean,
+      has_geom boolean,
+      has_geom_name text,
+      has_mercgeom boolean,
+      has_mercgeom_name text)
   INTO STRICT gc;
+
+  -- If geom is the wrong name, just rename it.
+  IF gc.has_geom AND gc.has_geom_name != const.geomcol THEN
+    sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.geomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    sql := Format('ALTER TABLE %I RENAME COLUMN %I TO %I', reloid::text, gc.has_geom_name, const.geomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+  END IF;
+
+  -- If mercgeom is the wrong name, just rename it.
+  IF gc.has_mercgeom AND gc.has_mercgeom_name != const.mercgeomcol THEN  
+    sql := Format('ALTER TABLE %I DROP COLUMN IF EXISTS %I', reloid::text, const.mercgeomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, gc.has_mercgeom_name, const.mercgeomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+  END IF;
+
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', gc.has_usable_geoms;
 
