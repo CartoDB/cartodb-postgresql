@@ -699,6 +699,7 @@ CREATE TYPE _cdb_has_usable_geom_record
       has_mercgeom boolean,
       has_mercgeom_name text);
 
+DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(REGCLASS);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
 RETURNS _cdb_has_usable_geom_record
 AS $$
