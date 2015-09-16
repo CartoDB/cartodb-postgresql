@@ -507,30 +507,6 @@ BEGIN
   
 END;
 $$ LANGUAGE 'plpgsql';
-    
-
--- Return the geometry SRID from the column metadata or
--- the geometry of the very first entry in a given column.
-CREATE OR REPLACE FUNCTION _CDB_Geometry_SRID(reloid REGCLASS, columnname TEXT)
-RETURNS INTEGER
-AS $$
-DECLARE
-  rec RECORD;
-BEGIN
-
-  RAISE DEBUG 'CDB(%): %', '_CDB_Geometry_SRID', 'entered function';
-
-  EXECUTE Format('SELECT ST_SRID(%I) AS srid FROM %s LIMIT 1', columnname, reloid::text)
-  INTO rec;
-
-  IF rec IS NOT NULL THEN
-    RETURN rec.srid;
-  END IF;
-
-  RETURN 0;
-
-END;
-$$ LANGUAGE 'plpgsql';
 
 
 -- Find out if the table already has a usable primary key
@@ -811,7 +787,7 @@ BEGIN
 
       -- If it's the right SRID, we can use it in place without
       -- transforming it!
-      IF r1.srid = r1.desired_srid OR _CDB_Geometry_SRID(reloid, r1.attname) = r1.desired_srid THEN
+      IF r1.srid = r1.desired_srid THEN
 
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('found acceptable ''%s''', r1.attname);
 
@@ -824,7 +800,7 @@ BEGIN
         END IF;
         
       -- If it's an unknown SRID, we need to know that too
-      ELSIF r1.srid = 0 OR _CDB_Geometry_SRID(reloid, r1.attname) = 0 THEN
+      ELSIF r1.srid = 0 THEN
         
         -- Unknown SRID, we'll have to fill it in later
         text_geom_column_srid := true;
