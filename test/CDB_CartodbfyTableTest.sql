@@ -266,6 +266,21 @@ SELECT CDB_CartodbfyTableCheck('many_geometry_columns', 'Table with both the_geo
 SELECT * FROM many_geometry_columns;
 DROP TABLE many_geometry_columns;
 
+-- Many colliding geom columns
+CREATE TABLE many_colliding_columns (
+  the_geom varchar,
+  the_geom_webmercator varchar,
+  my_geom geometry,
+  my_mercgeom geometry(Point, 3857),
+  cartodb_id varchar,
+  my_pk integer primary key
+);
+INSERT INTO many_colliding_columns VALUES (
+ 'foo', 'bar', 'SRID=4326;POINT(0 0)', 'SRID=3857;POINT(0 0)', 'nerf', 1
+);
+SELECT CDB_CartodbfyTableCheck('many_colliding_columns', 'Many colliding columns #141');
+DROP TABLE many_colliding_columns;
+
 
 -- TODO: table with existing custom-triggered the_geom
 
