@@ -1,6 +1,14 @@
 next (2015-mm-dd)
 -----------------
 
+0.10.1 (2015-09-16)
+-------------------
+* Get back the `update_updated_at` function (still used by old tables) [#143](https://github.com/CartoDB/cartodb-postgresql/pull/143)
+* Fix for CDB_StatsTest.sql test failing randomly [#144](https://github.com/CartoDB/cartodb-postgresql/issues/144)
+* Fix for table cartodbfy'ed without default seq value [#138](https://github.com/CartoDB/cartodb-postgresql/issues/138)
+* Fix for cartodbfy error column `the_geom` already exists [#141](https://github.com/CartoDB/cartodb-postgresql/issues/141)
+* Fix for columns with geometry cartodbfy'ed without SRID [#154](https://github.com/CartoDB/cartodb-postgresql/issues/154)
+
 0.10.0 (2015-09-07)
 -----------------
 * Quote schema and table names returned by CDB_QueryTables [#134](https://github.com/CartoDB/cartodb-postgresql/pull/134). Use quote_ident to quote schema and table names when necessary.
