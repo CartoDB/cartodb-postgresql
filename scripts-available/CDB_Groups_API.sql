@@ -167,7 +167,7 @@ $$
     if params['host'] is None:
       return None
 
-    headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
+    headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' }
 
     retry = 3
 
