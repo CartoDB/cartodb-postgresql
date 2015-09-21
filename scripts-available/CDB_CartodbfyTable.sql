@@ -280,6 +280,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
+--- Trigger to update the updated_at column. No longer added by default
+--- but kept here for compatibility with old tables which still have this behavior
+--- and have it added
+CREATE OR REPLACE FUNCTION _CDB_update_updated_at()
+  RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at := now();
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
 -- Auxiliary function
 CREATE OR REPLACE FUNCTION cartodb._CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
@@ -497,30 +507,6 @@ BEGIN
   
 END;
 $$ LANGUAGE 'plpgsql';
-    
-
--- Return the geometry SRID from the column metadata or
--- the geometry of the very first entry in a given column.
-CREATE OR REPLACE FUNCTION _CDB_Geometry_SRID(reloid REGCLASS, columnname TEXT)
-RETURNS INTEGER
-AS $$
-DECLARE
-  rec RECORD;
-BEGIN
-
-  RAISE DEBUG 'CDB(%): %', '_CDB_Geometry_SRID', 'entered function';
-  
-  EXECUTE Format('SELECT ST_SRID(%I) AS srid FROM %s LIMIT 1', columnname, reloid::text)
-  INTO rec;
-
-  IF FOUND THEN 
-    RETURN rec.srid;
-  END IF;
-
-  RETURN 0;
-  
-END;
-$$ LANGUAGE 'plpgsql';
 
 
 -- Find out if the table already has a usable primary key
@@ -654,9 +640,68 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(regclass);
+CREATE OR REPLACE FUNCTION _CDB_Has_Usable_PK_Sequence(reloid REGCLASS)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+  seq TEXT;
+  const RECORD;
+  has_sequence BOOLEAN = false;
+BEGIN
+
+  const := _CDB_Columns();
+
+  SELECT pg_get_serial_sequence(reloid::text, const.pkey)
+  INTO STRICT seq;
+  has_sequence := seq IS NOT NULL;
+
+  RETURN has_sequence;
+END;
+$$ LANGUAGE 'plpgsql';
+
+-- Return a set of columns that can be candidates to be the_geom[webmercator]
+-- with some extra information to analyze them.
+CREATE OR REPLACE FUNCTION _cdb_geom_candidate_columns(reloid REGCLASS)
+RETURNS TABLE (attname name, srid integer, typname name, desired_attname text, desired_srid integer)
+AS $$
+DECLARE
+  const RECORD;
+BEGIN
+
+  const := _CDB_Columns();
+
+  RETURN QUERY
+    SELECT
+    a.attname,
+    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
+    t.typname,
+    f.desired_attname, f.desired_srid
+    FROM pg_class c
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    JOIN pg_type t ON a.atttypid = t.oid,
+    (VALUES (const.geomcol, 4326), (const.mercgeomcol, 3857) ) as f(desired_attname, desired_srid)
+    WHERE c.oid = reloid
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
+    ORDER BY t.oid ASC;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+CREATE TYPE _cdb_has_usable_geom_record
+  AS (has_usable_geoms boolean,
+      text_geom_column boolean,
+      text_geom_column_name text,
+      text_geom_column_srid boolean,
+      has_geom boolean,
+      has_geom_name text,
+      has_mercgeom boolean,
+      has_mercgeom_name text);
+
+DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(REGCLASS);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
-RETURNS RECORD
+RETURNS _cdb_has_usable_geom_record
 AS $$
 DECLARE
   r1 RECORD;
@@ -688,20 +733,7 @@ BEGIN
 
   -- Do we have a column we can use?
   FOR r1 IN
-    SELECT 
-    a.attname, 
-    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
-    t.typname,
-    f.desired_attname, f.desired_srid
-    FROM pg_class c 
-    JOIN pg_attribute a ON a.attrelid = c.oid 
-    JOIN pg_type t ON a.atttypid = t.oid,
-    (VALUES (const.geomcol, 4326), (const.mercgeomcol, 3857) ) as f(desired_attname, desired_srid)
-    WHERE c.oid = reloid
-    AND a.attnum > 0
-    AND NOT a.attisdropped
-    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
-    ORDER BY t.oid ASC
+    SELECT * FROM _cdb_geom_candidate_columns(reloid)
   LOOP
   
     RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('checking column ''%s''', r1.attname);
@@ -756,7 +788,7 @@ BEGIN
 
       -- If it's the right SRID, we can use it in place without
       -- transforming it!
-      IF r1.srid = r1.desired_srid OR _CDB_Geometry_SRID(reloid, r1.attname) = r1.desired_srid THEN
+      IF r1.srid = r1.desired_srid THEN
 
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('found acceptable ''%s''', r1.attname);
 
@@ -769,7 +801,7 @@ BEGIN
         END IF;
         
       -- If it's an unknown SRID, we need to know that too
-      ELSIF r1.srid = 0 OR _CDB_Geometry_SRID(reloid, r1.attname) = 0 THEN
+      ELSIF r1.srid = 0 THEN
         
         -- Unknown SRID, we'll have to fill it in later
         text_geom_column_srid := true;
@@ -780,23 +812,13 @@ BEGIN
     
   END LOOP;
 
-  -- If geom is the wrong name, just rename it.
-  IF has_geom AND has_geom_name != const.geomcol THEN  
-    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, has_geom_name, const.geomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-  END IF;
-
-  -- If mercgeom is the wrong name, just rename it.
-  IF has_mercgeom AND has_mercgeom_name != const.mercgeomcol THEN  
-    sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, has_mercgeom_name, const.mercgeomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
-  END IF;
-  
   SELECT 
     -- If table is perfect (no transforms required), return TRUE!
     has_geom AND has_mercgeom AS has_usable_geoms,
     -- If the geometry column is hiding in a text field, return enough info to deal w/ it.
-    text_geom_column, text_geom_column_name, text_geom_column_srid
+    text_geom_column, text_geom_column_name, text_geom_column_srid,
+    -- Return enough info to rename geom columns if needed
+    has_geom, has_geom_name, has_mercgeom, has_mercgeom_name
     INTO rv;
 
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('returning %s', rv);
@@ -805,6 +827,7 @@ BEGIN
     
 END;
 $$ LANGUAGE 'plpgsql';
+
 
 -- Create a copy of the table. Assumes that the "Has usable" functions
 -- have already been run, so that if there is a 'cartodb_id' column, it is
@@ -840,6 +863,7 @@ DECLARE
   geom_srid INTEGER;
   
   has_usable_primary_key BOOLEAN;
+  has_usable_pk_sequence BOOLEAN;
   
 BEGIN
 
@@ -867,35 +891,58 @@ BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_primary_key %', has_usable_primary_key;
 
+  -- See if the candidate primary key column has a sequence for default
+  -- values. No usable pk implies has_usable_pk_sequence = false.
+  has_usable_pk_sequence := false;
+  IF has_usable_primary_key THEN
+    SELECT _CDB_Has_Usable_PK_Sequence(reloid)
+    INTO STRICT has_usable_pk_sequence;
+  END IF;
+
   -- See if the geometry columns we need are already available
   -- on the table. If they are, we don't need to do any bulk
   -- transformation of the table, we can just ensure proper
   -- indexes are in place and apply a rename
   SELECT *
   FROM _CDB_Has_Usable_Geom(reloid) 
-  AS (has_usable_geoms boolean, 
-      text_geom_column boolean, 
-      text_geom_column_name text, 
-      text_geom_column_srid boolean)
   INTO STRICT gc;
+
+  -- If geom is the wrong name, just rename it.
+  IF gc.has_geom AND gc.has_geom_name != const.geomcol THEN
+    sql := Format('ALTER TABLE %s DROP COLUMN IF EXISTS %I', reloid::text, const.geomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    sql := Format('ALTER TABLE %s RENAME COLUMN %I TO %I', reloid::text, gc.has_geom_name, const.geomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+  END IF;
+
+  -- If mercgeom is the wrong name, just rename it.
+  IF gc.has_mercgeom AND gc.has_mercgeom_name != const.mercgeomcol THEN
+    sql := Format('ALTER TABLE %s DROP COLUMN IF EXISTS %I', reloid::text, const.mercgeomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    sql := Format('ALTER TABLE %s RENAME COLUMN %I TO %I', reloid::text, gc.has_mercgeom_name, const.mercgeomcol);
+    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+  END IF;
+
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', gc.has_usable_geoms;
 
   -- We can only avoid a rewrite if both the key and 
   -- geometry are usable
 
-  -- No table re-write is required, BUT a rename is required to 
+  -- No table re-write is required, BUT a rename is required to
   -- a destination schema, so do that now
-  IF has_usable_primary_key AND gc.has_usable_geoms AND destschema != relschema THEN
-  
-    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
-    PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
-    RETURN true;
+  IF has_usable_primary_key AND has_usable_pk_sequence AND gc.has_usable_geoms THEN
+    IF  destschema != relschema THEN
 
-  -- Don't move anything, just make sure our destination information is set right
-  ELSIF has_usable_primary_key AND gc.has_usable_geoms AND destschema = relschema THEN
+      RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
+      PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
 
-    RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
+    ELSE
+
+      RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table in the perfect place';
+
+    END IF;
+
     RETURN true;
 
   END IF;
@@ -1029,15 +1076,11 @@ BEGIN
       )
       SELECT ', ST_Transform(' 
             || t.missing_srid_start || t.attname || t.missing_srid_end
-            || ',4326)::Geometry(' 
-            || t.geomtype 
-            || ',4326) AS '
+            || ',4326)::Geometry(GEOMETRY,4326) AS '
             || const.geomcol
             || ', cartodb.CDB_TransformToWebmercator(' 
             || t.missing_srid_start || t.attname || t.missing_srid_end
-            || ')::Geometry('
-            || t.geomtype
-            || ',3857) AS '
+            || ')::Geometry(GEOMETRY,3857) AS '
             || const.mercgeomcol,
             t.attname
       INTO geom_transform_sql, geom_column_source
@@ -1094,27 +1137,24 @@ BEGIN
   -- Set up the primary key sequence
   -- If we copied the primary key from the original data, we need
   -- to set the sequence to the maximum value of that key
-  IF has_usable_primary_key THEN
+  EXECUTE Format('SELECT max(%s) FROM %s',
+          const.pkey, copyname)
+     INTO destseqmax;
 
-    EXECUTE Format('SELECT max(%s) FROM %s',
-            const.pkey, copyname)
-       INTO destseqmax;
-
-    IF FOUND AND destseqmax IS NOT NULL THEN
-      PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
-    END IF;
-
+  IF destseqmax IS NOT NULL THEN
+    PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
   END IF;
 
-  -- Make the primary key use the sequence as its default value
-  sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')', 
+   -- Make the primary key use the sequence as its default value
+  sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')',
           copyname, const.pkey, destseq);
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
 
-  -- Make the sequence owned by the table, so when the table drops, 
+  -- Make the sequence owned by the table, so when the table drops,
   -- the sequence does too
   sql := Format('ALTER SEQUENCE %s OWNED BY %s.%s', destseq, copyname, const.pkey);
   PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+
   
   -- We just made a copy, so we can drop the original now
   sql := Format('DROP TABLE %s', reloid::text);
