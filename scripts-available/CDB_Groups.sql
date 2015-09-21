@@ -198,7 +198,7 @@ DECLARE
 BEGIN
     -- This was preferred, but non-superadmins won't get results
     -- SELECT SCHEMA_OWNER FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = $1 LIMIT 1'
-    EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
+    SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = username INTO user_role;
     RETURN user_role;
 END
 $$ LANGUAGE PLPGSQL;
@@ -210,7 +210,7 @@ FUNCTION cartodb._CDB_Group_ShortDatabaseName()
 DECLARE
     short_database_name TEXT;
 BEGIN
-    EXECUTE 'SELECT md5(current_database())' INTO short_database_name;
+    SELECT md5(current_database()) INTO short_database_name;
     RETURN short_database_name;
 END
 $$ LANGUAGE PLPGSQL;
