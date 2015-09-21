@@ -34,7 +34,7 @@ CREATE OR REPLACE
 FUNCTION cartodb._CDB_Organization_Admin_Role_Name()
     RETURNS TEXT
 AS $$
-    SELECT current_database() || '_admin'::text;
+    SELECT current_database() || '_a'::text;
 $$
 LANGUAGE SQL IMMUTABLE;
 
