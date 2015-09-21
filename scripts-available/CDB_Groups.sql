@@ -187,7 +187,7 @@ BEGIN
     END IF;
     RETURN group_role;
 END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL;
 
 -- Returns the first owner of the schema matching username. Organization user schemas must have one only owner.
 CREATE OR REPLACE
@@ -201,7 +201,7 @@ BEGIN
     EXECUTE 'SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = $1;' INTO user_role USING username;
     RETURN user_role;
 END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL;
 
 -- Database names are too long, we need a shorter version for composing role names
 CREATE OR REPLACE
@@ -213,4 +213,4 @@ BEGIN
     EXECUTE 'SELECT md5(current_database())' INTO short_database_name;
     RETURN short_database_name;
 END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL;
