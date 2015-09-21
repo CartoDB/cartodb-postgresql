@@ -688,16 +688,20 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-
-CREATE TYPE _cdb_has_usable_geom_record
-  AS (has_usable_geoms boolean,
-      text_geom_column boolean,
-      text_geom_column_name text,
-      text_geom_column_srid boolean,
-      has_geom boolean,
-      has_geom_name text,
-      has_mercgeom boolean,
-      has_mercgeom_name text);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record') THEN
+    CREATE TYPE _cdb_has_usable_geom_record
+      AS (has_usable_geoms boolean,
+        text_geom_column boolean,
+        text_geom_column_name text,
+        text_geom_column_srid boolean,
+        has_geom boolean,
+        has_geom_name text,
+        has_mercgeom boolean,
+        has_mercgeom_name text);
+    END IF;
+END$$;
 
 DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(REGCLASS);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
