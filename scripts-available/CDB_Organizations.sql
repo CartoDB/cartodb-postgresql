@@ -1,14 +1,16 @@
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Member_Group_Role_Member_Name()
     RETURNS TEXT
-AS 'SELECT ''cdb_org_member''::text || ''_'' || md5(current_database());'
+AS $$
+    SELECT 'cdb_org_member'::text || '_' || md5(current_database());
+$$
 LANGUAGE SQL IMMUTABLE;
 
 DO LANGUAGE 'plpgsql' $$
 DECLARE
     cdb_org_member_role_name TEXT;
 BEGIN
-    cdb_org_member_role_name := cartodb.CDB_Organization_Member_Group_Role_Member_Name();
+  cdb_org_member_role_name := cartodb.CDB_Organization_Member_Group_Role_Member_Name();
   IF NOT EXISTS ( SELECT * FROM pg_roles WHERE rolname= cdb_org_member_role_name )
   THEN
     EXECUTE 'CREATE ROLE "' || cdb_org_member_role_name || '" NOLOGIN;';
@@ -31,7 +33,9 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Organization_Admin_Role_Name()
     RETURNS TEXT
-AS 'SELECT current_database() || ''_admin''::text;'
+AS $$
+    SELECT current_database() || '_admin'::text;
+$$
 LANGUAGE SQL IMMUTABLE;
 
 -- Administrator role creation on extension install
