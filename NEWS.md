@@ -1,6 +1,10 @@
 next (2015-mm-dd)
 -----------------
 
+0.10.2 (2015-09-24)
+-------------------
+* Add back the `DROP FUNCTION IF EXISTS CDB_UserTables(text);` to be able to upgrade from `0.7.3` upward [#160](https://github.com/CartoDB/cartodb-postgresql/issues/160)
+
 0.10.1 (2015-09-16)
 -------------------
 * Get back the `update_updated_at` function (still used by old tables) [#143](https://github.com/CartoDB/cartodb-postgresql/pull/143)
