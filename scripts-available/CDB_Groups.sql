@@ -105,10 +105,22 @@ FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table
 DECLARE
     group_role TEXT;
 BEGIN
+    PERFORM cartodb.CDB_Group_Table_GrantRead(group_name, username, table_name, true);
+END
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table_name text, sync boolean)
+    RETURNS VOID AS $$
+DECLARE
+    group_role TEXT;
+BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', username, group_role);
     EXECUTE format('GRANT SELECT ON TABLE %I.%I TO %I', username, table_name, group_role );
-    PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'r');
+    IF(sync) THEN
+      PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'r');
+    END IF;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -119,11 +131,23 @@ FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, 
 DECLARE
     group_role TEXT;
 BEGIN
+    PERFORM cartodb.CDB_Group_Table_GrantReadWrite(group_name, username, table_name, true);
+END
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, table_name text, sync boolean)
+    RETURNS VOID AS $$
+DECLARE
+    group_role TEXT;
+BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', username, group_role);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE %I.%I TO %I', username, table_name, group_role);
     PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, true);
-    PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'w');
+    IF(sync) THEN
+      PERFORM cartodb._CDB_Group_Table_GrantPermission_API(group_name, username, table_name, 'w');
+    END IF;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -160,10 +184,22 @@ FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table
 DECLARE
     group_role TEXT;
 BEGIN
+    PERFORM cartodb.CDB_Group_Table_RevokeAll(group_name, username, table_name, true);
+END
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE
+FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table_name text, sync boolean)
+    RETURNS VOID AS $$
+DECLARE
+    group_role TEXT;
+BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM %I', username, table_name, group_role);
     PERFORM cartodb._CDB_Group_TableSequences_Permission(group_name, username, table_name, false);
-    PERFORM cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name, username, table_name);
+    IF(sync) THEN
+      PERFORM cartodb._CDB_Group_Table_RevokeAllPermission_API(group_name, username, table_name);
+    END IF;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
