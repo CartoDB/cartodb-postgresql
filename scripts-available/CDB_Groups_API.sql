@@ -157,7 +157,6 @@ $$
 $$ LANGUAGE 'plpythonu' VOLATILE;
 
 -- url must contain a '%s' placeholder that will be replaced by current_database, for security reasons.
--- headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' }
 CREATE OR REPLACE
 FUNCTION cartodb._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
@@ -168,7 +167,7 @@ $$
     if params['host'] is None:
       return None
 
-    headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json' }
+    headers = { 'Authorization': params['auth'], 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' }
 
     retry = 3
 
