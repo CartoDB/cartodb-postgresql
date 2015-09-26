@@ -1,10 +1,9 @@
 
 --  Convert your states (or other geometries id'd by state) to 
---    display as an albers projection
---  Andy Eschbacher, 09/2015
+--    display as with Alaska, Hawaii, and Puerto Rico transcaled
 --
 --  @param g: input geometry
---  @param state: column identifying the state (name, abbreviation, FP)
+--  @param state: column identifying the state (name, postal abbreviation, state FP)
 --  
 --  output: geometries of states in albers projections of the states
 -- 
@@ -31,18 +30,17 @@ BEGIN
 	    ST_SetSRID(
 	    	CASE 
   				WHEN $2 = any($3)
-    				THEN
 					ST_Scale(
 						ST_Translate(
 							ST_Transform(
-								$1
+								the_geom
 								, 3338
 							)
 							, -3800000
 							, -900000
 						)
-						, 0.55
-						, 0.55
+						, 0.7
+						, 0.7
 					)
 				WHEN $2 = any($4)
 					THEN 
@@ -65,7 +63,7 @@ BEGIN
   							ST_Translate(
   								$1
 			                    , 10
-			                    , -4
+			                    , -1.5
 			                )
 			                , 32161
 						)
@@ -75,7 +73,7 @@ BEGIN
 				ELSE
 					ST_Transform($1,42303)
   				END
-  				, 3857
+  				, 4326
   			)'
 	INTO reply
 	USING g, state, alaska, hawaii, puertorico;
