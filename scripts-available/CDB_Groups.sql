@@ -105,12 +105,12 @@ FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table
 DECLARE
     group_role TEXT;
 BEGIN
-    PERFORM cartodb.CDB_Group_Table_GrantRead(group_name, username, table_name, true);
+    PERFORM cartodb._CDB_Group_Table_GrantRead(group_name, username, table_name, true);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_Table_GrantRead(group_name text, username text, table_name text, sync boolean)
+FUNCTION cartodb._CDB_Group_Table_GrantRead(group_name text, username text, table_name text, sync boolean)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
@@ -131,12 +131,12 @@ FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, 
 DECLARE
     group_role TEXT;
 BEGIN
-    PERFORM cartodb.CDB_Group_Table_GrantReadWrite(group_name, username, table_name, true);
+    PERFORM cartodb._CDB_Group_Table_GrantReadWrite(group_name, username, table_name, true);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_Table_GrantReadWrite(group_name text, username text, table_name text, sync boolean)
+FUNCTION cartodb._CDB_Group_Table_GrantReadWrite(group_name text, username text, table_name text, sync boolean)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
@@ -184,12 +184,12 @@ FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table
 DECLARE
     group_role TEXT;
 BEGIN
-    PERFORM cartodb.CDB_Group_Table_RevokeAll(group_name, username, table_name, true);
+    PERFORM cartodb._CDB_Group_Table_RevokeAll(group_name, username, table_name, true);
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE
-FUNCTION cartodb.CDB_Group_Table_RevokeAll(group_name text, username text, table_name text, sync boolean)
+FUNCTION cartodb._CDB_Group_Table_RevokeAll(group_name text, username text, table_name text, sync boolean)
     RETURNS VOID AS $$
 DECLARE
     group_role TEXT;
