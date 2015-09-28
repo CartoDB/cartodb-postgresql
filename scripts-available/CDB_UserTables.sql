@@ -15,7 +15,7 @@ FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'r' 
 AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
-AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology')
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
 AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SELECT')
          WHEN perm = 'private' THEN has_table_privilege(current_user, c.oid, 'SELECT') AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
          WHEN perm = 'all' THEN has_table_privilege(current_user, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')

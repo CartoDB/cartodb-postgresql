@@ -28,6 +28,7 @@ function clear_partial_result() {
 function sql() {
     local ROLE
     local QUERY
+    ERROR_OUTPUT_FILE='/tmp/test_error.log'
     if [[ $# -ge 2 ]]
     then
         ROLE="$1"
@@ -37,15 +38,40 @@ function sql() {
     fi
 
     if [ -n "${ROLE}" ]; then
-      log_debug "Executing query '${QUERY}' as ${ROLE}"
-      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
+        log_debug "Executing query '${QUERY}' as ${ROLE}"
+        RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     else
-      log_debug "Executing query '${QUERY}'"
-      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t`
+        log_debug "Executing query '${QUERY}'"
+        RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t 2>"${ERROR_OUTPUT_FILE}"`
     fi
     CODERESULT=$?
+    ERROR_OUTPUT=`cat "${ERROR_OUTPUT_FILE}"`
+    rm ${ERROR_OUTPUT_FILE}
 
-    echo ${RESULT}
+    echo -n "> Code Result: "
+    echo -n ${CODERESULT}
+    echo -n "; Result: "
+    echo -n ${RESULT}
+    echo -n "; Error output: "
+    echo -n ${ERROR_OUTPUT}
+
+    # Some warnings should actually be failures
+    if [[ ${CODERESULT} == "0" ]]
+    then
+        case "${ERROR_OUTPUT}" in
+            WARNING:*no*privileges*were*granted*for*)
+                echo -n "FAILED BECAUSE OF PRIVILEGES GRANTING WARNING"
+                CODERESULT=1
+            ;;
+            WARNING:*no*privileges*could*be*revoked*for*)
+                echo -n "FAILED BECAUSE OF PRIVILEGES REVOKING WARNING"
+                CODERESULT=1
+            ;;
+            *) ;;
+        esac
+        echo -n "; Code result after warnings: "
+        echo -n ${CODERESULT}
+    fi
     echo
 
     if [[ ${CODERESULT} -ne 0 ]]
@@ -133,13 +159,18 @@ function create_table() {
 function setup() {
     ${CMD} -c "CREATE DATABASE ${DATABASE}"
     sql "CREATE SCHEMA cartodb;"
+    sql "CREATE EXTENSION plpythonu;"
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
 
     log_info "########################### BOOTSTRAP ###########################"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
-
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups_API.sql
 
     log_info "############################# SETUP #############################"
+    create_role_and_schema cdb_org_admin
+    sql "SELECT cartodb.CDB_Organization_AddAdmin('cdb_org_admin');"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
     sql "CREATE ROLE publicuser LOGIN;"
@@ -152,7 +183,15 @@ function setup() {
     create_table cdb_testmember_2 bar
     sql cdb_testmember_2 'INSERT INTO bar VALUES (1), (2), (3), (4), (5);'
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
+
+    sql "SELECT cartodb.CDB_Group_CreateGroup('group_a_tmp')"
+    sql "SELECT cartodb.CDB_Group_RenameGroup('group_a_tmp', 'group_a')"
+
+    sql "SELECT cartodb.CDB_Group_AddUsers('group_a', ARRAY['cdb_testmember_1'])"
+
+    sql "SELECT cartodb.CDB_Group_CreateGroup('group_b')"
 }
+
 
 function tear_down() {
     log_info "########################### USER TEAR DOWN ###########################"
@@ -162,19 +201,29 @@ function tear_down() {
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo;'
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.bar;'
 
+    sql "select cartodb.CDB_Group_DropGroup('group_b')"
+
+    sql "SELECT cartodb.CDB_Group_RemoveUsers('group_a', ARRAY['cdb_testmember_1'])"
+
+    sql "select cartodb.CDB_Group_DropGroup('group_a')"
+    sql "SELECT cartodb.CDB_Organization_RemoveAdmin('cdb_org_admin');"
+
     sql "DROP SCHEMA cartodb CASCADE"
 
     log_info "########################### TEAR DOWN ###########################"
     sql 'DROP SCHEMA cdb_testmember_1;'
     sql 'DROP SCHEMA cdb_testmember_2;'
+    sql 'DROP SCHEMA cdb_org_admin;'
 
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_1;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_testmember_2;"
     sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM publicuser;"
+    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM cdb_org_admin;"
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
     sql 'DROP ROLE publicuser;'
+    sql 'DROP ROLE cdb_org_admin;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
@@ -198,6 +247,7 @@ function run_tests() {
         echo "####################################################################"
         clear_partial_result
         setup
+        log_info "############################# TESTS #############################"
         eval ${t}
         if [[ ${PARTIALOK} -ne 0 ]]
         then
@@ -330,21 +380,18 @@ function test_user_can_read_when_it_has_permission_after_organization_permission
 }
 
 function test_cdb_querytables_returns_schema_and_table_name() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
 }
 
 function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
 function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset() {
-    sql "CREATE EXTENSION plpythonu;"
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
@@ -393,6 +440,107 @@ function test_cdb_usertables_should_work_with_orgusers() {
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
 }
 
+function test_CDB_Group_Table_GrantRead_should_grant_select_and_RevokeAll_should_remove_it() {
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;' fails
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_2.shared_with_group;'
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_CDB_Group_Table_GrantReadWrite_should_grant_insert_and_RevokeAll_should_remove_it() {
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_RevokeAll('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)' fails
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.shared_with_group VALUES (1), (2), (3), (4), (5)'
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_group_management_functions_cant_be_used_by_normal_members() {
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_CreateGroup('group_x_1');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RenameGroup('group_a', 'group_x_2');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_DropGroup('group_a');" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_AddUsers('group_a', ARRAY['cdb_testmember_2']);" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Group_RemoveUsers('group_a', ARRAY['cdb_testmember_1']);" fails
+}
+
+function test_group_permission_functions_cant_be_used_by_normal_members() {
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    # Checks that you can't grant even if your group has RW permissions
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_testmember_1 "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_group_management_functions_can_be_used_by_org_admin() {
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_CreateGroup('group_x_tmp');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_RenameGroup('group_x_tmp', 'group_x');"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_AddUsers('group_x', ARRAY['cdb_testmember_1', 'cdb_testmember_2']);"
+    sql cdb_org_admin "SELECT cartodb.CDB_Group_RemoveUsers('group_x', ARRAY['cdb_testmember_1', 'cdb_testmember_2']);"
+    # TODO: workaround superadmin limitation
+    sql "SELECT cartodb.CDB_Group_DropGroup('group_x');"
+}
+
+function test_org_admin_cant_grant_permissions_on_tables_he_does_not_own() {
+    create_table cdb_testmember_2 shared_with_group
+
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    # Checks that you can't grant even if your group has RW permissions
+    sql cdb_testmember_2 "select cartoDB.CDB_Group_Table_GrantReadWrite('group_a', 'cdb_testmember_2', 'shared_with_group')"
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantRead('group_a', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_GrantReadWrite('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+    sql cdb_org_admin "select cartoDB.CDB_Group_Table_RevokeAll('group_b', 'cdb_testmember_2', 'shared_with_group');" fails
+
+    sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.shared_with_group;'
+}
+
+function test_valid_group_names() {
+    sql postgres "select cartodb._CDB_Group_GroupRole('group_1$_a');"
+    sql postgres "select cartodb._CDB_Group_GroupRole('GROUP_1$_A');"
+    sql postgres "select cartodb._CDB_Group_GroupRole('_group_1$_a');"
+}
+
+function test_administrator_name_generation() {
+    sql postgres "select cartodb._CDB_Organization_Admin_Role_Name();"
+}
+
+function test_conf() {
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
+
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('test_conf', '{ \"a_key\": \"test_val\" }')"
+
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should '{ "a_key": "test_val" }'
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
+
+    sql postgres "SELECT cartodb.CDB_Conf_RemoveConf('test_conf')"
+
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf')" should ''
+    sql postgres "SELECT cartodb.CDB_Conf_GetConf('test_conf_2')" should ''
+}
 
 #################################################### TESTS END HERE ####################################################
 

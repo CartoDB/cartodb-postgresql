@@ -1,6 +1,10 @@
 next (2015-mm-dd)
 -----------------
 
+0.11.0 (2015-09-dd)
+-------------------
+* Groups API
+
 0.10.2 (2015-09-24)
 -------------------
 * Add back the `DROP FUNCTION IF EXISTS CDB_UserTables(text);` to be able to upgrade from `0.7.3` upward [#160](https://github.com/CartoDB/cartodb-postgresql/issues/160)

@@ -98,3 +98,8 @@ ls `pg_config --sharedir`/extension/cartodb*
 During development the cartodb extension version doesn't change with
 every commit, so testing latest change requires special steps documented
 in the CONTRIBUTING document, under "Testing changes live".
+
+Limitations
+-----------
+
+- The main schema of an organization user must have one only owner (the user).

@@ -6,3 +6,4 @@ regression.*
 expected/test
 sql/test
 .idea/*
+*.swp
