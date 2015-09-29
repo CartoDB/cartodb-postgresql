@@ -362,7 +362,7 @@ $$ LANGUAGE PLPGSQL;
 --     As before, this drops all the metadata and geom sync triggers
 --
 -- (2) _CDB_Has_Usable_Primary_ID()
---     Returns TRUE if it can find a unique integer primary key named
+--     Returns TRUE if it can find a unique and not null integer primary key named
 --    'cartodb_id' or can rename an existing key.
 --     Returns FALSE otherwise.
 --
@@ -551,7 +551,7 @@ BEGIN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
-      -- Check and see if the column values are unique, 
+      -- Check and see if the column values are unique and not null, 
       -- if they are, we can use this column...
       ELSE
 
@@ -559,13 +559,17 @@ BEGIN
         useable_key := true;
       
         BEGIN
-          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_unique UNIQUE (%s)', reloid::text, const.pkey, const.pkey);
+          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
           RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
           EXECUTE sql;
           EXCEPTION      
           -- Failed unique check...
           WHEN unique_violation THEN
-            RAISE NOTICE 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+            useable_key := false;
+          -- Failed not null check...
+          WHEN not_null_violation THEN
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
             useable_key := false;
           -- Other fatal error
           WHEN others THEN
@@ -574,7 +578,7 @@ BEGIN
   
         -- Clean up test constraint
         IF useable_key THEN
-          PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_unique', reloid::text, const.pkey));
+          PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
 
         -- Move non-unique column out of the way
         ELSE
