@@ -281,7 +281,7 @@ INSERT INTO many_colliding_columns VALUES (
 SELECT CDB_CartodbfyTableCheck('many_colliding_columns', 'Many colliding columns #141');
 DROP TABLE many_colliding_columns;
 
--- table with null cartodb_id
+-- Table with null cartodb_id
 CREATE TABLE test (
   cartodb_id integer
 );
@@ -290,11 +290,11 @@ INSERT INTO test VALUES
   (2), 
   (NULL), 
   (3);
-SELECT CDB_CartodbfyTable('test');
+SELECT CDB_CartodbfyTableCheck('test', 'Table with null cartodb_id #148');
 SELECT cartodb_id, cartodb_id_1 from test;
 DROP TABLE test;
 
--- table with non unique cartodb_id
+-- Table with non unique cartodb_id
 CREATE TABLE test (
   cartodb_id integer
 );
@@ -302,11 +302,11 @@ INSERT INTO test VALUES
   (1), 
   (2), 
   (2);
-SELECT CDB_CartodbfyTable('test');
+SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique cartodb_id #148');
 SELECT cartodb_id, cartodb_id_1 from test;
 DROP TABLE test;
 
--- table with non unique and null cartodb_id
+-- Table with non unique and null cartodb_id
 CREATE TABLE test (
   cartodb_id integer
 );
@@ -315,7 +315,7 @@ INSERT INTO test VALUES
   (2),
   (NULL),
   (2);
-SELECT CDB_CartodbfyTable('test');
+SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_id #148');
 SELECT cartodb_id, cartodb_id_1 from test;
 DROP TABLE test;
 

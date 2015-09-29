@@ -81,7 +81,7 @@ Many colliding columns #141 cartodbfied fine
 DROP TABLE
 CREATE TABLE
 INSERT 0 4
-test
+Table with null cartodb_id #148 cartodbfied fine
 1|1
 2|2
 3|
@@ -89,14 +89,14 @@ test
 DROP TABLE
 CREATE TABLE
 INSERT 0 3
-test
+Table with non unique cartodb_id #148 cartodbfied fine
 1|1
 2|2
 3|2
 DROP TABLE
 CREATE TABLE
 INSERT 0 4
-test
+Table with non unique and null cartodb_id #148 cartodbfied fine
 1|1
 2|2
 3|
