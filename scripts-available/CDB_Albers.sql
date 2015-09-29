@@ -8,13 +8,13 @@
 --  output: geometries of states in albers projections of the states
 -- 
 -- Projections:
---		- Lower 48 states: http://spatialreference.org/ref/sr-org/7965/
+--		- Lower 48 states: http://epsg.io/42303
 -- 		- Alaska: http://spatialreference.org/ref/epsg/3338/
 --		- Puerto Rico: http://www.spatialreference.org/ref/epsg/nad83-puerto-rico-virgin-is/
 --		- Hawaii: http://epsg.io/102007
 
 
-CREATE OR REPLACE FUNCTION CDB_Albers50 (g geometry, state text) RETURNS geometry as $$
+CREATE OR REPLACE FUNCTION CDB_AlbersUSA (g geometry, state text) RETURNS geometry as $$
 DECLARE
 	reply geometry;
 	srid INT;
@@ -30,10 +30,11 @@ BEGIN
 	    ST_SetSRID(
 	    	CASE 
   				WHEN $2 = any($3)
+  					THEN
 					ST_Scale(
 						ST_Translate(
 							ST_Transform(
-								the_geom
+								$1
 								, 3338
 							)
 							, -3800000
@@ -73,10 +74,12 @@ BEGIN
 				ELSE
 					ST_Transform($1,42303)
   				END
-  				, 4326
+  				, 3857
   			)'
 	INTO reply
 	USING g, state, alaska, hawaii, puertorico;
+
+	reply = ST_Transform(reply,4326);
 
 	RETURN reply;
 
