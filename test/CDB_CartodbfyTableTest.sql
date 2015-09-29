@@ -250,7 +250,7 @@ INSERT INTO existing_cartodb_id (cartodb_id, description) VALUES
        (20, 'b'),
        (30, 'c');
 SELECT CDB_CartodbfyTableCheck('existing_cartodb_id', 'Existing cartodb_id values are respected #138');
-SELECT * from existing_cartodb_id;
+SELECT cartodb_id,the_geom,the_geom_webmercator,description,name from existing_cartodb_id;
 DROP TABLE existing_cartodb_id;
 
 -- Table with both the_geom and wkb_geometry
@@ -280,6 +280,44 @@ INSERT INTO many_colliding_columns VALUES (
 );
 SELECT CDB_CartodbfyTableCheck('many_colliding_columns', 'Many colliding columns #141');
 DROP TABLE many_colliding_columns;
+
+-- table with null cartodb_id
+CREATE TABLE test (
+  cartodb_id integer
+);
+INSERT INTO test VALUES
+  (1), 
+  (2), 
+  (NULL), 
+  (3);
+SELECT CDB_CartodbfyTable('test');
+SELECT cartodb_id, cartodb_id_1 from test;
+DROP TABLE test;
+
+-- table with non unique cartodb_id
+CREATE TABLE test (
+  cartodb_id integer
+);
+INSERT INTO test VALUES
+  (1), 
+  (2), 
+  (2);
+SELECT CDB_CartodbfyTable('test');
+SELECT cartodb_id, cartodb_id_1 from test;
+DROP TABLE test;
+
+-- table with non unique and null cartodb_id
+CREATE TABLE test (
+  cartodb_id integer
+);
+INSERT INTO test VALUES
+  (1),
+  (2),
+  (NULL),
+  (2);
+SELECT CDB_CartodbfyTable('test');
+SELECT cartodb_id, cartodb_id_1 from test;
+DROP TABLE test;
 
 
 -- TODO: table with existing custom-triggered the_geom
