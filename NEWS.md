@@ -1,6 +1,11 @@
 next (2015-mm-dd)
 -----------------
 
+0.11.1 (2015-10-06)
+-------------------
+* Added CDB_DateToNumber(timestamp with time zone) [#169](https://github.com/CartoDB/cartodb-postgresql/pull/169)
+* cartodbfy now discards cartodb_id candidates that contain nulls [#148](https://github.com/CartoDB/cartodb-postgresql/issues/148)
+
 0.11.0 (2015-09-dd)
 -------------------
 * Groups API
