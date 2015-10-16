@@ -53,6 +53,24 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
+
+CREATE OR REPLACE FUNCTION CDB_SetInvalidateFunctionName(function_name text)
+RETURNS text AS
+$$
+DECLARE
+  sql text;
+BEGIN
+  
+  sql := 'CREATE OR REPLACE FUNCTION cartodb._CDB_InvalidateFunctionName() '
+    || 'RETURNS text AS $X$ SELECT ''' || function_name
+    || '''::text $X$ LANGUAGE sql IMMUTABLE';
+  EXECUTE sql;
+
+  return function_name;
+END
+$$
+LANGUAGE 'plpgsql' VOLATILE STRICT;
+
 --
 -- Trigger invalidating varnish whenever CDB_TableMetadata
 -- record change.
@@ -64,6 +82,7 @@ DECLARE
   tabname TEXT;
   rec RECORD;
   found BOOL;
+  invalidate_function_name TEXT;
 BEGIN
 
   IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
@@ -85,31 +104,72 @@ BEGIN
   --  LISTEN cdb_tabledata_update;
   --
 
-  -- Call the first varnish invalidation function owned
-  -- by a superuser found in cartodb or public schema
-  -- (in that order)
-  found := false;
-  FOR rec IN SELECT u.usesuper, u.usename, n.nspname, p.proname
-             FROM pg_proc p, pg_namespace n, pg_user u
-             WHERE p.proname = 'cdb_invalidate_varnish'
-               AND p.pronamespace = n.oid
-               AND n.nspname IN ('public', 'cartodb')
-               AND u.usesysid = p.proowner
-               AND u.usesuper
-             ORDER BY n.nspname
-  LOOP
-    EXECUTE 'SELECT ' || quote_ident(rec.nspname) || '.'
-            || quote_ident(rec.proname)
-            || '(' || quote_literal(tabname) || ')';
-    found := true;
-    EXIT;
-  END LOOP;
-  IF NOT found THEN RAISE WARNING 'Missing cdb_invalidate_varnish()'; END IF;
+  EXECUTE 'SELECT cartodb._CDB_InvalidateFunctionName()' INTO invalidate_function_name;
+  EXECUTE 'SELECT ' || invalidate_function_name || '(' || quote_literal(tabname) || ')';
 
   RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+
+
+----
+---- Trigger invalidating varnish whenever CDB_TableMetadata
+---- record change.
+----
+--CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Updated()
+--RETURNS trigger AS
+--$$
+--DECLARE
+--  tabname TEXT;
+--  rec RECORD;
+--  found BOOL;
+--BEGIN
+--
+--  IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
+--    tabname = NEW.tabname;
+--  ELSE
+--    tabname = OLD.tabname;
+--  END IF;
+--
+--  -- Notify table data update
+--  -- This needs a little bit more of research regarding security issues
+--  -- see https://github.com/CartoDB/cartodb/pull/241
+--  -- PERFORM pg_notify('cdb_tabledata_update', tabname);
+--
+--  --RAISE NOTICE 'Table % was updated', tabname;
+--
+--  -- This will be needed until we'll have someone listening
+--  -- on the event we just broadcasted:
+--  --
+--  --  LISTEN cdb_tabledata_update;
+--  --
+--
+--  -- Call the first varnish invalidation function owned
+--  -- by a superuser found in cartodb or public schema
+--  -- (in that order)
+--  found := false;
+--  FOR rec IN SELECT u.usesuper, u.usename, n.nspname, p.proname
+--             FROM pg_proc p, pg_namespace n, pg_user u
+--             WHERE p.proname = 'cdb_invalidate_varnish'
+--               AND p.pronamespace = n.oid
+--               AND n.nspname IN ('public', 'cartodb')
+--               AND u.usesysid = p.proowner
+--               AND u.usesuper
+--             ORDER BY n.nspname
+--  LOOP
+--    EXECUTE 'SELECT ' || quote_ident(rec.nspname) || '.'
+--            || quote_ident(rec.proname)
+--            || '(' || quote_literal(tabname) || ')';
+--    found := true;
+--    EXIT;
+--  END LOOP;
+--  IF NOT found THEN RAISE WARNING 'Missing cdb_invalidate_varnish()'; END IF;
+--
+--  RETURN NULL;
+--END;
+--$$
+--LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS table_modified ON CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table
