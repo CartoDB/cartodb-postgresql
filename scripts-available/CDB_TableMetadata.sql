@@ -67,7 +67,7 @@ DECLARE
   function_start timestamptz;
   function_end timestamptz;
   function_duration float;
-  log_error_verbosity text;
+  log_error_verbosity_value text;
 BEGIN
 
   IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
@@ -76,7 +76,7 @@ BEGIN
     tabname = OLD.tabname;
   END IF;
 
-  EXECUTE 'SELECT clock_timestamp()' INTO function_start;
+  function_start := clock_timestamp();
  
   -- Notify table data update
   -- This needs a little bit more of research regarding security issues
@@ -112,13 +112,12 @@ BEGIN
   END LOOP;
   IF NOT found THEN RAISE WARNING 'Missing cdb_invalidate_varnish()'; END IF;
   
-  EXECUTE 'SELECT clock_timestamp()' INTO function_end;
+  function_end := clock_timestamp();
   SELECT extract(epoch from (function_end - function_start)) INTO function_duration;
-  
-  EXECUTE 'SELECT setting FROM pg_settings where name=''log_error_verbosity''' INTO log_error_verbosity;
+  SELECT setting INTO log_error_verbosity_value FROM pg_settings WHERE name='log_error_verbosity';
   SET log_error_verbosity=TERSE;
   RAISE LOG 'invalidation_duration: %', function_duration::text;
-  EXECUTE 'SET log_error_verbosity= ' || log_error_verbosity;
+  PERFORM 'SET log_error_verbosity= ' || log_error_verbosity_value;
   
   RETURN NULL;
 END;
