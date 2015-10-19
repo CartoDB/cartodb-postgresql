@@ -1,6 +1,11 @@
 next (2015-mm-dd)
 -----------------
 
+0.11.2 (2015-10-19)
+-------------------
+* Fix schema not being specified on pg_get_serial_sequence [#170](https://github.com/CartoDB/cartodb-postgresql/pull/170)
+* Log invalidation function call duration in seconds [#163](https://github.com/CartoDB/cartodb-postgresql/pull/163)
+
 0.11.1 (2015-10-06)
 -------------------
 * Added CDB_DateToNumber(timestamp with time zone) [#169](https://github.com/CartoDB/cartodb-postgresql/pull/169)
