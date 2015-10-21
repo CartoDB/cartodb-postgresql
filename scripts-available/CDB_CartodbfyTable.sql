@@ -427,8 +427,9 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- Find a unique relation name in the given schema, starting from the 
--- template given. If the template is already unique, just return it; 
+-- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe.
+-- Find a unique relation name in the given schema, starting from the
+-- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
 CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
 RETURNS TEXT
@@ -449,20 +450,114 @@ BEGIN
     JOIN pg_namespace n ON c.relnamespace = n.oid
     WHERE c.relname = newrelname
     AND n.nspname = schemaname;
-  
+
     IF NOT FOUND THEN
       RETURN newrelname;
     END IF;
-    
+
     i := i + 1;
     newrelname := relationname || '_' || i;
-  
+
     IF i > 100 THEN
       PERFORM _CDB_Error('looping too far', '_CDB_Unique_Relation_Name');
     END IF;
-  
+
   END LOOP;
-  
+
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+-- UTF8 safe. Find a unique identifier with a given prefix and/or suffix and withing a schema.
+CREATE OR REPLACE FUNCTION _CDB_Unique_Identifier(prefix TEXT, schema TEXT, relname TEXT, suffix TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  rec RECORD;
+  usedspace INTEGER;
+  identifier TEXT;
+  i INTEGER;
+  originalidentifier TEXT;
+  maxlen INTEGER;
+BEGIN
+  maxlen := 63;
+
+  usedspace := 3;
+  usedspace := usedspace + COALESCE(octet_length(prefix), 0);
+  usedspace := usedspace + COALESCE(octet_length(suffix), 0);
+
+  relname := _CDB_Octet_Trim(relname, usedspace + octet_length(relname) - maxlen);
+
+  IF relname = '' THEN
+    PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
+  END IF;
+
+  identifier := COALESCE(prefix, '') || relname || COALESCE(suffix, '');
+
+  i := 0;
+  originalidentifier := identifier;
+
+  WHILE i < 100 LOOP
+    SELECT c.relname, n.nspname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.relname = identifier
+    AND n.nspname = schema;
+
+    IF NOT FOUND THEN
+      RETURN identifier;
+    END IF;
+
+    identifier := originalidentifier || '_' || i;
+    i := i + 1;
+  END LOOP;
+
+  PERFORM _CDB_Error('looping too far', '_CDB_Unique_Identifier');
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+-- Trims the end of a given string by the given number of octets taking care
+-- not to leave characters in half. UTF8 safe.
+CREATE OR REPLACE FUNCTION _CDB_Octet_Trim(tostrip TEXT, octets INTEGER)
+RETURNS TEXT
+AS $$
+DECLARE
+  expected INTEGER;
+  examined INTEGER;
+  tostriplen INTEGER;
+  charlen INTEGER;
+
+  i INTEGER;
+  tail TEXT;
+
+  trimmed TEXT;
+BEGIN
+  charlen := bit_length('a');
+  tostriplen := char_length(tostrip);
+  expected := tostriplen * charlen;
+  examined := bit_length(tostrip);
+
+  IF expected = examined OR octets = 0 THEN
+    RETURN SUBSTRING(tostrip from 1 for (tostriplen - octets));
+  ELSIF octets < 0 THEN
+    RETURN tostrip;
+  ELSIF (octets * charlen) > examined THEN
+    RETURN '';
+  END IF;
+
+  i := tostriplen - ((octets - 1) / 2);
+  LOOP
+    tail := SUBSTRING(tostrip from i for tostriplen);
+
+    EXIT WHEN octet_length(tail) >= octets OR i <= 0;
+
+    i := i - 1;
+  END LOOP;
+
+  trimmed := SUBSTRING(tostrip from 1 for (tostriplen - char_length(tail)));
+  RETURN trimmed;
 END;
 $$ LANGUAGE 'plpgsql';
 
@@ -961,15 +1056,14 @@ BEGIN
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := relname || '_' || const.pkey || '_seq';
-  destseq := _CDB_Unique_Relation_Name(destschema, destseq);
+  destseq := _CDB_Unique_Identifier(NULL, destschema, relname, '_' || const.pkey || '_seq');
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Salt a temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, Format('%s_%s', destname, salt));
+    copyname := Format('%I.%I', destschema, _CDB_Unique_Identifier(NULL, destschema, destname, '_' || salt));
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
