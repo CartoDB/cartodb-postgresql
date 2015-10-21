@@ -427,8 +427,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe.
--- Find a unique relation name in the given schema, starting from the
+-- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe and length
+-- aware. Find a unique relation name in the given schema, starting from the
 -- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
 CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
