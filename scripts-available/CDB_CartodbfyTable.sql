@@ -428,7 +428,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- DEPRECATED: Use cartodb.CDB_Unique_Identifier since it's UTF8 Safe and length
+-- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe and length
 -- aware. Find a unique relation name in the given schema, starting from the
 -- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
@@ -441,7 +441,7 @@ DECLARE
   newrelname TEXT;
 BEGIN
 
-  RAISE ERROR '_CDB_Unique_Relation_Name is DEPRECATED. Use CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
+  RAISE ERROR '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
 
   i := 0;
   newrelname := relationname;
@@ -471,7 +471,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- DEPRECATED: Use cartodb.CDB_Unique_Column_Identifier since it's UTF8 Safe and length
+-- DEPRECATED: Use _CDB_Unique_Column_Identifier since it's UTF8 Safe and length
 -- aware. Find a unique column name in the given relation, starting from the
 -- column name given. If the column name is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
@@ -484,7 +484,7 @@ DECLARE
   newcolname TEXT;
 BEGIN
 
-  RAISE ERROR '_CDB_Unique_Column_Name is DEPRECATED. Use CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
+  RAISE ERROR '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
 
   i := 0;
   newcolname := columnname;
@@ -596,7 +596,7 @@ BEGIN
           PERFORM _CDB_SQL(
             Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
               reloid::text, rec.attname,
-              cartodb.CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
+              cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
             '_CDB_Has_Usable_Primary_ID');
         
         END IF;
@@ -613,7 +613,7 @@ BEGIN
 
       PERFORM _CDB_SQL(
         Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-                reloid::text, rec.attname, cartodb.CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
+                reloid::text, rec.attname, cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
                 '_CDB_Has_Usable_Primary_ID');
     
     END IF;
@@ -779,7 +779,7 @@ BEGIN
           WHEN others THEN
             IF SQLERRM = 'parse error - invalid geometry' THEN
               text_geom_column := false;
-              str := cartodb.CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
+              str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
               sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
               PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
               RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -791,7 +791,7 @@ BEGIN
 
       -- Just change its name so we can write a new column into that name.
       ELSE
-        str := cartodb.CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
+        str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
         sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
         PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -968,14 +968,14 @@ BEGIN
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := cartodb.CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
+  destseq := cartodb._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Salt a temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, cartodb.CDB_Unique_Identifier(NULL, destname, '_' || salt), destschema);
+    copyname := Format('%I.%I', destschema, cartodb._CDB_Unique_Identifier(NULL, destname, '_' || salt), destschema);
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
