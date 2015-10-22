@@ -1,102 +1,27 @@
- cdb_unique_identifier 
------------------------
- relname
-(1 row)
-
- cdb_unique_identifier 
------------------------
- prefix_relname
-(1 row)
-
- cdb_unique_identifier 
------------------------
- relname_suffix
-(1 row)
-
-                    cdb_unique_identifier                     
---------------------------------------------------------------
- largolargolargolargolargolargolargolargolargolargolargolargo
-(1 row)
-
-                    cdb_unique_identifier                     
---------------------------------------------------------------
- prefix_largolargolargolargolargolargolargolargolargolargolar
-(1 row)
-
+relname
+prefix_relname
+relname_suffix
+largolargolargolargolargolargolargolargolargolargolargolargo
+prefix_largolargolargolargolargolargolargolargolargolargolar
 CREATE TABLE
-                     cdb_unique_identifier                      
-----------------------------------------------------------------
- prefix_largolargolargolargolargolargolargolargolargolargolar_0
-(1 row)
-
+prefix_largolargolargolargolargolargolargolargolargolargolar_0
 DROP TABLE
-                    cdb_unique_identifier                     
---------------------------------------------------------------
- largolargolargolargolargolargolargolargolargolargolar_suffix
-(1 row)
-
+largolargolargolargolargolargolargolargolargolargolar_suffix
 CREATE TABLE
-                     cdb_unique_identifier                      
-----------------------------------------------------------------
- largolargolargolargolargolargolargolargolargolargolar_suffix_0
-(1 row)
-
+largolargolargolargolargolargolargolargolargolargolar_suffix_0
 DROP TABLE
- cdb_unique_identifier 
------------------------
- piraña
-(1 row)
-
- cdb_unique_identifier 
------------------------
- prefix_piraña
-(1 row)
-
- cdb_unique_identifier 
------------------------
- piraña_suffix
-(1 row)
-
-              cdb_unique_identifier               
---------------------------------------------------
- piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácid
-(1 row)
-
-               cdb_unique_identifier               
----------------------------------------------------
- prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi
-(1 row)
-
+piraña
+prefix_piraña
+piraña_suffix
+piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácid
+prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi
 CREATE TABLE
-                cdb_unique_identifier                
------------------------------------------------------
- prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_0
-(1 row)
-
+prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_0
 DROP TABLE
-               cdb_unique_identifier               
----------------------------------------------------
- piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix
-(1 row)
-
+piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix
 CREATE TABLE
-                cdb_unique_identifier                
------------------------------------------------------
- piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix_0
-(1 row)
-
+piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix_0
 DROP TABLE
- cdb_octet_trim 
-----------------
- pirañ
-(1 row)
-
- cdb_octet_trim 
-----------------
- pira
-(1 row)
-
- cdb_octet_trim 
-----------------
- pira
-(1 row)
+pirañ
+pira
+pira

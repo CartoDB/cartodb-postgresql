@@ -469,7 +469,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- DEPRECATED: Use cartodb.CDB_Unique_Identifier since it's UTF8 Safe and length
+-- DEPRECATED: Use cartodb.CDB_Unique_Column_Identifier since it's UTF8 Safe and length
 -- aware. Find a unique column name in the given relation, starting from the
 -- column name given. If the column name is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
@@ -592,7 +592,7 @@ BEGIN
           PERFORM _CDB_SQL(
             Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
               reloid::text, rec.attname,
-              cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || const.pkey)),
+              cartodb.CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
             '_CDB_Has_Usable_Primary_ID');
         
         END IF;
@@ -609,7 +609,7 @@ BEGIN
 
       PERFORM _CDB_SQL(
         Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-                reloid::text, rec.attname, cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || const.pkey)),
+                reloid::text, rec.attname, cartodb.CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
                 '_CDB_Has_Usable_Primary_ID');
     
     END IF;
@@ -775,7 +775,7 @@ BEGIN
           WHEN others THEN
             IF SQLERRM = 'parse error - invalid geometry' THEN
               text_geom_column := false;
-              str := cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || r1.attname);
+              str := cartodb.CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
               sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
               PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
               RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -787,7 +787,7 @@ BEGIN
 
       -- Just change its name so we can write a new column into that name.
       ELSE
-        str := cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || r1.attname);
+        str := cartodb.CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
         sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
         PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
