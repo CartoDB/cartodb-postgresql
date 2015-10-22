@@ -1,4 +1,5 @@
 -- Depends on:
+--   * CDB_Helper.sql
 --   * CDB_ExtensionUtils.sql
 --   * CDB_TransformToWebmercator.sql
 --   * CDB_TableMetadata.sql
@@ -427,7 +428,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe and length
+-- DEPRECATED: Use cartodb.CDB_Unique_Identifier since it's UTF8 Safe and length
 -- aware. Find a unique relation name in the given schema, starting from the
 -- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
@@ -468,102 +469,9 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- UTF8 safe. Find a unique identifier with a given prefix and/or suffix and withing a schema.
-CREATE OR REPLACE FUNCTION _CDB_Unique_Identifier(prefix TEXT, schema TEXT, relname TEXT, suffix TEXT)
-RETURNS TEXT
-AS $$
-DECLARE
-  rec RECORD;
-  usedspace INTEGER;
-  identifier TEXT;
-  i INTEGER;
-  originalidentifier TEXT;
-  maxlen INTEGER;
-BEGIN
-  maxlen := 63;
-
-  usedspace := 3;
-  usedspace := usedspace + COALESCE(octet_length(prefix), 0);
-  usedspace := usedspace + COALESCE(octet_length(suffix), 0);
-
-  relname := _CDB_Octet_Trim(relname, usedspace + octet_length(relname) - maxlen);
-
-  IF relname = '' THEN
-    PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
-  END IF;
-
-  identifier := COALESCE(prefix, '') || relname || COALESCE(suffix, '');
-
-  i := 0;
-  originalidentifier := identifier;
-
-  WHILE i < 100 LOOP
-    SELECT c.relname, n.nspname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE c.relname = identifier
-    AND n.nspname = schema;
-
-    IF NOT FOUND THEN
-      RETURN identifier;
-    END IF;
-
-    identifier := originalidentifier || '_' || i;
-    i := i + 1;
-  END LOOP;
-
-  PERFORM _CDB_Error('looping too far', '_CDB_Unique_Identifier');
-END;
-$$ LANGUAGE 'plpgsql';
-
-
--- Trims the end of a given string by the given number of octets taking care
--- not to leave characters in half. UTF8 safe.
-CREATE OR REPLACE FUNCTION _CDB_Octet_Trim(tostrip TEXT, octets INTEGER)
-RETURNS TEXT
-AS $$
-DECLARE
-  expected INTEGER;
-  examined INTEGER;
-  tostriplen INTEGER;
-  charlen INTEGER;
-
-  i INTEGER;
-  tail TEXT;
-
-  trimmed TEXT;
-BEGIN
-  charlen := bit_length('a');
-  tostriplen := char_length(tostrip);
-  expected := tostriplen * charlen;
-  examined := bit_length(tostrip);
-
-  IF expected = examined OR octets = 0 THEN
-    RETURN SUBSTRING(tostrip from 1 for (tostriplen - octets));
-  ELSIF octets < 0 THEN
-    RETURN tostrip;
-  ELSIF (octets * charlen) > examined THEN
-    RETURN '';
-  END IF;
-
-  i := tostriplen - ((octets - 1) / 2);
-  LOOP
-    tail := SUBSTRING(tostrip from i for tostriplen);
-
-    EXIT WHEN octet_length(tail) >= octets OR i <= 0;
-
-    i := i - 1;
-  END LOOP;
-
-  trimmed := SUBSTRING(tostrip from 1 for (tostriplen - char_length(tail)));
-  RETURN trimmed;
-END;
-$$ LANGUAGE 'plpgsql';
-
-
--- Find a unique column name in the given relation, starting from the 
--- column name given. If the column name is already unique, just return it; 
+-- DEPRECATED: Use cartodb.CDB_Unique_Identifier since it's UTF8 Safe and length
+-- aware. Find a unique column name in the given relation, starting from the
+-- column name given. If the column name is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
 CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
 RETURNS TEXT
@@ -684,7 +592,7 @@ BEGIN
           PERFORM _CDB_SQL(
             Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
               reloid::text, rec.attname,
-              _CDB_Unique_Column_Name(reloid, const.pkey)),
+              cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || const.pkey)),
             '_CDB_Has_Usable_Primary_ID');
         
         END IF;
@@ -701,7 +609,7 @@ BEGIN
 
       PERFORM _CDB_SQL(
         Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-                reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, const.pkey)),
+                reloid::text, rec.attname, cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || const.pkey)),
                 '_CDB_Has_Usable_Primary_ID');
     
     END IF;
@@ -867,7 +775,7 @@ BEGIN
           WHEN others THEN
             IF SQLERRM = 'parse error - invalid geometry' THEN
               text_geom_column := false;
-              str := _CDB_Unique_Column_Name(reloid, r1.attname);
+              str := cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || r1.attname);
               sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
               PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
               RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -879,7 +787,7 @@ BEGIN
 
       -- Just change its name so we can write a new column into that name.
       ELSE
-        str := _CDB_Unique_Column_Name(reloid, r1.attname);
+        str := cartodb.CDB_Unique_Identifier(NULL, reloid::text, '_' || r1.attname);
         sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
         PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -1056,18 +964,18 @@ BEGIN
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := _CDB_Unique_Identifier(NULL, destschema, relname, '_' || const.pkey || '_seq');
+  destseq := cartodb.CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Salt a temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, _CDB_Unique_Identifier(NULL, destschema, destname, '_' || salt));
+    copyname := Format('%I.%I', destschema, cartodb.CDB_Unique_Identifier(NULL, destname, '_' || salt), destschema);
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
-  
+
   -- Start building the SQL!
   sql := Format('CREATE TABLE %s AS SELECT ', copyname);
 

@@ -11,6 +11,7 @@ CDBSCRIPTS = \
   scripts-available/CDB_DDLTriggers.sql \
   scripts-available/CDB_ExtensionPost.sql \
   scripts-available/CDB_ExtensionUtils.sql \
+  scripts-available/CDB_Helper.sql \
   $(END)
 
 UPGRADABLE = \
