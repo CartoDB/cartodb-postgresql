@@ -441,7 +441,7 @@ DECLARE
   newrelname TEXT;
 BEGIN
 
-  RAISE ERROR '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
+  RAISE EXCEPTION '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
 
   i := 0;
   newrelname := relationname;
@@ -484,7 +484,7 @@ DECLARE
   newcolname TEXT;
 BEGIN
 
-  RAISE ERROR '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
+  RAISE EXCEPTION '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
 
   i := 0;
   newcolname := columnname;
