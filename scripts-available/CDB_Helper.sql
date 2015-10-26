@@ -1,5 +1,6 @@
 -- UTF8 safe and lenght aware. Find a unique identifier with a given prefix
--- and/or suffix and withing a schema.
+-- and/or suffix and withing a schema. If a schema is not specified, the identifier
+-- is guaranteed to be unique for all schemas.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)
 RETURNS TEXT
 AS $$
@@ -57,7 +58,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 -- UTF8 safe and lenght aware. Find a unique identifier for a column with a given prefix
--- and/or suffix and withing a realtion. If no reloid is give, all relations are examined
+-- and/or suffix and withing a realtion. If no reloid is give, all relations are examined.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)
 RETURNS TEXT
 AS $$
