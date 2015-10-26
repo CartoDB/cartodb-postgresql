@@ -18,7 +18,7 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Octet_Trim(relname, usedspace + octet_length(relname) - maxlen);
+  relname := _CDB_Trim_Octets(relname, usedspace + octet_length(relname) - maxlen);
 
   IF relname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
@@ -76,7 +76,7 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Octet_Trim(relname, usedspace + octet_length(relname) - maxlen);
+  relname := _CDB_Trim_Octets(relname, usedspace + octet_length(relname) - maxlen);
 
   IF relname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
@@ -110,14 +110,15 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 -- Trims the end of a given string by the given number of octets taking care
--- not to leave characters in half. UTF8 safe.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Octet_Trim(tostrip TEXT, octets INTEGER)
+-- not to leave characters in half. If a negative or 0 amount of octects to trim
+-- is specified, the suplied text is returned unaltered. UTF8 safe.
+CREATE OR REPLACE FUNCTION cartodb._CDB_Trim_Octets(totrim TEXT, octets INTEGER)
 RETURNS TEXT
 AS $$
 DECLARE
   expected INTEGER;
   examined INTEGER;
-  tostriplen INTEGER;
+  totrimlen INTEGER;
   charlen INTEGER;
 
   i INTEGER;
@@ -126,28 +127,28 @@ DECLARE
   trimmed TEXT;
 BEGIN
   charlen := bit_length('a');
-  tostriplen := char_length(tostrip);
-  expected := tostriplen * charlen;
-  examined := bit_length(tostrip);
+  totrimlen := char_length(totrim);
+  expected := totrimlen * charlen;
+  examined := bit_length(totrim);
 
-  IF expected = examined OR octets = 0 THEN
-    RETURN SUBSTRING(tostrip from 1 for (tostriplen - octets));
-  ELSIF octets < 0 THEN
-    RETURN tostrip;
+  IF octets <= 0 THEN
+    RETURN totrim;
+  ELSIF expected = examined THEN
+    RETURN SUBSTRING(totrim from 1 for (totrimlen - octets));
   ELSIF (octets * charlen) > examined THEN
     RETURN '';
   END IF;
 
-  i := tostriplen - ((octets - 1) / 2);
+  i := totrimlen - ((octets - 1) / 2);
   LOOP
-    tail := SUBSTRING(tostrip from i for tostriplen);
+    tail := SUBSTRING(totrim from i for totrimlen);
 
     EXIT WHEN octet_length(tail) >= octets OR i <= 0;
 
     i := i - 1;
   END LOOP;
 
-  trimmed := SUBSTRING(tostrip from 1 for (tostriplen - char_length(tail)));
+  trimmed := SUBSTRING(totrim from 1 for (totrimlen - char_length(tail)));
   RETURN trimmed;
 END;
 $$ LANGUAGE 'plpgsql';
