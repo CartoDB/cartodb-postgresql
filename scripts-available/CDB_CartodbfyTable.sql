@@ -811,8 +811,7 @@ DECLARE
   destname TEXT;
   destseq TEXT;
   destseqmax INTEGER;
-    
-  salt TEXT := md5(random()::text || now());
+
   copyname TEXT;
 
   column_name_sql TEXT;
@@ -922,10 +921,10 @@ BEGIN
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
-  -- Salt a temporary table name if we are re-writing in place
+  -- Temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, cartodb._CDB_Unique_Identifier(NULL, destname, '_' || salt), destschema);
+    copyname := Format('%I.%I', destschema, cartodb._CDB_Unique_Identifier(NULL, destname, NULL), destschema);
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
