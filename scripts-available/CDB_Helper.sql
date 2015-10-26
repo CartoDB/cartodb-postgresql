@@ -58,8 +58,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 -- UTF8 safe and lenght aware. Find a unique identifier for a column with a given prefix
--- and/or suffix and withing a realtion. If no reloid is give, all relations are examined.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)
+-- and/or suffix and withing a realtion.
+CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -88,24 +88,14 @@ BEGIN
   origident := ident;
 
   WHILE i < 100 LOOP
-    IF reloid IS NOT NULL THEN
-      SELECT a.attname
-      INTO rec
-      FROM pg_class c
-      JOIN pg_attribute a ON a.attrelid = c.oid
-      WHERE NOT a.attisdropped
-      AND a.attnum > 0
-      AND c.oid = reloid
-      AND a.attname = ident;
-    ELSE
-      SELECT a.attname
-      INTO rec
-      FROM pg_class c
-      JOIN pg_attribute a ON a.attrelid = c.oid
-      WHERE NOT a.attisdropped
-      AND a.attnum > 0
-      AND a.attname = ident;
-    END IF;
+    SELECT a.attname
+    INTO rec
+    FROM pg_class c
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    WHERE NOT a.attisdropped
+    AND a.attnum > 0
+    AND c.oid = reloid
+    AND a.attname = ident;
 
     IF NOT FOUND THEN
       RETURN ident;
