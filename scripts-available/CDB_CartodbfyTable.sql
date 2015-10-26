@@ -443,30 +443,6 @@ BEGIN
 
   RAISE EXCEPTION '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
 
-  i := 0;
-  newrelname := relationname;
-  LOOP
-
-    SELECT c.relname, n.nspname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE c.relname = newrelname
-    AND n.nspname = schemaname;
-
-    IF NOT FOUND THEN
-      RETURN newrelname;
-    END IF;
-
-    i := i + 1;
-    newrelname := relationname || '_' || i;
-
-    IF i > 100 THEN
-      PERFORM _CDB_Error('looping too far', '_CDB_Unique_Relation_Name');
-    END IF;
-
-  END LOOP;
-
 END;
 $$ LANGUAGE 'plpgsql';
 
@@ -486,32 +462,6 @@ BEGIN
 
   RAISE EXCEPTION '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
 
-  i := 0;
-  newcolname := columnname;
-  LOOP
-
-    SELECT a.attname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_attribute a ON a.attrelid = c.oid
-    WHERE NOT a.attisdropped
-    AND a.attnum > 0
-    AND c.oid = reloid
-    AND a.attname = newcolname;
-  
-    IF NOT FOUND THEN
-      RETURN newcolname;
-    END IF;
-    
-    i := i + 1;
-    newcolname := columnname || '_' || i;
-  
-    IF i > 100 THEN
-      PERFORM _CDB_Error('looping too far', '_CDB_Unique_Column_Name');
-    END IF;
-  
-  END LOOP;
-  
 END;
 $$ LANGUAGE 'plpgsql';
 
