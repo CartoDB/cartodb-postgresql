@@ -10,10 +10,10 @@ DECLARE
   ident TEXT;
   i INTEGER;
   origident TEXT;
-  maxlen INTEGER;
-BEGIN
-  maxlen := 63;
 
+  maxlen CONSTANT integer := 63;
+BEGIN
+  -- Accounts for the _XX incremental suffix in case the identifier is taken
   usedspace := 3;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
@@ -68,10 +68,10 @@ DECLARE
   ident TEXT;
   i INTEGER;
   origident TEXT;
-  maxlen INTEGER;
-BEGIN
-  maxlen := 63;
 
+  maxlen CONSTANT integer := 63;
+BEGIN
+  -- Accounts for the _XX incremental suffix in case the identifier is taken
   usedspace := 3;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
