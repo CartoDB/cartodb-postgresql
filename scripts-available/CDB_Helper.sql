@@ -60,8 +60,8 @@ $$ LANGUAGE 'plpgsql';
 
 
 -- UTF8 safe and lenght aware. Find a unique identifier for a column with a given prefix
--- and/or suffix and withing a realtion.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS)
+-- and/or suffix based on colname and within a relation specified via reloid.
+CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, colname TEXT, suffix TEXT, reloid REGCLASS)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -79,13 +79,13 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
+  colname := _CDB_Octet_Truncate(colname, maxlen - usedspace);
 
-  IF relname = '' THEN
+  IF colname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
   END IF;
 
-  ident := coalesce(prefix, '') || relname || coalesce(suffix, '');
+  ident := coalesce(prefix, '') || colname || coalesce(suffix, '');
 
   i := 0;
   origident := ident;
