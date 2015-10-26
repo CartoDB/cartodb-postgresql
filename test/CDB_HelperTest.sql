@@ -54,67 +54,75 @@ CREATE TABLE piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix (name t
 SELECT * FROM cartodb._CDB_Unique_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', '_suffix');
 DROP TABLE piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix;
 
+CREATE TABLE test (name text);
 -- Test unique identifier creation with normal length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'colname', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'colname', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with prefix with normal length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'colname', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'colname', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with suffix with normal length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'colname', '_suffix');
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'colname', '_suffix', 'test'::regclass);
 
 -- Test unique identifier creation with long length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with prefix with long length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL, 'test'::regclass);
+DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
 CREATE TABLE test (prefix_largolargolargolargolargolargolargolargolargolargolar text);
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL, 'test'::regclass);
 DROP TABLE test;
 
 -- Test unique identifier creation with suffix with long length normal colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix');
+CREATE TABLE test (name text);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix', 'test'::regclass);
+DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
 CREATE TABLE test (largolargolargolargolargolargolargolargolargolargolar_suffix text);
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix');
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix', 'test'::regclass);
 DROP TABLE test;
 
+CREATE TABLE test (name text);
 -- Test unique identifier creation with normal length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piraña', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piraña', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with prefix with normal length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piraña', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piraña', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with suffix with normal length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piraña', '_suffix');
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piraña', '_suffix', 'test'::regclass);
 
 -- Test unique identifier creation with long length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL, 'test'::regclass);
 
 -- Test unique identifier creation with prefix with long length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL, 'test'::regclass);
+DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
 CREATE TABLE test (prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi text);
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', NULL, 'test'::regclass);
 DROP TABLE test;
 
 -- Test unique identifier creation with suffix with long length UTF8 colname
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', '_suffix');
+CREATE TABLE test (name text);
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', '_suffix', 'test'::regclass);
+DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
 CREATE TABLE test (piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix text);
-SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', '_suffix');
+SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácidpin', '_suffix', 'test'::regclass);
 DROP TABLE test;
 
--- Test _CDB_Trim_Octets simple case
-SELECT * FROM cartodb._CDB_Octet_Trim('piraña', 1);
+-- Test _CDB_Octet_Truncate simple case
+SELECT * FROM cartodb._CDB_Octet_Truncate('piraña', 5);
 
--- Test _CDB_Octet_Trim UTF8 case
-SELECT * FROM cartodb._CDB_Octet_Trim('piraña', 2);
+-- Test _CDB_Octet_Truncate UTF8 case
+SELECT * FROM cartodb._CDB_Octet_Truncate('piraña', 6);
 
--- Test _CDB_Octet_Trim UTF8 case
-SELECT * FROM cartodb._CDB_Octet_Trim('piraña', 3);
+-- Test _CDB_Octet_Truncate UTF8 case
+SELECT * FROM cartodb._CDB_Octet_Truncate('piraña', 7);

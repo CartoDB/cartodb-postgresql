@@ -5,20 +5,21 @@ CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Identifier(prefix TEXT, relname T
 RETURNS TEXT
 AS $$
 DECLARE
+  maxlen CONSTANT INTEGER := 63;
+
   rec RECORD;
   usedspace INTEGER;
   ident TEXT;
-  i INTEGER;
   origident TEXT;
 
-  maxlen CONSTANT integer := 63;
+  i INTEGER;
 BEGIN
   -- Accounts for the _XX incremental suffix in case the identifier is taken
   usedspace := 3;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Trim_Octets(relname, usedspace + octet_length(relname) - maxlen);
+  relname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
 
   IF relname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
@@ -57,26 +58,28 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
+
 -- UTF8 safe and lenght aware. Find a unique identifier for a column with a given prefix
 -- and/or suffix and withing a realtion.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS)
 RETURNS TEXT
 AS $$
 DECLARE
+  maxlen CONSTANT INTEGER := 63;
+
   rec RECORD;
   usedspace INTEGER;
   ident TEXT;
-  i INTEGER;
   origident TEXT;
 
-  maxlen CONSTANT integer := 63;
+  i INTEGER;
 BEGIN
   -- Accounts for the _XX incremental suffix in case the identifier is taken
   usedspace := 3;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Trim_Octets(relname, usedspace + octet_length(relname) - maxlen);
+  relname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
 
   IF relname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
@@ -109,47 +112,43 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
--- Trims the end of a given string by the given number of octets taking care
--- not to leave characters in half. If a negative or 0 amount of octects to trim
--- is specified, the suplied text is returned unaltered. UTF8 safe.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Trim_Octets(totrim TEXT, octets INTEGER)
+
+-- Truncates a given string to a max_octets octexts taking care
+-- not to leave characters in half. UTF8 safe.
+CREATE OR REPLACE FUNCTION cartodb._CDB_Octet_Truncate(string TEXT, max_octets INTEGER)
 RETURNS TEXT
 AS $$
 DECLARE
+  extcharlen CONSTANT INTEGER := octet_length('ñ');
+
   expected INTEGER;
   examined INTEGER;
-  totrimlen INTEGER;
-  charlen INTEGER;
+  strlen INTEGER;
 
   i INTEGER;
-  tail TEXT;
-
-  trimmed TEXT;
 BEGIN
-  charlen := bit_length('a');
-  totrimlen := char_length(totrim);
-  expected := totrimlen * charlen;
-  examined := bit_length(totrim);
 
-  IF octets <= 0 THEN
-    RETURN totrim;
-  ELSIF expected = examined THEN
-    RETURN SUBSTRING(totrim from 1 for (totrimlen - octets));
-  ELSIF (octets * charlen) > examined THEN
+  IF max_octets <= 0 THEN
     RETURN '';
+  ELSIF max_octets >= octet_length(string) THEN
+    RETURN string;
   END IF;
 
-  i := totrimlen - ((octets - 1) / 2);
-  LOOP
-    tail := SUBSTRING(totrim from i for totrimlen);
+  strlen := char_length(string);
 
-    EXIT WHEN octet_length(tail) >= octets OR i <= 0;
+  expected := char_length(string);
+  examined := octet_length(string);
 
-    i := i - 1;
+  IF expected = examined THEN
+    RETURN SUBSTRING(string from 1 for max_octets);
+  END IF;
+
+  i := max_octets / extcharlen;
+
+  WHILE octet_length(SUBSTRING(string from 1 for i)) <= max_octets LOOP
+    i := i + 1;
   END LOOP;
 
-  trimmed := SUBSTRING(totrim from 1 for (totrimlen - char_length(tail)));
-  RETURN trimmed;
+  RETURN SUBSTRING(string from 1 for (i - 1));
 END;
 $$ LANGUAGE 'plpgsql';
-

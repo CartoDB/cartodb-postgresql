@@ -22,30 +22,38 @@ piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix
 CREATE TABLE
 piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix_0
 DROP TABLE
+CREATE TABLE
 colname
 prefix_colname
 colname_suffix
 largolargolargolargolargolargolargolargolargolargolargolargo
 prefix_largolargolargolargolargolargolargolargolargolargolar
+DROP TABLE
 CREATE TABLE
 prefix_largolargolargolargolargolargolargolargolargolargolar_0
 DROP TABLE
+CREATE TABLE
 largolargolargolargolargolargolargolargolargolargolar_suffix
+DROP TABLE
 CREATE TABLE
 largolargolargolargolargolargolargolargolargolargolar_suffix_0
 DROP TABLE
+CREATE TABLE
 piraña
 prefix_piraña
 piraña_suffix
 piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpiñaácid
 prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi
+DROP TABLE
 CREATE TABLE
 prefix_piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_0
 DROP TABLE
+CREATE TABLE
 piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix
+DROP TABLE
 CREATE TABLE
 piñaácidpiñaácidpiñaácidpiñaácidpiñaácidpi_suffix_0
 DROP TABLE
+pira
 pirañ
-pira
-pira
+piraña
