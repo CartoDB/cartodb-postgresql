@@ -291,7 +291,7 @@ INSERT INTO test VALUES
   (NULL), 
   (3);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_1 from test;
+SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
 -- Table with non unique cartodb_id
@@ -303,7 +303,7 @@ INSERT INTO test VALUES
   (2), 
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique cartodb_id #148');
-SELECT cartodb_id, cartodb_id_1 from test;
+SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
 -- Table with non unique and null cartodb_id
@@ -316,7 +316,7 @@ INSERT INTO test VALUES
   (NULL),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_1 from test;
+SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
 
