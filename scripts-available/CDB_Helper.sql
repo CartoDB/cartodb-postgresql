@@ -11,6 +11,7 @@ DECLARE
   usedspace INTEGER;
   ident TEXT;
   origident TEXT;
+  candrelname TEXT;
 
   i INTEGER;
 BEGIN
@@ -19,13 +20,13 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  relname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
+  candrelname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
 
-  IF relname = '' THEN
+  IF candrelname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
   END IF;
 
-  ident := coalesce(prefix, '') || relname || coalesce(suffix, '');
+  ident := coalesce(prefix, '') || candrelname || coalesce(suffix, '');
 
   i := 0;
   origident := ident;
@@ -68,6 +69,7 @@ DECLARE
   maxlen CONSTANT INTEGER := 63;
 
   rec RECORD;
+  candcolname TEXT;
   usedspace INTEGER;
   ident TEXT;
   origident TEXT;
@@ -79,13 +81,13 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  colname := _CDB_Octet_Truncate(colname, maxlen - usedspace);
+  candcolname := _CDB_Octet_Truncate(colname, maxlen - usedspace);
 
-  IF colname = '' THEN
+  IF candcolname = '' THEN
     PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
   END IF;
 
-  ident := coalesce(prefix, '') || colname || coalesce(suffix, '');
+  ident := coalesce(prefix, '') || candcolname || coalesce(suffix, '');
 
   i := 0;
   origident := ident;
@@ -140,15 +142,15 @@ BEGIN
   examined := octet_length(string);
 
   IF expected = examined THEN
-    RETURN SUBSTRING(string from 1 for max_octets);
+    RETURN left(string, max_octets);
   END IF;
 
   i := max_octets / extcharlen;
 
-  WHILE octet_length(SUBSTRING(string from 1 for i)) <= max_octets LOOP
+  WHILE octet_length(left(string, i)) <= max_octets LOOP
     i := i + 1;
   END LOOP;
 
-  RETURN SUBSTRING(string from 1 for (i - 1));
+  RETURN left(string, (i - 1));
 END;
 $$ LANGUAGE 'plpgsql';
