@@ -1,4 +1,4 @@
--- UTF8 safe and lenght aware. Find a unique identifier with a given prefix
+-- UTF8 safe and length aware. Find a unique identifier with a given prefix
 -- and/or suffix and withing a schema. If a schema is not specified, the identifier
 -- is guaranteed to be unique for all schemas.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)
@@ -60,7 +60,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- UTF8 safe and lenght aware. Find a unique identifier for a column with a given prefix
+-- UTF8 safe and length aware. Find a unique identifier for a column with a given prefix
 -- and/or suffix based on colname and within a relation specified via reloid.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, colname TEXT, suffix TEXT, reloid REGCLASS)
 RETURNS TEXT
@@ -115,7 +115,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- Truncates a given string to a max_octets octexts taking care
+-- Truncates a given string to a max_octets octets taking care
 -- not to leave characters in half. UTF8 safe.
 CREATE OR REPLACE FUNCTION cartodb._CDB_Octet_Truncate(string TEXT, max_octets INTEGER)
 RETURNS TEXT
