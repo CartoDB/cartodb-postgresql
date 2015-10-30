@@ -102,5 +102,9 @@ Table with non unique and null cartodb_id #148 cartodbfied fine
 3|
 4|2
 DROP TABLE
+CREATE TABLE
+
+_cartodb_id0
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

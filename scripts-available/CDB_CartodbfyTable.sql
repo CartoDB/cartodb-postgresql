@@ -166,7 +166,7 @@ BEGIN
         AS seq INTO rec2;
 
       -- Reset sequence name
-      sql := Format('ALTER SEQUENCE %s RESTART WITH %d', rec2.seq::text, rec.max + 1);
+      sql := Format('ALTER SEQUENCE %s RESTART WITH %', rec2.seq::text, rec.max + 1);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 

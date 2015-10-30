@@ -319,6 +319,13 @@ SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_i
 SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
+-- _CDB_create_cartodb_id_column with cartodb_id already present
+CREATE TABLE test (cartodb_id integer);
+
+SELECT _CDB_Create_Cartodb_ID_Column('test'::regclass);
+SELECT column_name FROM information_schema.columns WHERE table_name = 'test' AND column_name = '_cartodb_id0';
+
+DROP TABLE test;
 
 -- TODO: table with existing custom-triggered the_geom
 
