@@ -157,7 +157,7 @@ BEGIN
       EXECUTE sql;
 
       -- Find max value
-      sql := Format('SELECT max(cartodb_id) FROM %s', reloid::text);
+      sql := Format('SELECT coalesce(max(cartodb_id), 0) as max FROM %s', reloid::text);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql INTO rec;
 
@@ -166,7 +166,7 @@ BEGIN
         AS seq INTO rec2;
 
       -- Reset sequence name
-      sql := Format('ALTER SEQUENCE %s RESTART WITH %', rec2.seq::text, rec.max + 1);
+      sql := Format('ALTER SEQUENCE %s RESTART WITH %s', rec2.seq::text, rec.max + 1);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
