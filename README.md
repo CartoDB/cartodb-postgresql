@@ -13,9 +13,6 @@ Dependencies
 
  * PostgreSQL 9.3+ (with plpythonu extension and xml support)
  * [PostGIS extension](http://postgis.net) 
- * [Schema triggers extension]
-   (https://bitbucket.org/malloclabs/pg_schema_triggers)
-   (or [fork](https://github.com/CartoDB/pg_schema_triggers))
 
 Install
 -------
@@ -31,10 +28,6 @@ Test installation
 make installcheck
 ```
 
-NOTE: if ``test_ddl_triggers`` fails it's likely due to an incomplete
-      installation of schema_triggers: you need to add ``schema_triggers.so``
-      to the ``shared_preload_libraries`` setting in postgresql.conf !
-
 NOTE: you need to run the installcheck as a superuser, use PGUSER
       env variable if needed, like: PGUSER=postgres make installcheck
       
@@ -47,7 +40,6 @@ In a database that needs to be turned into a "cartodb" user database, run:
 
 ```sql
 CREATE EXTENSION postgis;
-CREATE EXTENSION schema_triggers;
 CREATE EXTENSION cartodb;
 ```
 
@@ -63,7 +55,6 @@ be in the "cartodb" schema.
 
 ```sql
 CREATE EXTENSION postgis FROM unpackaged;
-CREATE EXTENSION schema_triggers;
 CREATE EXTENSION cartodb FROM unpackaged;
 ```
 
