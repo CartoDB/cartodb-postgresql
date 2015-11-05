@@ -83,6 +83,7 @@ $$ language plpgsql IMMUTABLE;
 -- {
 -- A set of utlitiy functions for SunCalc calculations
 -- }{
+
 CREATE OR REPLACE FUNCTION _CDB_SunCalc_RightAscension(l NUMERIC, b NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
