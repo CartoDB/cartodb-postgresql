@@ -6,6 +6,19 @@
 -- SunCalc.js is available here https://github.com/mourner/suncalc
 -- Original SunCalc License https://github.com/mourner/suncalc/blob/master/LICENSE
 --
+-- Primary functions are 
+-- SunCalc_GetPosition(date TIMESTAMPTZ, coord GEOMETRY)
+-- and 
+-- SunCalc_GetTimes(date TIMESTAMPTZ, coord GEOMETRY)
+--
+-- To see the current sun location for NYC run
+-- SELECT (SunCalc_GetPosition(now(), CDB_LatLng(40.7127, -74.0059))).*
+--
+-- To see the named moments of the day in NYC today run
+-- SELECT (SunCalc_GetTimes(now(), CDB_LatLng(40.7127, -74.0059))).*
+--
+
+
 
 CREATE TYPE suncalc_position AS (
   azimuth decimal,
