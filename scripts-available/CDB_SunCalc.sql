@@ -22,15 +22,15 @@
 -- {
 -- Create custome types needed by _CDB_SunCalc_
 -- }{
-CREATE TYPE cdb_suncalc_position AS (
+CREATE TYPE _cdb_suncalc_position AS (
   azimuth decimal,
   altitude decimal
 );
-CREATE TYPE cdb_suncalc_coords AS (
+CREATE TYPE _cdb_suncalc_coords AS (
   declination decimal,
   rightAscension decimal
 );
-CREATE TYPE cdb_suncalc_positions AS (
+CREATE TYPE _cdb_suncalc_positions AS (
   name text,
   time timestamptz
 );
@@ -148,7 +148,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION _CDB_SunCalc_SunCoords(d NUMERIC) RETURNS cdb_suncalc_coords as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_SunCoords(d NUMERIC) RETURNS _cdb_suncalc_coords as $$ 
 DECLARE
     m NUMERIC;
     l NUMERIC;
@@ -214,13 +214,13 @@ $$ language plpgsql IMMUTABLE;
 -- Timestamp With Timezone and Geometry in 4326
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_GetPosition(date TIMESTAMPTZ, coord GEOMETRY) RETURNS cdb_suncalc_position as $$ 
+CREATE OR REPLACE FUNCTION CDB_SunCalc_GetPosition(date TIMESTAMPTZ, coord GEOMETRY) RETURNS _cdb_suncalc_position as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
     lw NUMERIC;
     phi NUMERIC;
     d NUMERIC;
-    c cdb_suncalc_coords;
+    c _cdb_suncalc_coords;
     h NUMERIC;
     azimuth NUMERIC;
     altitude NUMERIC;
@@ -244,7 +244,7 @@ $$ language plpgsql IMMUTABLE;
 -- input Timestamp With Timezone and Geometry in 4326
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_GetTimes(date TIMESTAMPTZ, coord GEOMETRY) RETURNS SETOF cdb_suncalc_positions as $$ 
+CREATE OR REPLACE FUNCTION CDB_SunCalc_GetTimes(date TIMESTAMPTZ, coord GEOMETRY) RETURNS SETOF _cdb_suncalc_positions as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
     lw NUMERIC;
