@@ -163,7 +163,7 @@ BEGIN
     group_role := cartodb._CDB_Group_GroupRole(group_name);
     FOR column_name IN EXECUTE 'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = current_database() AND TABLE_SCHEMA = $1 AND TABLE_NAME = $2 AND COLUMN_DEFAULT LIKE ''nextval%''' USING username, table_name
     LOOP
-        EXECUTE 'SELECT PG_GET_SERIAL_SEQUENCE($1, $2)' USING table_name, column_name INTO sequence_name;
+        EXECUTE format('SELECT PG_GET_SERIAL_SEQUENCE(''%I.%I'', ''%I'')', username, table_name, column_name) INTO sequence_name;
         IF sequence_name IS NOT NULL THEN
           IF do_grant THEN
             -- Here %s is needed since sequence_name has quotes

@@ -1,4 +1,5 @@
 -- Depends on:
+--   * CDB_Helper.sql
 --   * CDB_ExtensionUtils.sql
 --   * CDB_TransformToWebmercator.sql
 --   * CDB_TableMetadata.sql
@@ -362,7 +363,7 @@ $$ LANGUAGE PLPGSQL;
 --     As before, this drops all the metadata and geom sync triggers
 --
 -- (2) _CDB_Has_Usable_Primary_ID()
---     Returns TRUE if it can find a unique integer primary key named
+--     Returns TRUE if it can find a unique and not null integer primary key named
 --    'cartodb_id' or can rename an existing key.
 --     Returns FALSE otherwise.
 --
@@ -427,8 +428,9 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
--- Find a unique relation name in the given schema, starting from the 
--- template given. If the template is already unique, just return it; 
+-- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe and length
+-- aware. Find a unique relation name in the given schema, starting from the
+-- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
 CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
 RETURNS TEXT
@@ -439,36 +441,15 @@ DECLARE
   newrelname TEXT;
 BEGIN
 
-  i := 0;
-  newrelname := relationname;
-  LOOP
+  RAISE EXCEPTION '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
 
-    SELECT c.relname, n.nspname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE c.relname = newrelname
-    AND n.nspname = schemaname;
-  
-    IF NOT FOUND THEN
-      RETURN newrelname;
-    END IF;
-    
-    i := i + 1;
-    newrelname := relationname || '_' || i;
-  
-    IF i > 100 THEN
-      PERFORM _CDB_Error('looping too far', '_CDB_Unique_Relation_Name');
-    END IF;
-  
-  END LOOP;
-  
 END;
 $$ LANGUAGE 'plpgsql';
 
 
--- Find a unique column name in the given relation, starting from the 
--- column name given. If the column name is already unique, just return it; 
+-- DEPRECATED: Use _CDB_Unique_Column_Identifier since it's UTF8 Safe and length
+-- aware. Find a unique column name in the given relation, starting from the
+-- column name given. If the column name is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
 CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
 RETURNS TEXT
@@ -479,32 +460,8 @@ DECLARE
   newcolname TEXT;
 BEGIN
 
-  i := 0;
-  newcolname := columnname;
-  LOOP
+  RAISE EXCEPTION '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
 
-    SELECT a.attname
-    INTO rec
-    FROM pg_class c
-    JOIN pg_attribute a ON a.attrelid = c.oid
-    WHERE NOT a.attisdropped
-    AND a.attnum > 0
-    AND c.oid = reloid
-    AND a.attname = newcolname;
-  
-    IF NOT FOUND THEN
-      RETURN newcolname;
-    END IF;
-    
-    i := i + 1;
-    newcolname := columnname || '_' || i;
-  
-    IF i > 100 THEN
-      PERFORM _CDB_Error('looping too far', '_CDB_Unique_Column_Name');
-    END IF;
-  
-  END LOOP;
-  
 END;
 $$ LANGUAGE 'plpgsql';
 
@@ -551,7 +508,7 @@ BEGIN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
-      -- Check and see if the column values are unique, 
+      -- Check and see if the column values are unique and not null, 
       -- if they are, we can use this column...
       ELSE
 
@@ -559,13 +516,17 @@ BEGIN
         useable_key := true;
       
         BEGIN
-          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_unique UNIQUE (%s)', reloid::text, const.pkey, const.pkey);
+          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
           RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
           EXECUTE sql;
           EXCEPTION      
           -- Failed unique check...
           WHEN unique_violation THEN
-            RAISE NOTICE 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+            useable_key := false;
+          -- Failed not null check...
+          WHEN not_null_violation THEN
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
             useable_key := false;
           -- Other fatal error
           WHEN others THEN
@@ -574,7 +535,7 @@ BEGIN
   
         -- Clean up test constraint
         IF useable_key THEN
-          PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_unique', reloid::text, const.pkey));
+          PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
 
         -- Move non-unique column out of the way
         ELSE
@@ -585,7 +546,7 @@ BEGIN
           PERFORM _CDB_SQL(
             Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
               reloid::text, rec.attname,
-              _CDB_Unique_Column_Name(reloid, const.pkey)),
+              cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
             '_CDB_Has_Usable_Primary_ID');
         
         END IF;
@@ -602,7 +563,7 @@ BEGIN
 
       PERFORM _CDB_SQL(
         Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-                reloid::text, rec.attname, _CDB_Unique_Column_Name(reloid, const.pkey)),
+                reloid::text, rec.attname, cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
                 '_CDB_Has_Usable_Primary_ID');
     
     END IF;
@@ -768,7 +729,7 @@ BEGIN
           WHEN others THEN
             IF SQLERRM = 'parse error - invalid geometry' THEN
               text_geom_column := false;
-              str := _CDB_Unique_Column_Name(reloid, r1.attname);
+              str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
               sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
               PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
               RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -780,7 +741,7 @@ BEGIN
 
       -- Just change its name so we can write a new column into that name.
       ELSE
-        str := _CDB_Unique_Column_Name(reloid, r1.attname);
+        str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
         sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
         PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 
@@ -850,8 +811,7 @@ DECLARE
   destname TEXT;
   destseq TEXT;
   destseqmax INTEGER;
-    
-  salt TEXT := md5(random()::text || now());
+
   copyname TEXT;
 
   column_name_sql TEXT;
@@ -957,19 +917,18 @@ BEGIN
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := relname || '_' || const.pkey || '_seq';
-  destseq := _CDB_Unique_Relation_Name(destschema, destseq);
+  destseq := cartodb._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
-  -- Salt a temporary table name if we are re-writing in place
+  -- Temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, Format('%s_%s', destname, salt));
+    copyname := Format('%I.%I', destschema, cartodb._CDB_Unique_Identifier(NULL, destname, NULL), destschema);
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
-  
+
   -- Start building the SQL!
   sql := Format('CREATE TABLE %s AS SELECT ', copyname);
 

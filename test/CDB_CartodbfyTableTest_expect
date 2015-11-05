@@ -79,5 +79,28 @@ CREATE TABLE
 INSERT 0 1
 Many colliding columns #141 cartodbfied fine
 DROP TABLE
+CREATE TABLE
+INSERT 0 4
+Table with null cartodb_id #148 cartodbfied fine
+1|1
+2|2
+3|
+4|3
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+Table with non unique cartodb_id #148 cartodbfied fine
+1|1
+2|2
+3|2
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+Table with non unique and null cartodb_id #148 cartodbfied fine
+1|1
+2|2
+3|
+4|2
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION

@@ -44,7 +44,7 @@ the extension into your test database.
 
 During development the cartodb extension version doesn't change with
 every commit, so testing latest change requires cheating with PostgreSQL
-so to enforce re-load of the scripts. To help with cheating, "make install"
+as to enforce the scripts to reload. To help with cheating, "make install"
 also installs migration scripts to go from "V" to "V"next and from "V"next
 to "V". Example to upgrade a 0.2.0dev version:
 
