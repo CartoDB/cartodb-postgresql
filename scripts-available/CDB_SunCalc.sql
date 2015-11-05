@@ -291,3 +291,4 @@ BEGIN
     RETURN; 
 END; 
 $$ language plpgsql IMMUTABLE;
+-- }
