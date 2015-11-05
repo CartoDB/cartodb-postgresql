@@ -20,7 +20,7 @@
 
 
 -- {
--- Create custome types needed by CDB_SunCalc_
+-- Create custome types needed by _CDB_SunCalc_
 -- }{
 CREATE TYPE cdb_suncalc_position AS (
   azimuth decimal,
@@ -39,7 +39,7 @@ CREATE TYPE cdb_suncalc_positions AS (
 -- {
 -- Return Julian date from Timestamp With Timezone
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_ToJulian(date TIMESTAMPTZ) RETURNS numeric as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_ToJulian(date TIMESTAMPTZ) RETURNS numeric as $$ 
 DECLARE
     dayMs NUMERIC = 60 * 60 * 24;
     J1970 NUMERIC = 2440588;
@@ -54,7 +54,7 @@ $$ language plpgsql IMMUTABLE;
 -- Returns a Timestamp With Timezone from Julian date
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_FromJulian(j NUMERIC) RETURNS timestamptz as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_FromJulian(j NUMERIC) RETURNS timestamptz as $$ 
 DECLARE
     dayMs NUMERIC = 60 * 60 * 24;
     J1970 NUMERIC = 2440588;
@@ -69,13 +69,13 @@ $$ language plpgsql IMMUTABLE;
 -- Returns numeric Julian days from timestamp with timezone
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_ToDays(date TIMESTAMPTZ) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_ToDays(date TIMESTAMPTZ) RETURNS NUMERIC as $$ 
 DECLARE
     dayMs NUMERIC = 60 * 60 * 24;
     J1970 NUMERIC = 2440588;
     J2000 NUMERIC = 2451545;
 BEGIN 
-    RETURN CDB_SunCalc_ToJulian(date) - J2000;
+    RETURN _CDB_SunCalc_ToJulian(date) - J2000;
 END; 
 $$ language plpgsql IMMUTABLE;
 -- }
@@ -83,7 +83,7 @@ $$ language plpgsql IMMUTABLE;
 -- {
 -- A set of utlitiy functions for SunCalc calculations
 -- }{
-CREATE OR REPLACE FUNCTION CDB_SunCalc_RightAscension(l NUMERIC, b NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_RightAscension(l NUMERIC, b NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
     e NUMERIC = rad * 23.4397; 
@@ -93,7 +93,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_Declination(l NUMERIC, b NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_Declination(l NUMERIC, b NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
     e NUMERIC = rad * 23.4397; 
@@ -103,21 +103,21 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_Azimuth(H NUMERIC, phi NUMERIC, deci NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_Azimuth(H NUMERIC, phi NUMERIC, deci NUMERIC) RETURNS NUMERIC as $$ 
 BEGIN 
     RETURN atan2(sin(H), cos(H) * sin(phi) - tan(deci) * cos(phi));
 END; 
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_Altitude(H NUMERIC, phi NUMERIC, deci NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_Altitude(H NUMERIC, phi NUMERIC, deci NUMERIC) RETURNS NUMERIC as $$ 
 BEGIN 
     RETURN asin(sin(phi) * sin(deci) + cos(phi) * cos(deci) * cos(H));
 END; 
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_SiderealTime(d NUMERIC, lw NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_SiderealTime(d NUMERIC, lw NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
 BEGIN 
@@ -126,7 +126,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_SolarMeanAnomaly(d NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_SolarMeanAnomaly(d NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
 BEGIN 
@@ -135,7 +135,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_EclipticLongitude(M NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_EclipticLongitude(M NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
     c NUMERIC;
@@ -148,20 +148,20 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_SunCoords(d NUMERIC) RETURNS cdb_suncalc_coords as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_SunCoords(d NUMERIC) RETURNS cdb_suncalc_coords as $$ 
 DECLARE
     m NUMERIC;
     l NUMERIC;
 BEGIN 
-    m = CDB_SunCalc_SolarMeanAnomaly(d);
-    l = CDB_SunCalc_EclipticLongitude(M);
+    m = _CDB_SunCalc_SolarMeanAnomaly(d);
+    l = _CDB_SunCalc_EclipticLongitude(M);
     -- Returns (dec, ra)
-    RETURN (CDB_SunCalc_Declination(L, 0), CDB_SunCalc_RightAscension(L, 0));
+    RETURN (_CDB_SunCalc_Declination(L, 0), _CDB_SunCalc_RightAscension(L, 0));
 END; 
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_julianCycle(d NUMERIC, lw NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_julianCycle(d NUMERIC, lw NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     jO NUMERIC = 0.0009;
 BEGIN 
@@ -170,7 +170,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_approxTransit(Ht NUMERIC, lw NUMERIC, n NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_approxTransit(Ht NUMERIC, lw NUMERIC, n NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     jO NUMERIC = 0.0009;
 BEGIN 
@@ -179,7 +179,7 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_solarTransitJ(ds NUMERIC, M NUMERIC, L NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_solarTransitJ(ds NUMERIC, M NUMERIC, L NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     jO NUMERIC = 0.0009;
     J2000 NUMERIC = 2451545;
@@ -189,21 +189,21 @@ END;
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_hourAngle(h NUMERIC, phi NUMERIC, d NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_hourAngle(h NUMERIC, phi NUMERIC, d NUMERIC) RETURNS NUMERIC as $$ 
 BEGIN 
     RETURN acos((sin(h) - sin(phi) * sin(d)) / (cos(phi) * cos(d)));
 END; 
 $$ language plpgsql IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SunCalc_getSetJ(h NUMERIC, lw NUMERIC, phi NUMERIC, deci NUMERIC, n NUMERIC, M NUMERIC, L NUMERIC) RETURNS NUMERIC as $$ 
+CREATE OR REPLACE FUNCTION _CDB_SunCalc_getSetJ(h NUMERIC, lw NUMERIC, phi NUMERIC, deci NUMERIC, n NUMERIC, M NUMERIC, L NUMERIC) RETURNS NUMERIC as $$ 
 DECLARE
     w NUMERIC;
     a NUMERIC;
 BEGIN 
-    w = CDB_SunCalc_hourAngle(h, phi, deci);
-    a = CDB_SunCalc_approxTransit(w, lw, n);
-    RETURN CDB_SunCalc_solarTransitJ(a, M, L);
+    w = _CDB_SunCalc_hourAngle(h, phi, deci);
+    a = _CDB_SunCalc_approxTransit(w, lw, n);
+    RETURN _CDB_SunCalc_solarTransitJ(a, M, L);
 END; 
 $$ language plpgsql IMMUTABLE;
 -- }
@@ -228,12 +228,12 @@ BEGIN
     coord := ST_Transform(coord, 4326);
     lw = rad * -1 * ST_X(coord);
     phi = rad * ST_Y(coord);
-    d = CDB_SunCalc_ToDays(date);
-    c = CDB_SunCalc_SunCoords(d);
-    h = CDB_SunCalc_SiderealTime(d, lw) - c.rightAscension;
+    d = _CDB_SunCalc_ToDays(date);
+    c = _CDB_SunCalc_SunCoords(d);
+    h = _CDB_SunCalc_SiderealTime(d, lw) - c.rightAscension;
 
     -- returns (azimuth, altitude)
-    RETURN (CDB_SunCalc_Azimuth(h, phi, c.declination), CDB_SunCalc_Altitude(h, phi, c.declination) );
+    RETURN (_CDB_SunCalc_Azimuth(h, phi, c.declination), _CDB_SunCalc_Altitude(h, phi, c.declination) );
 END; 
 $$ language plpgsql IMMUTABLE;
 -- }
@@ -262,31 +262,31 @@ DECLARE
     Jset NUMERIC;
     Jrise NUMERIC;
     degs NUMERIC[] = ARRAY[-0.833, -0.3, -6, -12, -18, 6];
-  rises TEXT[] = ARRAY['sunrise','sunriseEnd','dawn','nauticalDawn','nightEnd','goldenHourEnd'];
+    rises TEXT[] = ARRAY['sunrise','sunriseEnd','dawn','nauticalDawn','nightEnd','goldenHourEnd'];
     sets TEXT[] = ARRAY['sunset','sunsetStart','dusk','nauticalDusk','night','goldenHour'];
 BEGIN 
     coord := ST_Transform(coord, 4326);
     lw = rad * -1 * ST_X(coord);
     phi = rad * ST_Y(coord);
 
-    d = CDB_SunCalc_ToDays(date);
-    n = CDB_SunCalc_JulianCycle(d, lw);
-    ds = CDB_SunCalc_ApproxTransit(0, lw, n);
+    d = _CDB_SunCalc_ToDays(date);
+    n = _CDB_SunCalc_JulianCycle(d, lw);
+    ds = _CDB_SunCalc_ApproxTransit(0, lw, n);
 
-    M = CDB_SunCalc_SolarMeanAnomaly(ds);
-    L = CDB_SunCalc_EclipticLongitude(M);
-    deci = CDB_SunCalc_Declination(L, 0);
+    M = _CDB_SunCalc_SolarMeanAnomaly(ds);
+    L = _CDB_SunCalc_EclipticLongitude(M);
+    deci = _CDB_SunCalc_Declination(L, 0);
 
-    Jnoon = CDB_SunCalc_SolarTransitJ(ds, M, L);
+    Jnoon = _CDB_SunCalc_SolarTransitJ(ds, M, L);
 
-    RETURN NEXT ('solarnoon'::text, CDB_SunCalc_fromJulian(Jnoon));
-    RETURN NEXT ('nadir'::text, CDB_SunCalc_fromJulian(Jnoon - 0.5));
+    RETURN NEXT ('solarnoon'::text, _CDB_SunCalc_fromJulian(Jnoon));
+    RETURN NEXT ('nadir'::text, _CDB_SunCalc_fromJulian(Jnoon - 0.5));
     FOR i IN 1 .. array_upper(degs, 1)
     LOOP
-        Jset = CDB_SunCalc_getSetJ(degs[i] * rad, lw, phi, deci, n, M, L);
+        Jset = _CDB_SunCalc_getSetJ(degs[i] * rad, lw, phi, deci, n, M, L);
         Jrise = Jnoon - (Jset - Jnoon);
-        RETURN NEXT (rises[i], CDB_SunCalc_fromJulian(Jrise));
-        RETURN NEXT (sets[i], CDB_SunCalc_fromJulian(Jset));
+        RETURN NEXT (rises[i], _CDB_SunCalc_fromJulian(Jrise));
+        RETURN NEXT (sets[i], _CDB_SunCalc_fromJulian(Jset));
     END LOOP;
     RETURN; 
 END; 
