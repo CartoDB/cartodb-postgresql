@@ -2,10 +2,6 @@
 -- Set of functions to derive Sun locations and key times of day for any
 -- location and time of year on earth
 --
--- Derived from work done in SunCalc.js
--- SunCalc.js is available here https://github.com/mourner/suncalc
--- Original SunCalc License https://github.com/mourner/suncalc/blob/master/LICENSE
---
 -- Primary functions are 
 -- SunCalc_GetPosition(date TIMESTAMPTZ, coord GEOMETRY)
 -- and 
@@ -17,9 +13,15 @@
 -- To see the named moments of the day in NYC today run
 -- SELECT (SunCalc_GetTimes(now(), CDB_LatLng(40.7127, -74.0059))).*
 --
+-- Derived from work done in SunCalc.js
+-- SunCalc.js is available here https://github.com/mourner/suncalc
+-- Original SunCalc License https://github.com/mourner/suncalc/blob/master/LICENSE
+--
 
 
-
+-- {
+-- Create custome types needed by SunCalc_
+-- }{
 CREATE TYPE suncalc_position AS (
   azimuth decimal,
   altitude decimal
@@ -32,6 +34,7 @@ CREATE TYPE suncalc_positions AS (
   name text,
   time timestamptz
 );
+-- }
 
 -- {
 -- Return Julian date from Timestamp With Timezone
@@ -45,7 +48,6 @@ BEGIN
   RETURN (EXTRACT(EPOCH FROM date)) / dayMs  - 0.5 + J1970;
 END; 
 $$ language plpgsql IMMUTABLE;
-
 -- }
 
 -- {
