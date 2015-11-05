@@ -1,7 +1,11 @@
--- Test of porting SunCalc to SQL
--- Original SunCalc https://github.com/mourner/suncalc
+--
+-- Set of functions to derive Sun locations and key times of day for any
+-- location and time of year on earth
+--
+-- Derived from work done in SunCalc.js
+-- SunCalc.js is available here https://github.com/mourner/suncalc
 -- Original SunCalc License https://github.com/mourner/suncalc/blob/master/LICENSE
-
+--
 
 CREATE TYPE suncalc_position AS (
   azimuth decimal,
@@ -217,9 +221,14 @@ BEGIN
     RETURN (SunCalc_Azimuth(h, phi, c.declination), SunCalc_Altitude(h, phi, c.declination) );
 END; 
 $$ language plpgsql IMMUTABLE;
+-- }
 
-
-
+-- {
+-- Returns a set of textual descriptions of times of day by the timestamp with timezone 
+--
+-- input Timestamp With Timezone and Geometry in 4326
+--
+-- }{
 CREATE OR REPLACE FUNCTION SunCalc_GetTimes(date TIMESTAMPTZ, coord GEOMETRY) RETURNS SETOF suncalc_positions as $$ 
 DECLARE
     rad NUMERIC = pi() / 180.0;
