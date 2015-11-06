@@ -152,7 +152,7 @@ BEGIN
       -- Copy existing values to new field
       -- NOTE: using ALTER is a workaround to a PostgreSQL bug and is also known to be faster for tables with many rows
       -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I', reloid::text, new_name);
+      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I::integer', reloid::text, new_name);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
