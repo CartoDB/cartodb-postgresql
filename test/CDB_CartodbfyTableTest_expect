@@ -114,7 +114,6 @@ NOTICE:  Column cartodb_id already exists
 NOTICE:  Existing cartodb_id field is of invalid type text (need int2, int4 or int8), renaming
 NOTICE:  Trying to recover data from _cartodb_id0 column
 
-_cartodb_id0
 DROP TABLE
 SET
 DROP FUNCTION
