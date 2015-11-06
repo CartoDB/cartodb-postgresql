@@ -102,12 +102,21 @@ Table with non unique and null cartodb_id #148 cartodbfied fine
 3|
 4|2
 DROP TABLE
+SET
 CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
 
 DROP TABLE
 CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field is of invalid type text (need int2, int4 or int8), renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
+NOTICE:  Could not initialize cartodb_id with existing values: result of USING clause for column "cartodb_id" cannot be cast automatically to type integer (42804)
 
 _cartodb_id0
 DROP TABLE
+SET
 DROP FUNCTION
 DROP FUNCTION
