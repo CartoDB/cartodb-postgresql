@@ -1,8 +1,11 @@
+--
 -- Return a line for the Great Circle between two points
 --
 -- start_point geometry : The origin of the line
 -- end_point   geometry : The distination of the line
 -- retruns     geometry
+--
+
 create or replace function CDB_GreatCircle(start_point geometry ,end_point geometry ) RETURNS geometry as
 $$
 DECLARE
