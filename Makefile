@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.11.1
+EXTVERSION = 0.11.3
 
 SED = sed
 
@@ -11,6 +11,7 @@ CDBSCRIPTS = \
   scripts-available/CDB_DDLTriggers.sql \
   scripts-available/CDB_ExtensionPost.sql \
   scripts-available/CDB_ExtensionUtils.sql \
+  scripts-available/CDB_Helper.sql \
   $(END)
 
 UPGRADABLE = \
@@ -52,6 +53,8 @@ UPGRADABLE = \
   0.10.2 \
   0.11.0 \
   0.11.1 \
+  0.11.2 \
+  0.11.3 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)

@@ -1,6 +1,18 @@
 next (2015-mm-dd)
 -----------------
 
+0.11.3 (2015-10-27)
+-------------------
+* Added CDB_Helper.sql [#173](https://github.com/CartoDB/cartodb-postgresql/pull/173)
+* Added _CDB_Unique_Identifier for creating UTF8 aware unique identifiers
+* Added _CDB_Unique_Column_Identifier for creating UTF8 aware unique identifiers for columns
+* Added _CDB_Octet_Truncate that truncates text to a certain amount of octets.
+
+0.11.2 (2015-10-19)
+-------------------
+* Fix schema not being specified on pg_get_serial_sequence [#170](https://github.com/CartoDB/cartodb-postgresql/pull/170)
+* Log invalidation function call duration in seconds [#163](https://github.com/CartoDB/cartodb-postgresql/pull/163)
+
 0.11.1 (2015-10-06)
 -------------------
 * Added CDB_DateToNumber(timestamp with time zone) [#169](https://github.com/CartoDB/cartodb-postgresql/pull/169)
