@@ -1068,8 +1068,8 @@ BEGIN
   -- Add now add all the rest of the columns
   -- by selecting their names into an array and
   -- joining the array with a comma
-  SELECT 
-    ',' || array_to_string(array_agg(a.attname),',') AS column_name_sql, 
+  SELECT
+    ',' || array_to_string(array_agg(Format('%I',a.attname)),',') AS column_name_sql,
     Count(*) AS count
   INTO rec
   FROM pg_class c 
