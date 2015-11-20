@@ -22,7 +22,7 @@ Valid CartoDB tables
 
 A valid CartoDB table shall meet the following conditions:
 
-- Have a ``cartodb_id`` column as primary key with a sequence
+- Have a ``cartodb_id`` integer column as primary key with a sequence as default value
 - Have a ``the_geom`` column of type ``Geometry`` with SRID 4326
 - Have a ``the_geom_webmercator`` column of type ``Geometry`` with SRID 3857
 - The columns ``the_geom`` and ``the_geom_webmercator`` shall be in sync
@@ -49,8 +49,8 @@ Note that there should be only one feature per row in the source table. If there
 Low-level requirements
 ======================
 
-- If the original table contains a valid ``cartodb_id`` column, it shall be used
-- If the original table contains a valid ``the_geom`` or ``the_geom_webmercator`` it shall be used.
+- If the original table contains a valid (unique) ``cartodb_id`` column, it shall be used
+- If the original table contains a ``the_geom`` column or a ``the_geom_webmercator`` column in the expected projection (EPSG 4326 and EPSG 3857, respectively) they shall be used.
 - A modification of a cartodbfy'ed table shall insert or update a row in ``CDB_TableMetadata``
 - A cartodbfy'ed table shall have a ``btree`` index on ``cartodb_id``
 - A cartodbfy'ed table shall have ``gist`` indices on ``the_geom`` and ``the_geom_webmercator``
