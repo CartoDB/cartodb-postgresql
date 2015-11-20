@@ -103,6 +103,16 @@ Table with non unique and null cartodb_id #148 cartodbfied fine
 4|2
 DROP TABLE
 CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+INSERT 0 3
+Table with primary key and unique index on it #174 cartodbfied fine
+1
+2
+3
+DROP TABLE
+CREATE TABLE
 INSERT 0 2
 Table with dots in name columns (cartodb #6114) cartodbfied fine
 one|1

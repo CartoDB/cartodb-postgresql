@@ -320,6 +320,20 @@ SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
 CREATE TABLE test (
+  cartodb_id integer
+);
+CREATE UNIQUE INDEX "test_cartodb_id_key" ON test (cartodb_id);
+CREATE UNIQUE INDEX "test_cartodb_id_pkey" ON test (cartodb_id);
+ALTER TABLE test ADD CONSTRAINT "test_pkey" PRIMARY KEY USING INDEX test_cartodb_id_pkey;
+INSERT INTO test VALUES
+  (1),
+  (2),
+  (3);
+SELECT CDB_CartodbfyTableCheck('test', 'Table with primary key and unique index on it #174');
+SELECT cartodb_id from test;
+DROP TABLE test;
+
+CREATE TABLE test (
   name varchar,
   "first.value" integer,
   "second.value" integer

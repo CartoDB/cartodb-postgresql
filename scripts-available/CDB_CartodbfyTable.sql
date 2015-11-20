@@ -504,7 +504,7 @@ BEGIN
     IF rec.atttypid IN (20,21,23) THEN
           
       -- And it's a unique primary key! Done!
-      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull THEN
+      IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
