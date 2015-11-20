@@ -49,7 +49,7 @@ Note that there should be only one feature per row in the source table. If there
 Low-level requirements
 ======================
 
-- If the original table contains a valid (unique) ``cartodb_id`` column, it shall be used
+- If the original table contains a valid (unique and not null) ``cartodb_id`` column, it shall be used
 - If the original table contains a ``the_geom`` column or a ``the_geom_webmercator`` column in the expected projection (EPSG 4326 and EPSG 3857, respectively) they shall be used.
 - A modification of a cartodbfy'ed table shall insert or update a row in ``CDB_TableMetadata``
 - A cartodbfy'ed table shall have a ``btree`` index on ``cartodb_id``
