@@ -319,6 +319,15 @@ SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_i
 SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
+CREATE TABLE test (
+  name varchar,
+  "first.value" integer,
+  "second.value" integer
+);
+INSERT INTO test VALUES ('one', 1, 2), ('two', 3, 4);
+SELECT CDB_CartodbfyTableCheck('test', 'Table with dots in name columns (cartodb #6114)');
+SELECT name, "first.value" from test;
+DROP TABLE test;
 
 -- TODO: table with existing custom-triggered the_geom
 

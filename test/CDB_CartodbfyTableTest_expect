@@ -102,5 +102,11 @@ Table with non unique and null cartodb_id #148 cartodbfied fine
 3|
 4|2
 DROP TABLE
+CREATE TABLE
+INSERT 0 2
+Table with dots in name columns (cartodb #6114) cartodbfied fine
+one|1
+two|3
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION
