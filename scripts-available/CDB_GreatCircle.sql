@@ -1,7 +1,7 @@
 -- Great circle point-to-point routes, based on:
 --   http://blog.cartodb.com/jets-and-datelines/
 --
-CREATE OR REPLACE FUNCTION CDB_GreatCircle(start_point geometry, end_point geometry)
+CREATE OR REPLACE FUNCTION CDB_GreatCircle(start_point geometry, end_point geometry, max_segment_length NUMERIC DEFAULT 100000)
 RETURNS geometry AS $$
 DECLARE
   line geometry;
@@ -11,7 +11,7 @@ BEGIN
       start_point,
       end_point
     )::geography,
-    100000
+    max_segment_length
   )::geometry;
 
   IF ST_XMax(line) - ST_XMin(line) > 180 THEN
