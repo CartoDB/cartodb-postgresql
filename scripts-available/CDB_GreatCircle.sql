@@ -21,5 +21,5 @@ end if;
 
 return line;
 
-END $$
-LANGUAGE 'plpgsql'
+END; $$
+LANGUAGE 'plpgsql';
