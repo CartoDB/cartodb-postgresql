@@ -1,25 +1,23 @@
-create or replace function CDB_GreatCircle(start_point geometry ,end_point geometry ) RETURNS geometry as
-$$
+CREATE OR REPLACE FUNCTION CDB_GreatCircle(start_point geometry, end_point geometry)
+RETURNS geometry AS $$
 DECLARE
-	line geometry;
+  line geometry;
 BEGIN
+  line = ST_Segmentize(
+    ST_Makeline(
+      start_point,
+      end_point
+    )::geography,
+    100000
+  )::geometry;
 
-line = ST_Segmentize(
-         ST_Makeline(
-           start_point,
-           end_point
-         )::geography,
-         100000
-     )::geometry;
-
-if ST_XMax(line) - ST_XMin(line) > 180 then
-
-	line = ST_Difference(
-    ST_Shift_Longitude(line), ST_Buffer(ST_GeomFromText('LINESTRING(180 90, 180 -90)',4326), 0.00001));
-end if;
-
-
-return line;
-
-END; $$
+  IF ST_XMax(line) - ST_XMin(line) > 180 THEN
+    line = ST_Difference(
+      ST_Shift_Longitude(line),
+			ST_Buffer(ST_GeomFromText('LINESTRING(180 90, 180 -90)', 4326), 0.00001)
+		);
+  END IF;
+RETURN line;
+END;
+$$
 LANGUAGE 'plpgsql';
