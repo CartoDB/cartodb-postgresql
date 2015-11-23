@@ -1,3 +1,6 @@
+-- Great circle point-to-point routes, based on:
+--   http://blog.cartodb.com/jets-and-datelines/
+--
 CREATE OR REPLACE FUNCTION CDB_GreatCircle(start_point geometry, end_point geometry)
 RETURNS geometry AS $$
 DECLARE
