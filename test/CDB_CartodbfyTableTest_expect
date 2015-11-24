@@ -118,5 +118,19 @@ Table with dots in name columns (cartodb #6114) cartodbfied fine
 one|1
 two|3
 DROP TABLE
+SET
+CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
+
+DROP TABLE
+CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field is of invalid type text (need int2, int4 or int8), renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
+
+DROP TABLE
+SET
 DROP FUNCTION
 DROP FUNCTION
