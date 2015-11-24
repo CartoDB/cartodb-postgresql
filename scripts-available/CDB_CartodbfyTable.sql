@@ -152,12 +152,12 @@ BEGIN
       -- Copy existing values to new field
       -- NOTE: using ALTER is a workaround to a PostgreSQL bug and is also known to be faster for tables with many rows
       -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I', reloid::text, new_name);
+      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I::integer', reloid::text, new_name);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
       -- Find max value
-      sql := Format('SELECT max(cartodb_id) FROM %s', reloid::text);
+      sql := Format('SELECT coalesce(max(cartodb_id), 0) as max FROM %s', reloid::text);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql INTO rec;
 
@@ -166,7 +166,7 @@ BEGIN
         AS seq INTO rec2;
 
       -- Reset sequence name
-      sql := Format('ALTER SEQUENCE %s RESTART WITH %d', rec2.seq::text, rec.max + 1);
+      sql := Format('ALTER SEQUENCE %s RESTART WITH %s', rec2.seq::text, rec.max + 1);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
