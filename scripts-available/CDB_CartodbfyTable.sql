@@ -504,7 +504,7 @@ BEGIN
     IF rec.atttypid IN (20,21,23) THEN
           
       -- And it's a unique primary key! Done!
-      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull THEN
+      IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
@@ -1068,8 +1068,8 @@ BEGIN
   -- Add now add all the rest of the columns
   -- by selecting their names into an array and
   -- joining the array with a comma
-  SELECT 
-    ',' || array_to_string(array_agg(a.attname),',') AS column_name_sql, 
+  SELECT
+    ',' || array_to_string(array_agg(Format('%I',a.attname)),',') AS column_name_sql,
     Count(*) AS count
   INTO rec
   FROM pg_class c 
