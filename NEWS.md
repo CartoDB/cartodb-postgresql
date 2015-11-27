@@ -1,8 +1,11 @@
+0.11.5 (2015-11-27)
+-------------------
+* Disable log invalidation time [#178](https://github.com/CartoDB/cartodb-postgresql/pull/178)
+
 0.11.4 (2015-11-24)
 -------------------
 * Fix for existing PK cartodb_id problem [#174](https://github.com/CartoDB/cartodb-postgresql/issues/174)
 * Add cartodbfication support for column names with embedded points to fix [#6114](https://github.com/CartoDB/cartodb/issues/6114)
-* Disable log invalidation time [#178](https://github.com/CartoDB/cartodb-postgresql/pull/178)
 * Add CDB_GreatCircle for creating great circle routes between two points [#171](https://github.com/CartoDB/cartodb-postgresql/pull/171)
 * Fix to prevent cartodbfication problems [#155](https://github.com/CartoDB/cartodb-postgresql/issues/155)
 
