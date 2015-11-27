@@ -64,10 +64,6 @@ DECLARE
   tabname TEXT;
   rec RECORD;
   found BOOL;
-  function_start timestamptz;
-  function_end timestamptz;
-  function_duration float;
-  log_error_verbosity_value text;
 BEGIN
 
   IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
@@ -76,8 +72,6 @@ BEGIN
     tabname = OLD.tabname;
   END IF;
 
-  function_start := clock_timestamp();
- 
   -- Notify table data update
   -- This needs a little bit more of research regarding security issues
   -- see https://github.com/CartoDB/cartodb/pull/241
@@ -111,14 +105,7 @@ BEGIN
     EXIT;
   END LOOP;
   IF NOT found THEN RAISE WARNING 'Missing cdb_invalidate_varnish()'; END IF;
-  
-  function_end := clock_timestamp();
-  SELECT extract(epoch from (function_end - function_start)) INTO function_duration;
-  SELECT setting INTO log_error_verbosity_value FROM pg_settings WHERE name='log_error_verbosity';
-  SET log_error_verbosity=TERSE;
-  RAISE LOG 'invalidation_duration: %', function_duration::text;
-  PERFORM 'SET log_error_verbosity= ' || log_error_verbosity_value;
-  
+
   RETURN NULL;
 END;
 $$
