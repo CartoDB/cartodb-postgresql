@@ -12,7 +12,7 @@
 -- Returns: Multipoint with the requested points
 
 
-CREATE OR REPLACE FUNCTION CDB_dot_density(g geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000 )
+CREATE OR REPLACE FUNCTION CDB_DotDensity(g geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000 )
 RETURNS geometry AS $$
 DECLARE
   extent GEOMETRY;
