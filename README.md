@@ -6,7 +6,7 @@ cartodb-postgresql
 
 PostgreSQL extension for CartoDB
 
-See https://github.com/CartoDB/cartodb/wiki/CartoDB-PostgreSQL-extension
+See [the cartodb-postgresql wiki](https://github.com/CartoDB/cartodb-postgresql/wiki).
 
 Dependencies
 ------------
