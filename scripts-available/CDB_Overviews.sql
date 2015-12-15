@@ -2,13 +2,23 @@
 CREATE OR REPLACE FUNCTION _CDB_Dummy_Ref_Z_Strategy(reloid REGCLASS)
 RETURNS INTEGER
 AS $$
+  DECLARE
+    lim FLOAT8 := 1000; -- TODO: determine/parameterize this
+    fd FLOAT8;
+    c FLOAT8;
   BEGIN
-    -- TODO: should determine the proper *base* level for the table considering
-    -- the density of features and precision/detail of the data,
-    -- so that for Z levels equal or greater than the reference,
-    -- the data can be represented clearly (without having to render uneccessary
-    -- detail)
-    RETURN 9;
+    -- lim maximum number of (desiderable) features per tile
+    -- we have c = 2*Pi*R = CDB_XYZ_Resolution(-8) (earth circumference)
+    -- fd: feature density: number of features per unit of area (count(*)/ST_Area())
+    -- ta(z): tile area = power(c*power(2,z), 2) = c*c*power(2,2*z)
+    -- => fd*ta(z) if the average number of features per tile at level z
+    -- find minimum z so that fd*ta(z) <= lim
+    -- compute a rough 'feature density' value
+    EXECUTE 'SELECT Count(*)/ST_Area(ST_Extent(the_geom_webmercator)) FROM ' || reloid::text || ';' INTO fd;
+    -- TODO: estimate the features per *area* value in some efficient manner
+    -- that samples various areas of the dataset extents.
+    SELECT CDB_XYZ_Resolution(-8) INTO c;
+    RETURN ceil(log(2.0, (c*c*fd/lim)::numeric)/2);
   END;
 $$ LANGUAGE PLPGSQL STABLE;
 
