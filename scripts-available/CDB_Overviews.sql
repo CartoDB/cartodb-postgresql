@@ -91,6 +91,7 @@ BEGIN
   base_rel := reloid;
   FOREACH overview_z IN ARRAY overviews_z LOOP
     EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s);', base_rel, base_z, overview_z) INTO base_rel;
+    base_z := overview_z;
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
   END LOOP;
 
