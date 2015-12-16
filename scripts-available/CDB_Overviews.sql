@@ -95,7 +95,7 @@ AS $$
     suffix TEXT;
     is_overview BOOLEAN;
   BEGIN
-    suffix := Format('_ov%', ref_z);
+    suffix := Format('_ov%s', ref_z);
     SELECT ref::text LIKE Format('%%%s', suffix) INTO is_overview;
     IF is_overview THEN
       SELECT substring(ref::text FROM 1 FOR length(ref::text)-length(suffix)) INTO base;
