@@ -1,10 +1,11 @@
-
-CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, max_z integer)
+CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, nz integer)
 RETURNS FLOAT8
 AS $$
   DECLARE
     fd FLOAT8;
     min_features TEXT;
+    n integer = 4;
+    c FLOAT8;
   BEGIN
   -- TODO: for small total count or extents we could just:
   -- EXECUTE 'SELECT Count(*)/ST_Area(ST_Extent(the_geom_webmercator)) FROM ' || reloid::text || ';' INTO fd;
@@ -16,26 +17,48 @@ AS $$
   -- the area of tiles at level Z: c*c*power(2, -2*z)
   -- with c = CDB_XYZ_Resolution(-8) (earth circumference)
   min_features = '500';
+  SELECT CDB_XYZ_Resolution(-8) INTO c;
 
-  -- TODO: compute min_z and seed tiles based on reloid extents
-  -- so as to have at least N^2 tiles that cover the extents for some N
-  -- For the time being we use the root tile as the seed.
+  -- We first compute a set of *seed* tiles, of the minimum Z level, z0, such that
+  -- they cover the extent of the table and we have at least n of them in each
+  -- linear dimension (i.e. at least n*n tiles cover the extent).
+  -- We compute the number of features in these tiles, and recursively in
+  -- subtiles up to level z0 + nz. Then we compute the maximum of the feature
+  -- density (per tile area in webmercator squared meters) for all the
+  -- considered tiles.
   EXECUTE Format('
     WITH RECURSIVE t(x, y, z, e) AS (
-      SELECT 0, 0, 0, (
-        SELECT count(*) FROM %1$s
-          WHERE the_geom_webmercator && CDB_XYZ_Extent(0, 0, 0)
+      WITH ext AS (SELECT ST_Extent(the_geom_webmercator) g FROM %1$s),
+      base AS (
+        SELECT (-floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)))::integer z
+        FROM ext
+      ),
+      lim AS (
+        SELECT
+          FLOOR((ST_XMin(ext.g)+CDB_XYZ_Resolution(0)*128)/(CDB_XYZ_Resolution(base.z)*256))::integer x0,
+          FLOOR((ST_XMax(ext.g)+CDB_XYZ_Resolution(0)*128)/(CDB_XYZ_Resolution(base.z)*256))::integer x1,
+          FLOOR((CDB_XYZ_Resolution(0)*128-ST_YMin(ext.g))/(CDB_XYZ_Resolution(base.z)*256))::integer y1,
+          FLOOR((CDB_XYZ_Resolution(0)*128-ST_YMax(ext.g))/(CDB_XYZ_Resolution(base.z)*256))::integer y0
+        FROM ext, base
+      ),
+      seed AS (
+        SELECT xt, yt, base.z, (
+          SELECT count(*) FROM %1$s
+            WHERE the_geom_webmercator && CDB_XYZ_Extent(xt, yt, base.z)
+        ) e
+        FROM base, lim, generate_series(lim.x0, lim.x1) xt, generate_series(lim.y0, lim.y1) yt
       )
+      SELECT * from seed
       UNION ALL
-      SELECT x*2 + xx, y*2 + yy, z+1, (
+      SELECT x*2 + xx, y*2 + yy, t.z+1, (
         SELECT count(*) FROM %1$s
-          WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, z+1)
+          WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, t.z+1)
       )
-      FROM t, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
-      WHERE e > %2$s AND z < %3$s
+      FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
+      WHERE t.e > %2$s AND t.z < (base.z + %3$s)
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
-  ', reloid::text, min_features, max_z)
+  ', reloid::text, min_features, nz, n, c)
   INTO fd;
   RETURN fd;
   END
@@ -46,13 +69,13 @@ RETURNS INTEGER
 AS $$
   DECLARE
     lim FLOAT8 := 500; -- TODO: determine/parameterize this
-    max_z integer := 14;
+    nz integer := 4;
     fd FLOAT8;
     c FLOAT8;
   BEGIN
     -- Compute fd as an estimation of the (maximum) number
     -- of features per unit of tile area (in webmercator squared meters)
-    SELECT _CDB_Feature_Density(reloid, max_z) INTO fd;
+    SELECT _CDB_Feature_Density(reloid, nz) INTO fd;
     -- lim maximum number of (desiderable) features per tile
     -- we have c = 2*Pi*R = CDB_XYZ_Resolution(-8) (earth circumference)
     -- ta(z): tile area = power(c*power(2,z), 2) = c*c*power(2,2*z)
