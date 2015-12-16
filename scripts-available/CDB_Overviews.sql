@@ -125,6 +125,58 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL;
 
+CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    overview_rel TEXT;
+    reduction FLOAT8;
+    base_name TEXT;
+    grid_px FLOAT8 = 3.0;
+    grid_m FLOAT8;
+    aggr_attributes TEXT;
+    attributes TEXT;
+  BEGIN
+    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+
+    -- compute grid cell size using the overview_z dimension...
+    SELECT CDB_XYZ_Resolution(overview_z)*grid_px INTO grid_m;
+
+    -- TODO: compute expression to aggregate attributes of the table
+    -- aggr_attributes = 'num_attr1, ...''
+    -- aggr_attributes = 'AVG(num_attr1) num_attr1, ...''
+    -- for text attributes we can use NULL or something like '*varies*'
+    attributes := '';
+    aggr_attributes := '';
+
+    EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
+
+    EXECUTE Format('
+      CREATE TABLE %3$s AS
+         WITH clusters AS (
+           SELECT
+             first_value(f.cartodb_id) OVER (
+               PARTITION BY
+                 ST_SnapToGrid(f.the_geom_webmercator, 0, 0, %2$s, %2$s)
+             ) AS cartodb_id,
+             %4$s
+             the_geom,
+             the_geom_webmercator
+             FROM %1$s f
+         )
+         SELECT
+           cartodb_id,
+           ST_Centroid(ST_Collect(clusters.the_geom)) AS the_geom,
+           %5$s
+           ST_Centroid(ST_Collect(clusters.the_geom_webmercator)) AS the_geom_webmercator
+         FROM clusters
+         GROUP BY cartodb_id;
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes);
+
+    RETURN overview_rel;
+  END;
+$$ LANGUAGE PLPGSQL;
+
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
   refscale_strategy regproc DEFAULT '_CDB_Dummy_Ref_Z_Strategy'::regproc,
