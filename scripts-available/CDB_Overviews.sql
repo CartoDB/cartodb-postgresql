@@ -1,22 +1,64 @@
 
+CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, max_z integer)
+RETURNS FLOAT8
+AS $$
+  DECLARE
+    fd FLOAT8;
+    min_features TEXT;
+  BEGIN
+  -- TODO: for small total count or extents we could just:
+  -- EXECUTE 'SELECT Count(*)/ST_Area(ST_Extent(the_geom_webmercator)) FROM ' || reloid::text || ';' INTO fd;
+
+  -- min_features is a SQL subexpression which can depend on z and represents
+  -- the minimum number of features to recursively consider a tile.
+  -- We can either use a fixed minimum number of features per tile
+  -- or a minimum feature density by dividing the number of features by
+  -- the area of tiles at level Z: c*c*power(2, -2*z)
+  -- with c = CDB_XYZ_Resolution(-8) (earth circumference)
+  min_features = '500';
+
+  -- TODO: compute min_z and seed tiles based on reloid extents
+  -- so as to have at least N^2 tiles that cover the extents for some N
+  -- For the time being we use the root tile as the seed.
+  EXECUTE Format('
+    WITH RECURSIVE t(x, y, z, e) AS (
+      SELECT 0, 0, 0, (
+        SELECT count(*) FROM %1$s
+          WHERE the_geom_webmercator && CDB_XYZ_Extent(0, 0, 0)
+      )
+      UNION ALL
+      SELECT x*2 + xx, y*2 + yy, z+1, (
+        SELECT count(*) FROM %1$s
+          WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, z+1)
+      )
+      FROM t, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
+      WHERE e > %2$s AND z < %3$s
+    )
+    SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
+  ', reloid::text, min_features, max_z)
+  INTO fd;
+  RETURN fd;
+  END
+$$ LANGUAGE PLPGSQL STABLE;
+
 CREATE OR REPLACE FUNCTION _CDB_Dummy_Ref_Z_Strategy(reloid REGCLASS)
 RETURNS INTEGER
 AS $$
   DECLARE
-    lim FLOAT8 := 1000; -- TODO: determine/parameterize this
+    lim FLOAT8 := 500; -- TODO: determine/parameterize this
+    max_z integer := 14;
     fd FLOAT8;
     c FLOAT8;
   BEGIN
+    -- Compute fd as an estimation of the (maximum) number
+    -- of features per unit of tile area (in webmercator squared meters)
+    SELECT _CDB_Feature_Density(reloid, max_z) INTO fd;
     -- lim maximum number of (desiderable) features per tile
     -- we have c = 2*Pi*R = CDB_XYZ_Resolution(-8) (earth circumference)
-    -- fd: feature density: number of features per unit of area (count(*)/ST_Area())
     -- ta(z): tile area = power(c*power(2,z), 2) = c*c*power(2,2*z)
     -- => fd*ta(z) if the average number of features per tile at level z
     -- find minimum z so that fd*ta(z) <= lim
     -- compute a rough 'feature density' value
-    EXECUTE 'SELECT Count(*)/ST_Area(ST_Extent(the_geom_webmercator)) FROM ' || reloid::text || ';' INTO fd;
-    -- TODO: estimate the features per *area* value in some efficient manner
-    -- that samples various areas of the dataset extents.
     SELECT CDB_XYZ_Resolution(-8) INTO c;
     RETURN ceil(log(2.0, (c*c*fd/lim)::numeric)/2);
   END;
