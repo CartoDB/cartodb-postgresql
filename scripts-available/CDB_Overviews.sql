@@ -1,3 +1,9 @@
+-- Determine the max feature density of a given dataset.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+--   nz: number of zoom levels to consider from z0 upward.
+-- Return value: feature density (num_features / webmercator_squared_meters).
 CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, nz integer)
 RETURNS FLOAT8
 AS $$
