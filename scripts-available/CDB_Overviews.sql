@@ -1,3 +1,40 @@
+-- Calculate the estimated extent of a cartodbfy'ed table.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table.
+-- Return value A box2d extent in 3857.
+CREATE OR REPLACE FUNCTION _cdb_estimated_extent(reloid REGCLASS)
+RETURNS box2d
+AS $$
+  DECLARE
+    ext box2d;
+    ext_query text;
+    table_id record;
+  BEGIN
+
+    SELECT n.nspname AS schema_name, c.relname table_name INTO STRICT table_id
+      FROM pg_class c JOIN pg_namespace n on n.oid = c.relnamespace WHERE c.oid = reloid::oid;
+
+    ext_query = format(
+      'SELECT ST_EstimatedExtent(''%1$I'', ''%2$I'', ''%3$I'');',
+      table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
+    );
+
+    BEGIN
+      EXECUTE ext_query INTO ext;
+      EXCEPTION
+        -- This is the typical ERROR: stats for "mytable" do not exist
+        WHEN internal_error THEN
+          -- Get stats and execute again
+          EXECUTE format('ANALYZE %1$I', reloid);
+          EXECUTE ext_query INTO ext;
+    END;
+
+    RETURN ext;
+  END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+
 -- Determine the max feature density of a given dataset.
 -- Scope: private.
 -- Parameters
