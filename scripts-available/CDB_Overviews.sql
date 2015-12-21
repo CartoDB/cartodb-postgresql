@@ -71,7 +71,7 @@ AS $$
   -- considered tiles.
   EXECUTE Format('
     WITH RECURSIVE t(x, y, z, e) AS (
-      WITH ext AS (SELECT ST_Extent(the_geom_webmercator) g FROM %1$s),
+      WITH ext AS (SELECT _cdb_estimated_extent(%6$s) as g),
       base AS (
         SELECT (-floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)))::integer z
         FROM ext
@@ -101,7 +101,7 @@ AS $$
       WHERE t.e > %2$s AND t.z < (base.z + %3$s)
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
-  ', reloid::text, min_features, nz, n, c)
+  ', reloid::text, min_features, nz, n, c, reloid::oid)
   INTO fd;
   RETURN fd;
   END
