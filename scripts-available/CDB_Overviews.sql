@@ -193,14 +193,14 @@ AS $$
     aggr_attributes := '';
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
-
     EXECUTE Format('
       CREATE TABLE %3$s AS
          WITH clusters AS (
            SELECT
              first_value(f.cartodb_id) OVER (
                PARTITION BY
-                 ST_SnapToGrid(f.the_geom_webmercator, 0, 0, %2$s, %2$s)
+                 Floor(ST_X(f.the_geom_webmercator)/%2$s)::int,
+                 Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int
              ) AS cartodb_id,
              %4$s
              the_geom,
