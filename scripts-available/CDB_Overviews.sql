@@ -175,7 +175,7 @@ AS $$
     overview_rel TEXT;
     reduction FLOAT8;
     base_name TEXT;
-    grid_px FLOAT8 = 3.0;
+    grid_px FLOAT8 = 7.5; -- Grid size in pixels at Z level overview_z
     grid_m FLOAT8;
     aggr_attributes TEXT;
     attributes TEXT;
@@ -193,27 +193,31 @@ AS $$
     aggr_attributes := '';
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
+
+    -- Now we cluster the data using a grid of size grid_m
+    -- and selecte the centroid (average coordinates) of each cluster.
+    -- If we had a selected numeric attribute of interest we could use it
+    -- as a weight for the average coordinates.
     EXECUTE Format('
       CREATE TABLE %3$s AS
          WITH clusters AS (
            SELECT
-             first_value(f.cartodb_id) OVER (
-               PARTITION BY
-                 Floor(ST_X(f.the_geom_webmercator)/%2$s)::int,
-                 Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int
-             ) AS cartodb_id,
-             %4$s
-             the_geom,
-             the_geom_webmercator
-             FROM %1$s f
+             %5$s
+             count(*) AS n,
+             SUM(ST_X(f.the_geom_webmercator)) AS sx,
+             SUM(ST_Y(f.the_geom_webmercator)) AS sy,
+             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             row_number() OVER () AS cartodb_id
+          FROM %1$s f
+          GROUP BY gx, gy
          )
          SELECT
+           %4$s
            cartodb_id,
-           ST_Centroid(ST_Collect(clusters.the_geom)) AS the_geom,
-           %5$s
-           ST_Centroid(ST_Collect(clusters.the_geom_webmercator)) AS the_geom_webmercator
+           ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator,
+           ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom
          FROM clusters
-         GROUP BY cartodb_id;
     ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes);
 
     RETURN overview_rel;
