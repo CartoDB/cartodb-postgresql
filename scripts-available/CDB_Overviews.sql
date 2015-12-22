@@ -1,3 +1,46 @@
+-- Calculate the estimated extent of a cartodbfy'ed table.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table.
+-- Return value A box2d extent in 3857.
+CREATE OR REPLACE FUNCTION _cdb_estimated_extent(reloid REGCLASS)
+RETURNS box2d
+AS $$
+  DECLARE
+    ext box2d;
+    ext_query text;
+    table_id record;
+  BEGIN
+
+    SELECT n.nspname AS schema_name, c.relname table_name INTO STRICT table_id
+      FROM pg_class c JOIN pg_namespace n on n.oid = c.relnamespace WHERE c.oid = reloid::oid;
+
+    ext_query = format(
+      'SELECT ST_EstimatedExtent(''%1$I'', ''%2$I'', ''%3$I'');',
+      table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
+    );
+
+    BEGIN
+      EXECUTE ext_query INTO ext;
+      EXCEPTION
+        -- This is the typical ERROR: stats for "mytable" do not exist
+        WHEN internal_error THEN
+          -- Get stats and execute again
+          EXECUTE format('ANALYZE %1$I', reloid);
+          EXECUTE ext_query INTO ext;
+    END;
+
+    RETURN ext;
+  END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+
+-- Determine the max feature density of a given dataset.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+--   nz: number of zoom levels to consider from z0 upward.
+-- Return value: feature density (num_features / webmercator_squared_meters).
 CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, nz integer)
 RETURNS FLOAT8
 AS $$
@@ -28,7 +71,7 @@ AS $$
   -- considered tiles.
   EXECUTE Format('
     WITH RECURSIVE t(x, y, z, e) AS (
-      WITH ext AS (SELECT ST_Extent(the_geom_webmercator) g FROM %1$s),
+      WITH ext AS (SELECT _cdb_estimated_extent(%6$s) as g),
       base AS (
         SELECT (-floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)))::integer z
         FROM ext
@@ -58,7 +101,7 @@ AS $$
       WHERE t.e > %2$s AND t.z < (base.z + %3$s)
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
-  ', reloid::text, min_features, nz, n, c)
+  ', reloid::text, min_features, nz, n, c, reloid::oid)
   INTO fd;
   RETURN fd;
   END
