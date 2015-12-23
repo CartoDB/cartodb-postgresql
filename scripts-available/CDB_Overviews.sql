@@ -34,7 +34,6 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-
 -- Determine the max feature density of a given dataset.
 -- Scope: private.
 -- Parameters
@@ -168,6 +167,102 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL;
 
+-- Dataset attributes (column names other than the
+-- CartoDB primary key and geometry columns) which should be aggregated
+-- in aggregated overviews.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+-- Return value: set of attribute names
+CREATE OR REPLACE FUNCTION _CDB_Aggregable_Attributes(reloid REGCLASS)
+RETURNS SETOF information_schema.sql_identifier
+AS $$
+  SELECT c FROM cartodb.CDB_ColumnNames(reloid) c, _CDB_Columns() cdb
+    WHERE c NOT IN (
+      cdb.pkey, cdb.geomcol, cdb.mercgeomcol
+    )
+$$ LANGUAGE SQL STABLE;
+
+-- List of dataset attributes to be aggregated in aggregated overview
+-- as a comma-separated SQL expression.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+-- Return value: SQL subexpression as text
+CREATE OR REPLACE FUNCTION _CDB_Aggregable_Attributes_Expression(reloid REGCLASS)
+RETURNS TEXT
+AS $$
+DECLARE
+  attr_list TEXT;
+BEGIN
+  SELECT string_agg(s.c, ',') FROM (
+    SELECT * FROM _CDB_Aggregable_Attributes(reloid) c
+  ) AS s INTO attr_list;
+
+  RETURN attr_list;
+END
+$$ LANGUAGE PLPGSQL STABLE;
+
+-- SQL Aggregation expression for a datase attribute
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+--   column_name: column to be aggregated
+--   table_alias: (optional) table qualifier for the column to be aggregated
+-- Return SQL subexpression as text with aggregated attribute aliased
+-- with its original name.
+CREATE OR REPLACE FUNCTION _CDB_Attribute_Aggregation_Expression(reloid REGCLASS, column_name TEXT, table_alias TEXT DEFAULT '')
+RETURNS TEXT
+AS $$
+DECLARE
+  column_type TEXT;
+  qualified_column TEXT;
+BEGIN
+  IF table_alias <> '' THEN
+    qualified_column := Format('%I.%I', table_alias, column_name);
+  ELSE
+    qualified_column := Format('%I', column_name);
+  END IF;
+
+  column_type := cartodb.CDB_ColumnType(reloid, column_name);
+
+  CASE column_type
+  WHEN 'double precision', 'real', 'integer', 'bigint' THEN
+    RETURN Format('AVG(%s)::' || column_type, qualified_column);
+  WHEN 'text' THEN
+    -- TODO: we could define a new aggregate function that returns distinct
+    -- separated values with a limit, adding ellipsis if more values existed
+    -- e.g. with '/' as separator and a limit of three:
+    --     'A', 'B', 'A', 'C', 'D' => 'A/B/C/...'
+    -- Other ideas: if value is unique then use it, otherwise use something
+    -- like '*' or '(varies)' or '(multiple values)', or NULL
+    RETURN '''''::' || column_type;
+  ELSE RETURN 'NULL::' || column_type;
+  END CASE;
+END
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- List of dataset aggregated attributes as a comma-separated SQL expression.
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+--   table_alias: (optional) table qualifier for the columns to be aggregated
+-- Return value: SQL subexpression as text
+CREATE OR REPLACE FUNCTION _CDB_Aggregated_Attributes_Expression(reloid REGCLASS, table_alias TEXT DEFAULT '')
+RETURNS TEXT
+AS $$
+DECLARE
+  attr_list TEXT;
+BEGIN
+  SELECT string_agg(_CDB_Attribute_Aggregation_Expression(reloid, s.c, table_alias) || Format(' AS %s', s.c), ',')
+  FROM (
+    SELECT * FROM _CDB_Aggregable_Attributes(reloid) c
+  ) AS s INTO attr_list;
+
+  RETURN attr_list;
+END
+$$ LANGUAGE PLPGSQL STABLE;
+
 CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS REGCLASS
 AS $$
@@ -185,12 +280,14 @@ AS $$
     -- compute grid cell size using the overview_z dimension...
     SELECT CDB_XYZ_Resolution(overview_z)*grid_px INTO grid_m;
 
-    -- TODO: compute expression to aggregate attributes of the table
-    -- aggr_attributes = 'num_attr1, ...''
-    -- aggr_attributes = 'AVG(num_attr1) num_attr1, ...''
-    -- for text attributes we can use NULL or something like '*varies*'
-    attributes := '';
-    aggr_attributes := '';
+    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    IF attributes <> '' THEN
+      attributes := attributes || ', ';
+    END IF;
+    IF aggr_attributes <> '' THEN
+      aggr_attributes := aggr_attributes || ', ';
+    END IF;
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
 
