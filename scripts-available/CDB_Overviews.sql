@@ -189,6 +189,32 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL;
 
+-- Register new overview table (post-creation chores)
+-- Scope: private
+-- Parameters:
+--   dataset: oid of the input dataset table,  It must be a cartodbfy'ed table.
+--   overview_table: oid of the overview table to be registered.
+--   overview_z: intended Z level for the overview table
+CREATE OR REPLACE FUNCTION _CDB_Register_Overview(dataset REGCLASS, overview_table REGCLASS, overview_z INTEGER)
+RETURNS VOID
+AS $$
+  DECLARE
+    sql TEXT;
+  BEGIN
+    IF current_user != session_user THEN
+      sql := Format('ALTER TABLE IF EXISTS %s OWNER TO %s', overview_table::text, session_user);
+      EXECUTE sql;
+    END IF;
+
+    -- TODO: index geometry...
+    PERFORM _CDB_Add_Indexes(overview_table);
+
+    -- TODO: we'll need to store metadata somewhere to define
+    -- which overlay levels are available. Here we should add this metadata
+    -- (or replace existing metadata)
+  END
+$$ LANGUAGE PLPGSQL;
+
 -- Dataset attributes (column names other than the
 -- CartoDB primary key and geometry columns) which should be aggregated
 -- in aggregated overviews.
@@ -377,6 +403,8 @@ DECLARE
   overview_z integer;
   overview_tables REGCLASS[];
 BEGIN
+  -- TODO: adjust statement_timeout here based on input table size?
+
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'');', reloid) INTO ref_z;
 
@@ -394,11 +422,9 @@ BEGIN
   FOREACH overview_z IN ARRAY overviews_z LOOP
     EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s);', base_rel, base_z, overview_z) INTO base_rel;
     base_z := overview_z;
+    PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
   END LOOP;
-
-  -- TODO: we'll need to store metadata somewhere to define
-  -- which overlay levels are available.
 
   RETURN overview_tables;
 END;
