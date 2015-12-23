@@ -288,14 +288,14 @@ $$ LANGUAGE PLPGSQL STABLE;
 -- Experimental Overview reduction method for point datasets.
 -- It clusters the points using a grid, then aggregates the point in each
 -- cluster into a point at the centroid of the clustered records.
--- Scope: private.
+-- Scope: public.
 -- Parameters:
 --   reloid original table (can be the base table of the dataset or an existing
 --   overview) from which the overview is being generated.
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS REGCLASS
 AS $$
   DECLARE
