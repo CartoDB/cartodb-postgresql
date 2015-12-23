@@ -106,6 +106,13 @@ AS $$
   END
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Experimental default strategy to assign a reference base Z level
+-- to a cartodbfied table. The resulting Z level represents the
+-- minimum scale level at which the table data can be rendered
+-- without overcrowded results or loss of detail.
+-- Parameters:
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+-- Return value: Z level as an integer
 CREATE OR REPLACE FUNCTION _CDB_Dummy_Ref_Z_Strategy(reloid REGCLASS)
 RETURNS INTEGER
 AS $$
@@ -129,6 +136,14 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Overview table name for a given Z level and base dataset or overview table
+-- Scope: private.
+-- Parameters:
+--   ref reference table (can be the base table of the dataset or an existing
+--   overview) from which the overview is being generated.
+--   ref_z Z level of the reference table
+--   overview_z Z level of the overview to be named, must be smaller than ref_z
+-- Return value: the name to be used for the overview
 CREATE OR REPLACE FUNCTION _CDB_Overview_Name(ref REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS TEXT
 AS $$
@@ -148,6 +163,13 @@ AS $$
   END
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+-- Experimental simplistic reduction method for point datasets to be used as a default.
+-- Scope: private.
+--   reloid original table (can be the base table of the dataset or an existing
+--   overview) from which the overview is being generated.
+--   ref_z Z level assigned to the original table
+--   overview_z Z level of the overview to be generated, must be smaller than ref_z
+-- Return value: Name of the generated overview table
 CREATE OR REPLACE FUNCTION _CDB_Dummy_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS REGCLASS
 AS $$
@@ -157,7 +179,7 @@ AS $$
     base_name TEXT;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
-    -- TODO: implement a proper reduction technique.
+    -- TODO: implement a proper sampling strategy;
     -- Here we're just inefficiently sampling the data to mantain
     -- the approximate visual density of the reference level.
     reduction := power(2, 2*(overview_z - ref_z));
@@ -263,6 +285,16 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Experimental Overview reduction method for point datasets.
+-- It clusters the points using a grid, then aggregates the point in each
+-- cluster into a point at the centroid of the clustered records.
+-- Scope: private.
+-- Parameters:
+--   reloid original table (can be the base table of the dataset or an existing
+--   overview) from which the overview is being generated.
+--   ref_z Z level assigned to the original table
+--   overview_z Z level of the overview to be generated, must be smaller than ref_z
+-- Return value: Name of the generated overview table
 CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS REGCLASS
 AS $$
@@ -321,6 +353,15 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL;
 
+-- Create overview tables for a dataset.
+-- Scope: public
+-- Parameters:
+--   reloid: oid of the input table. It must be a cartodbfy'ed table with
+--           vector features.
+--   refscale_strategy: function that computes the reference Z of the dataset
+--   reduce_strategy: function that generates overviews from a base table
+--                    or higher level overview
+-- Return value: Array with the names of the generated overview tables
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
   refscale_strategy regproc DEFAULT '_CDB_Dummy_Ref_Z_Strategy'::regproc,
