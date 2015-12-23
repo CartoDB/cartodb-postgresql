@@ -16,8 +16,8 @@ DECLARE
 BEGIN
 
   -- Save current constraints on geometry columns, if any
-  ogc_geom = ('','','','',0,0,'GEOMETRY'); 
-  ogc_merc = ogc_geom; 
+  ogc_geom = ('','','','',0,0,'GEOMETRY');
+  ogc_merc = ogc_geom;
   sql := 'SELECT gc.* FROM geometry_columns gc, pg_class c, pg_namespace n '
     || 'WHERE c.oid = ' || tabname::oid || ' AND n.oid = c.relnamespace'
     || ' AND gc.f_table_schema = n.nspname AND gc.f_table_name = c.relname'
@@ -66,7 +66,7 @@ BEGIN
            ELSE 3857 END as expsrid,
       CASE WHEN gc.f_geometry_column = 'the_geom' THEN ogc_geom.type
            ELSE ogc_merc.type END as exptype, gc.*
-    FROM geometry_columns gc, pg_class c, pg_namespace n 
+    FROM geometry_columns gc, pg_class c, pg_namespace n
     WHERE c.oid = tabname::oid AND n.oid = c.relnamespace
           AND gc.f_table_schema = n.nspname AND gc.f_table_name = c.relname
           AND gc.f_geometry_column IN ( 'the_geom', 'the_geom_webmercator')
@@ -88,7 +88,7 @@ BEGIN
       RAISE EXCEPTION '% entries found for table % in geometry_columns, expected 2', tmp, tabname;
   END IF;
 
-  -- Check GiST index 
+  -- Check GiST index
   sql := 'SELECT a.attname, count(ri.relname) FROM'
     || ' pg_index i, pg_class c, pg_class ri, pg_attribute a, pg_opclass o'
     || ' WHERE i.indrelid = c.oid AND ri.oid = i.indexrelid'
@@ -181,31 +181,31 @@ DROP TABLE t;
 -- table with existing cartodb_id field of type int4 not sequenced
 CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'unsequenced cartodb_id');
-SELECT cartodb_id FROM t; 
+SELECT cartodb_id FROM t;
 DROP TABLE t;
 
 -- table with text geometry column
 CREATE TABLE t AS SELECT 'SRID=4326;POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column');
-SELECT cartodb_id FROM t; 
+SELECT cartodb_id FROM t;
 DROP TABLE t;
 
 -- table with text geometry column, no SRS
 CREATE TABLE t AS SELECT 'POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, no srs');
-SELECT cartodb_id FROM t; 
+SELECT cartodb_id FROM t;
 DROP TABLE t;
 
 -- table with text geometry column, unusual SRS
 CREATE TABLE t AS SELECT 'SRID=26910;POINT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, srs = 26819');
-SELECT cartodb_id FROM t; 
+SELECT cartodb_id FROM t;
 DROP TABLE t;
 
 -- table with text unparseable geometry column
 CREATE TABLE t AS SELECT 'SRID=26910;PONT(1 1)'::text AS the_geom, 1::int4 as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'text the_geom column, unparseable content');
-SELECT cartodb_id FROM t; 
+SELECT cartodb_id FROM t;
 DROP TABLE t;
 
 -- table with existing cartodb_id serial primary key
@@ -286,9 +286,9 @@ CREATE TABLE test (
   cartodb_id integer
 );
 INSERT INTO test VALUES
-  (1), 
-  (2), 
-  (NULL), 
+  (1),
+  (2),
+  (NULL),
   (3);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with null cartodb_id #148');
 SELECT cartodb_id, cartodb_id_0 from test;
@@ -299,8 +299,8 @@ CREATE TABLE test (
   cartodb_id integer
 );
 INSERT INTO test VALUES
-  (1), 
-  (2), 
+  (1),
+  (2),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique cartodb_id #148');
 SELECT cartodb_id, cartodb_id_0 from test;
@@ -319,6 +319,47 @@ SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_i
 SELECT cartodb_id, cartodb_id_0 from test;
 DROP TABLE test;
 
+CREATE TABLE test (
+  cartodb_id integer
+);
+CREATE UNIQUE INDEX "test_cartodb_id_key" ON test (cartodb_id);
+CREATE UNIQUE INDEX "test_cartodb_id_pkey" ON test (cartodb_id);
+ALTER TABLE test ADD CONSTRAINT "test_pkey" PRIMARY KEY USING INDEX test_cartodb_id_pkey;
+INSERT INTO test VALUES
+  (1),
+  (2),
+  (3);
+SELECT CDB_CartodbfyTableCheck('test', 'Table with primary key and unique index on it #174');
+SELECT cartodb_id from test;
+DROP TABLE test;
+
+CREATE TABLE test (
+  name varchar,
+  "first.value" integer,
+  "second.value" integer
+);
+INSERT INTO test VALUES ('one', 1, 2), ('two', 3, 4);
+SELECT CDB_CartodbfyTableCheck('test', 'Table with dots in name columns (cartodb #6114)');
+SELECT name, "first.value" from test;
+DROP TABLE test;
+
+SET client_min_messages TO notice;
+-- _CDB_create_cartodb_id_column with cartodb_id integer already present
+CREATE TABLE test (cartodb_id integer);
+
+SELECT _CDB_Create_Cartodb_ID_Column('test'::regclass);
+SELECT column_name FROM information_schema.columns WHERE table_name = 'test' AND column_name = '_cartodb_id0';
+
+DROP TABLE test;
+
+-- _CDB_create_cartodb_id_column with cartodb_id text already present
+CREATE TABLE test (cartodb_id text);
+
+SELECT _CDB_Create_Cartodb_ID_Column('test'::regclass);
+SELECT column_name FROM information_schema.columns WHERE table_name = 'test' AND column_name = '_cartodb_id0';
+
+DROP TABLE test;
+SET client_min_messages TO error;
 
 -- TODO: table with existing custom-triggered the_geom
 

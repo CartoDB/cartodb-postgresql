@@ -1,12 +1,20 @@
-next (2015-mm-dd)
------------------
+0.11.5 (2015-11-27)
+-------------------
+* Disable log invalidation time [#178](https://github.com/CartoDB/cartodb-postgresql/pull/178)
+
+0.11.4 (2015-11-24)
+-------------------
+* Fix for existing PK cartodb_id problem [#174](https://github.com/CartoDB/cartodb-postgresql/issues/174)
+* Add cartodbfication support for column names with embedded points to fix [#6114](https://github.com/CartoDB/cartodb/issues/6114)
+* Add CDB_GreatCircle for creating great circle routes between two points [#171](https://github.com/CartoDB/cartodb-postgresql/pull/171)
+* Fix to prevent cartodbfication problems [#155](https://github.com/CartoDB/cartodb-postgresql/issues/155)
 
 0.11.3 (2015-10-27)
 -------------------
 * Added CDB_Helper.sql [#173](https://github.com/CartoDB/cartodb-postgresql/pull/173)
-* Added _CDB_Unique_Identifier for creating UTF8 aware unique identifiers
-* Added _CDB_Unique_Column_Identifier for creating UTF8 aware unique identifiers for columns
-* Added _CDB_Octet_Truncate that truncates text to a certain amount of octets.
+* Added `_CDB_Unique_Identifier` for creating UTF8 aware unique identifiers
+* Added `_CDB_Unique_Column_Identifier` for creating UTF8 aware unique identifiers for columns
+* Added `_CDB_Octet_Truncate` that truncates text to a certain amount of octets.
 
 0.11.2 (2015-10-19)
 -------------------

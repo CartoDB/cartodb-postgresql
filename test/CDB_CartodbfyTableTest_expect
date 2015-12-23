@@ -102,5 +102,35 @@ Table with non unique and null cartodb_id #148 cartodbfied fine
 3|
 4|2
 DROP TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+INSERT 0 3
+Table with primary key and unique index on it #174 cartodbfied fine
+1
+2
+3
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+Table with dots in name columns (cartodb #6114) cartodbfied fine
+one|1
+two|3
+DROP TABLE
+SET
+CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field does not have an associated sequence, renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
+
+DROP TABLE
+CREATE TABLE
+NOTICE:  Column cartodb_id already exists
+NOTICE:  Existing cartodb_id field is of invalid type text (need int2, int4 or int8), renaming
+NOTICE:  Trying to recover data from _cartodb_id0 column
+
+DROP TABLE
+SET
 DROP FUNCTION
 DROP FUNCTION

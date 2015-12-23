@@ -152,12 +152,12 @@ BEGIN
       -- Copy existing values to new field
       -- NOTE: using ALTER is a workaround to a PostgreSQL bug and is also known to be faster for tables with many rows
       -- See http://www.postgresql.org/message-id/20140530143150.GA11051@localhost
-      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I', reloid::text, new_name);
+      sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I::integer', reloid::text, new_name);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
       -- Find max value
-      sql := Format('SELECT max(cartodb_id) FROM %s', reloid::text);
+      sql := Format('SELECT coalesce(max(cartodb_id), 0) as max FROM %s', reloid::text);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql INTO rec;
 
@@ -166,7 +166,7 @@ BEGIN
         AS seq INTO rec2;
 
       -- Reset sequence name
-      sql := Format('ALTER SEQUENCE %s RESTART WITH %d', rec2.seq::text, rec.max + 1);
+      sql := Format('ALTER SEQUENCE %s RESTART WITH %s', rec2.seq::text, rec.max + 1);
       RAISE DEBUG 'Running %', sql;
       EXECUTE sql;
 
@@ -504,7 +504,7 @@ BEGIN
     IF rec.atttypid IN (20,21,23) THEN
           
       -- And it's a unique primary key! Done!
-      IF rec.indisprimary AND rec.indisunique AND rec.attnotnull THEN
+      IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
@@ -1068,8 +1068,8 @@ BEGIN
   -- Add now add all the rest of the columns
   -- by selecting their names into an array and
   -- joining the array with a comma
-  SELECT 
-    ',' || array_to_string(array_agg(a.attname),',') AS column_name_sql, 
+  SELECT
+    ',' || array_to_string(array_agg(Format('%I',a.attname)),',') AS column_name_sql,
     Count(*) AS count
   INTO rec
   FROM pg_class c 
