@@ -206,7 +206,6 @@ AS $$
       EXECUTE sql;
     END IF;
 
-    -- TODO: index geometry...
     PERFORM _CDB_Add_Indexes(overview_table);
 
     -- TODO: we'll need to store metadata somewhere to define
