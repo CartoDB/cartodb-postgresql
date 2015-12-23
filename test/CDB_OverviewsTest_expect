@@ -1,0 +1,15 @@
+SET
+CREATE TABLE
+INSERT 0 1114
+CREATE TABLE
+INSERT 0 1114
+
+
+
+{base_bare_t_ov5,base_bare_t_ov3,base_bare_t_ov1}
+number,int_number,name,start
+AVG(number)::double precision AS number,AVG(int_number)::integer AS int_number,''::text AS name,NULL::date AS start
+AVG(tab.number)::double precision AS number,AVG(tab.int_number)::integer AS int_number,''::text AS name,NULL::date AS start
+{base_t_ov5,base_t_ov3,base_t_ov1}
+DROP TABLE
+DROP TABLE
