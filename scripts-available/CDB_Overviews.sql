@@ -184,9 +184,6 @@ AS $$
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
     reduction := power(2, 2*(overview_z - ref_z));
 
-    -- We'll avoid requiring a full sequential iteration on the table
-    -- by using ...
-
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
 
     -- Estimate number of rows
