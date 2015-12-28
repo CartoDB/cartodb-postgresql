@@ -176,30 +176,36 @@ RETURNS REGCLASS
 AS $$
   DECLARE
     overview_rel TEXT;
-    reduction FLOAT8;
+    fraction FLOAT8;
     base_name TEXT;
-    num_rows FLOAT8;
+    class_info RECORD;
     num_samples INTEGER;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
-    reduction := power(2, 2*(overview_z - ref_z));
+    fraction := power(2, 2*(overview_z - ref_z));
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
 
     -- Estimate number of rows
-    SELECT reltuples FROM pg_class INTO STRICT num_rows
+    SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
       WHERE oid = reloid::oid;
 
-    num_samples := ceil(num_rows*reduction);
-
-    EXECUTE Format('
-      CREATE TABLE %1$s AS SELECT * FROM %2$s
-        WHERE ctid = ANY (
-          ARRAY[
-            (SELECT CDB_RandomTids(''%2$s'', %3$s))
-          ]
-        );
-    ', overview_rel, reloid, num_samples);
+    IF class_info.relpages < 2 OR fraction > 0.5 THEN
+      -- We'll avoid possible CDB_RandomTids problems
+      EXECUTE Format('
+        CREATE TABLE %s AS SELECT * FROM %s WHERE random() < %s;
+      ', overview_rel, reloid, fraction);
+    ELSE
+      num_samples := ceil(class_info.reltuples*fraction);
+      EXECUTE Format('
+        CREATE TABLE %1$s AS SELECT * FROM %2$s
+          WHERE ctid = ANY (
+            ARRAY[
+              (SELECT CDB_RandomTids(''%2$s'', %3$s))
+            ]
+          );
+      ', overview_rel, reloid, num_samples);
+    END IF;
     RETURN overview_rel;
   END;
 $$ LANGUAGE PLPGSQL;
