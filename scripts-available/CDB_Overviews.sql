@@ -113,7 +113,7 @@ $$ LANGUAGE PLPGSQL STABLE;
 -- Parameters:
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: Z level as an integer
-CREATE OR REPLACE FUNCTION _CDB_Dummy_Ref_Z_Strategy(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION _CDB_Feature_Density_Ref_Z_Strategy(reloid REGCLASS)
 RETURNS INTEGER
 AS $$
   DECLARE
@@ -389,7 +389,7 @@ $$ LANGUAGE PLPGSQL;
 -- Return value: Array with the names of the generated overview tables
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
-  refscale_strategy regproc DEFAULT '_CDB_Dummy_Ref_Z_Strategy'::regproc,
+  refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc,
   reduce_strategy   regproc DEFAULT '_CDB_Dummy_Reduce_Strategy'::regproc
 )
 RETURNS text[]
