@@ -163,28 +163,46 @@ AS $$
   END
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
--- Experimental simplistic reduction method for point datasets to be used as a default.
+-- Sampling reduction method.
+-- Valid for any kind of geometry.
 -- Scope: private.
 --   reloid original table (can be the base table of the dataset or an existing
 --   overview) from which the overview is being generated.
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_Dummy_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS REGCLASS
 AS $$
   DECLARE
     overview_rel TEXT;
     reduction FLOAT8;
     base_name TEXT;
+    num_rows FLOAT8;
+    num_samples INTEGER;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
-    -- TODO: implement a proper sampling strategy;
-    -- Here we're just inefficiently sampling the data to mantain
-    -- the approximate visual density of the reference level.
     reduction := power(2, 2*(overview_z - ref_z));
+
+    -- We'll avoid requiring a full sequential iteration on the table
+    -- by using ...
+
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
-    EXECUTE Format('CREATE TABLE %s AS SELECT * FROM %s WHERE random() < %s;', overview_rel, reloid, reduction);
+
+    -- Estimate number of rows
+    SELECT reltuples FROM pg_class INTO STRICT num_rows
+      WHERE oid = reloid::oid;
+
+    num_samples := ceil(num_rows*reduction);
+
+    EXECUTE Format('
+      CREATE TABLE %1$s AS SELECT * FROM %2$s
+        WHERE ctid = ANY (
+          ARRAY[
+            (SELECT CDB_RandomTids(''%2$s'', %3$s))
+          ]
+        );
+    ', overview_rel, reloid, num_samples);
     RETURN overview_rel;
   END;
 $$ LANGUAGE PLPGSQL;
@@ -390,7 +408,7 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
   refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc,
-  reduce_strategy   regproc DEFAULT '_CDB_Dummy_Reduce_Strategy'::regproc
+  reduce_strategy   regproc DEFAULT '_CDB_Sampling_Reduce_Strategy'::regproc
 )
 RETURNS text[]
 AS $$
