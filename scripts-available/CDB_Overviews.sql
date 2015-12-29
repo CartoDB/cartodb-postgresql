@@ -361,7 +361,7 @@ AS $$
     attributes := _CDB_Aggregable_Attributes_Expression(reloid);
     aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
     IF attributes <> '' THEN
-      attributes := attributes || ', ';
+      attributes := ', ' || attributes;
     END IF;
     IF aggr_attributes <> '' THEN
       aggr_attributes := aggr_attributes || ', ';
@@ -388,10 +388,10 @@ AS $$
           GROUP BY gx, gy
          )
          SELECT
-           %4$s
            cartodb_id,
-           ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator,
-           ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom
+           ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom,
+           ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator
+           %4$s
          FROM clusters
     ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes);
 
