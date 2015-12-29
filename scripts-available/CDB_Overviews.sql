@@ -221,12 +221,14 @@ RETURNS VOID
 AS $$
   DECLARE
     sql TEXT;
+    table_owner TEXT;
   BEGIN
-    IF current_user != session_user THEN
-      sql := Format('ALTER TABLE IF EXISTS %s OWNER TO %s', overview_table::text, session_user);
-      EXECUTE sql;
-    END IF;
-
+    -- preserve the owner of the base table
+    SELECT u.usename
+      FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
+      WHERE c.relname = dataset::text
+      INTO table_owner;
+    EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I', overview_table::text, table_owner);
     PERFORM _CDB_Add_Indexes(overview_table);
 
     -- TODO: we'll need to store metadata somewhere to define
