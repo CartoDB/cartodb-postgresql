@@ -422,6 +422,7 @@ DECLARE
   base_rel REGCLASS;
   overview_z integer;
   overview_tables REGCLASS[];
+  overviews_step integer := 1;
 BEGIN
   -- TODO: adjust statement_timeout here based on input table size?
 
@@ -433,7 +434,7 @@ BEGIN
   overview_z := ref_z - 1;
   WHILE overview_z >= 0 LOOP
     SELECT array_append(overviews_z, overview_z) INTO overviews_z;
-    overview_z := overview_z - 2;
+    overview_z := overview_z - overviews_step;
   END LOOP;
 
   -- Create overlay tables
