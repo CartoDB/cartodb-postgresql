@@ -386,7 +386,7 @@ AS $$
              SUM(ST_Y(f.the_geom_webmercator)) AS sy,
              Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
              Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
-             row_number() OVER () AS cartodb_id
+             MIN(cartodb_id) AS cartodb_id
           FROM %1$s f
           GROUP BY gx, gy
          )
