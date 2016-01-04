@@ -228,7 +228,15 @@ AS $$
       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
       WHERE c.relname = dataset::text
       INTO table_owner;
-    EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I', overview_table::text, table_owner);
+    EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
+
+    -- preserve the table privileges
+    UPDATE pg_class c_to
+      SET  relacl = c_from.relacl
+      FROM  pg_class c_from
+      WHERE c_from.oid  = dataset
+      AND   c_to.oid    = overview_table;
+
     PERFORM _CDB_Add_Indexes(overview_table);
 
     -- TODO: we'll need to store metadata somewhere to define
