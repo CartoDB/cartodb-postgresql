@@ -223,6 +223,7 @@ AS $$
           );
       ', overview_rel, reloid, num_samples);
     END IF;
+
     RETURN overview_rel;
   END;
 $$ LANGUAGE PLPGSQL;
@@ -272,7 +273,7 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION _CDB_Aggregable_Attributes(reloid REGCLASS)
 RETURNS SETOF information_schema.sql_identifier
 AS $$
-  SELECT c FROM cartodb.CDB_ColumnNames(reloid) c, _CDB_Columns() cdb
+  SELECT c FROM CDB_ColumnNames(reloid) c, _CDB_Columns() cdb
     WHERE c NOT IN (
       cdb.pkey, cdb.geomcol, cdb.mercgeomcol
     )
@@ -319,7 +320,7 @@ BEGIN
     qualified_column := Format('%I', column_name);
   END IF;
 
-  column_type := cartodb.CDB_ColumnType(reloid, column_name);
+  column_type := CDB_ColumnType(reloid, column_name);
 
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint' THEN
@@ -380,6 +381,7 @@ AS $$
     grid_m FLOAT8;
     aggr_attributes TEXT;
     attributes TEXT;
+    columns TEXT;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
 
@@ -394,6 +396,29 @@ AS $$
     IF aggr_attributes <> '' THEN
       aggr_attributes := aggr_attributes || ', ';
     END IF;
+
+    -- compute the resulting columns in the same order as in the base table
+    -- cartodb_id,
+    -- ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom,
+    -- ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator
+    -- %4$s
+    WITH cols AS (
+      SELECT
+        CASE c
+        WHEN 'cartodb_id' THEN 'cartodb_id'
+        WHEN 'the_geom' THEN
+          'ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom'
+        WHEN 'the_geom_webmercator' THEN
+           'ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator'
+        ELSE c
+        END AS column
+        FROM CDB_ColumnNames(reloid) c
+    )
+    SELECT string_agg(s.column, ',') FROM (
+      SELECT * FROM cols
+    ) AS s INTO columns;
+    RAISE NOTICE 'COLUMNS: %s', columns;
+
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
 
@@ -415,13 +440,8 @@ AS $$
           FROM %1$s f
           GROUP BY gx, gy
          )
-         SELECT
-           cartodb_id,
-           ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom,
-           ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator
-           %4$s
-         FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes);
+         SELECT %6$s FROM clusters
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns);
 
     RETURN overview_rel;
   END;
@@ -434,7 +454,9 @@ $$ LANGUAGE PLPGSQL;
 --           vector features.
 --   refscale_strategy: function that computes the reference Z of the dataset
 --   reduce_strategy: function that generates overviews from a base table
---                    or higher level overview
+--                    or higher level overview. The overview tables
+--                    created by the strategy must have the same columns
+--                    as the base table and in the same order.
 -- Return value: Array with the names of the generated overview tables
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
