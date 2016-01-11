@@ -1,3 +1,20 @@
+-- Return existing overviews (if any) for a given dataset table
+-- Scope: public
+-- Parameters
+--   reloid: oid of the input table.
+-- Return relation of overviews for the table with
+-- z level of the overview and overview table, ordered by z.
+CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
+RETURNS TABLE(z integer, overview_table REGCLASS)
+AS $$
+  SELECT
+    substring(cdb_usertables from '\d+$')::integer as z,
+    cdb_usertables::regclass as overview_table
+    FROM CDB_UserTables()
+    WHERE cdb_usertables SIMILAR TO reloid::text || '_ov[0-9]+'
+    ORDER BY z;
+$$ LANGUAGE SQL;
+
 -- Calculate the estimated extent of a cartodbfy'ed table.
 -- Scope: private.
 -- Parameters
