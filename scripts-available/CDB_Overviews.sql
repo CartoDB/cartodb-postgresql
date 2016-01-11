@@ -461,7 +461,7 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION CDB_CreateOverviews(
   reloid REGCLASS,
   refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc,
-  reduce_strategy   regproc DEFAULT '_CDB_Sampling_Reduce_Strategy'::regproc
+  reduce_strategy   regproc DEFAULT 'CDB_GridCluster_Reduce_Strategy'::regproc
 )
 RETURNS text[]
 AS $$
