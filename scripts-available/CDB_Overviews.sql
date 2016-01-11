@@ -11,7 +11,7 @@ AS $$
     substring(cdb_usertables from '\d+$')::integer as z,
     cdb_usertables::regclass as overview_table
     FROM CDB_UserTables()
-    WHERE cdb_usertables SIMILAR TO reloid::text || '_ov[0-9]+'
+    WHERE cdb_usertables SIMILAR TO reloid::text || '_ov[\d]+'
     ORDER BY z;
 $$ LANGUAGE SQL;
 
