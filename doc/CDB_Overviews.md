@@ -56,4 +56,4 @@ SELECT CDB_Overviews('table_name');
 
 CDB_Overviews(table_name)
 
-* **table_name** regclass, table for which overviews will be generated
+* **table_name** regclass, table to obtain existing overviews for
