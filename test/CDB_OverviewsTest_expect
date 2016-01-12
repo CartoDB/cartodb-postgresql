@@ -6,10 +6,17 @@ INSERT 0 1114
 
 
 
-{base_bare_t_ov5,base_bare_t_ov3,base_bare_t_ov1}
+{base_bare_t_ov5,base_bare_t_ov4,base_bare_t_ov3,base_bare_t_ov2,base_bare_t_ov1,base_bare_t_ov0}
+125
 number,int_number,name,start
-AVG(number)::double precision AS number,AVG(int_number)::integer AS int_number,''::text AS name,NULL::date AS start
-AVG(tab.number)::double precision AS number,AVG(tab.int_number)::integer AS int_number,''::text AS name,NULL::date AS start
-{base_t_ov5,base_t_ov3,base_t_ov1}
+AVG(number)::double precision AS number,AVG(int_number)::integer AS int_number,CASE count(*) WHEN 1 THEN string_agg(name,'/') ELSE '*' END::text AS name,CASE count(*) WHEN 1 THEN MIN(start) ELSE NULL END::date AS start
+AVG(tab.number)::double precision AS number,AVG(tab.int_number)::integer AS int_number,CASE count(*) WHEN 1 THEN string_agg(tab.name,'/') ELSE '*' END::text AS name,CASE count(*) WHEN 1 THEN MIN(tab.start) ELSE NULL END::date AS start
+{base_t_ov5,base_t_ov4,base_t_ov3,base_t_ov2,base_t_ov1,base_t_ov0}
+125
+
+
+ERROR:  relation "base_t_ov5" does not exist
+LINE 1: SELECT count(*) FROM base_t_ov5;
+                             ^
 DROP TABLE
 DROP TABLE
