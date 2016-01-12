@@ -7,6 +7,8 @@ The *reduction* consists in a fewer number of records
 and/or simplified record geometries.
 
 Overviews are created through the `CDB_CreateOverviews`.
+The statement timeout may need to be adjusted before using this function,
+as overview creation for large tables is a time-consuming operation.
 
 The `CDB_Overviews` function can be used determine what overview tables
 exist for a given dataset table and which zoom levels correspond tt
@@ -31,12 +33,14 @@ SELECT CDB_CreateOverviews('table_name');
 CDB_CreateOverviews(table_name, ref_z_strategy, reduction_strategy)
 
 * **table_name** regclass, table for which overviews will be generated
-* **ref_z_strategy** regproc, function that provides the Z-scale strategy.
+* **ref_z_strategy** regproc, optional function that provides
+  the Z-scale strategy.
   It returns the base Z level for the dataset.
   It should have these arguments:
   - **table_name** regclass, table to compute the reference Z scale for
-* **reduction_strategy** regproc, function that provides the reduction strategy
-  to generate an overview table from a table for a smaller scale (higher Z number).
+* **reduction_strategy** regproc, optional function that provides
+  the reduction strategy to generate an overview table from a table
+  for a smaller scale (higher Z number).
   It returns the name of the generated table.
   It should have these arguments:
   - **base_table_name** regclass, base table to be reduced.

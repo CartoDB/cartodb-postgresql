@@ -257,9 +257,8 @@ AS $$
 
     PERFORM _CDB_Add_Indexes(overview_table);
 
-    -- TODO: we'll need to store metadata somewhere to define
-    -- which overlay levels are available. Here we should add this metadata
-    -- (or replace existing metadata)
+    -- TODO: If metadata about existing overviews is to be stored
+    -- it should be done here (CDB_Overviews would consume such metadata)
   END
 $$ LANGUAGE PLPGSQL;
 
@@ -417,7 +416,6 @@ AS $$
     SELECT string_agg(s.column, ',') FROM (
       SELECT * FROM cols
     ) AS s INTO columns;
-    RAISE NOTICE 'COLUMNS: %s', columns;
 
 
     EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
@@ -474,8 +472,6 @@ DECLARE
   overview_tables REGCLASS[];
   overviews_step integer := 1;
 BEGIN
-  -- TODO: adjust statement_timeout here based on input table size?
-
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'');', reloid) INTO ref_z;
 
