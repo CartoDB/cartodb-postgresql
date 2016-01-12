@@ -11,8 +11,9 @@ The statement timeout may need to be adjusted before using this function,
 as overview creation for large tables is a time-consuming operation.
 
 The `CDB_Overviews` function can be used determine what overview tables
-exist for a given dataset table and which zoom levels correspond tt
+exist for a given dataset table and which zoom levels correspond to it.
 
+The `CDB_DropOverviews` remove a dataset's existing overviews.
 
 ### CDB_CreateOverviews
 
@@ -49,7 +50,8 @@ CDB_CreateOverviews(table_name, ref_z_strategy, reduction_strategy)
 
 ### CDB_Overviews
 
-Obtain overview metadata for a given table (existing overviews)
+Obtain overview metadata for a given table (existing overviews).
+The returned relation will be empty if the table has no overviews.
 
 ```sql
 SELECT CDB_Overviews('table_name');
@@ -61,3 +63,17 @@ SELECT CDB_Overviews('table_name');
 CDB_Overviews(table_name)
 
 * **table_name** regclass, table to obtain existing overviews for
+
+### CDB_DropOverviews
+
+Remove the overviews of a table, if present.
+
+```sql
+SELECT CDB_DropOverviews('table_name');
+```
+
+#### Arguments
+
+CDB_Overviews(table_name)
+
+* **table_name** regclass, table for which to drop existing overviews.

@@ -1,3 +1,7 @@
+-- Remove a dataset's existing  overview tables.
+-- Scope: public
+-- Parameters:
+--   reloid: oid of the table.
 CREATE OR REPLACE FUNCTION CDB_DropOverviews(reloid REGCLASS)
 RETURNS void
 AS $$
