@@ -1,3 +1,18 @@
+CREATE OR REPLACE FUNCTION CDB_DropOverviews(reloid REGCLASS)
+RETURNS void
+AS $$
+DECLARE
+    row     record;
+BEGIN
+    FOR row IN
+        SELECT * FROM CDB_Overviews(reloid)
+    LOOP
+        EXECUTE Format('DROP TABLE %I;', row.overview_table);
+        RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
+    END LOOP;
+END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
 -- Return existing overviews (if any) for a given dataset table
 -- Scope: public
 -- Parameters
