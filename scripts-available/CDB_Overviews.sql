@@ -26,11 +26,15 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
 RETURNS TABLE(z integer, overview_table REGCLASS)
 AS $$
+  -- FIXME: this will fail if the overview tables
+  -- require a explicit schema name
+  -- possible solutions: return table names as text instead of regclass
+  -- or add schema of reloid before casting to regclass
   SELECT
     substring(cdb_usertables from '\d+$')::integer as z,
     cdb_usertables::regclass as overview_table
     FROM CDB_UserTables()
-    WHERE cdb_usertables SIMILAR TO reloid::text || '_ov[\d]+'
+    WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=reloid) || '_ov[\d]+'
     ORDER BY z;
 $$ LANGUAGE SQL;
 
