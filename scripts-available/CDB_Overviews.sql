@@ -11,7 +11,7 @@ BEGIN
     FOR row IN
         SELECT * FROM CDB_Overviews(reloid)
     LOOP
-        EXECUTE Format('DROP TABLE %I;', row.overview_table);
+        EXECUTE Format('DROP TABLE %s;', row.overview_table);
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
     END LOOP;
 END;
@@ -37,6 +37,22 @@ AS $$
     WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=reloid) || '_ov[\d]+'
     ORDER BY z;
 $$ LANGUAGE SQL;
+
+-- Schema and relation names of a table given its reloid
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the table.
+-- Return (schema_name, table_name)
+-- note that returned names will be quoted if necessary
+CREATE OR REPLACE FUNCTION _cdb_split_table_name(reloid REGCLASS, OUT schema_name TEXT, OUT table_name TEXT)
+AS $$
+  BEGIN
+    SELECT n.nspname, c.relname
+    INTO STRICT schema_name, table_name
+    FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.oid = reloid;
+  END
+$$ LANGUAGE PLPGSQL IMMUTABLE;
 
 -- Calculate the estimated extent of a cartodbfy'ed table.
 -- Scope: private.
@@ -183,23 +199,24 @@ $$ LANGUAGE PLPGSQL STABLE;
 --   overview) from which the overview is being generated.
 --   ref_z Z level of the reference table
 --   overview_z Z level of the overview to be named, must be smaller than ref_z
--- Return value: the name to be used for the overview
+-- Return value: the name to be used for the overview. The name is always
+-- unqualified (does not include a schema name).
 CREATE OR REPLACE FUNCTION _CDB_Overview_Name(ref REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS TEXT
 AS $$
   DECLARE
+    schema_name TEXT;
     base TEXT;
     suffix TEXT;
     is_overview BOOLEAN;
   BEGIN
+    SELECT * FROM _cdb_split_table_name(ref) INTO schema_name, base;
     suffix := Format('_ov%s', ref_z);
-    SELECT ref::text LIKE Format('%%%s', suffix) INTO is_overview;
+    SELECT base LIKE Format('%%%s', suffix) INTO is_overview;
     IF is_overview THEN
-      SELECT substring(ref::text FROM 1 FOR length(ref::text)-length(suffix)) INTO base;
-    ELSE
-      base := ref;
+      SELECT substring(base FROM 1 FOR length(base)-length(suffix)) INTO base;
     END IF;
-    RETURN Format('%s_ov%s', base::text, overview_z);
+    RETURN Format('%s_ov%s', base, overview_z);
   END
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
@@ -224,7 +241,8 @@ AS $$
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
     fraction := power(2, 2*(overview_z - ref_z));
 
-    EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
+    -- FIXME: handle schema name for overview_rel if reloid requires it
+    EXECUTE Format('DROP TABLE IF EXISTS %I CASCADE;', overview_rel);
 
     -- Estimate number of rows
     SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
@@ -233,12 +251,12 @@ AS $$
     IF class_info.relpages < 2 OR fraction > 0.5 THEN
       -- We'll avoid possible CDB_RandomTids problems
       EXECUTE Format('
-        CREATE TABLE %s AS SELECT * FROM %s WHERE random() < %s;
+        CREATE TABLE %I AS SELECT * FROM %s WHERE random() < %s;
       ', overview_rel, reloid, fraction);
     ELSE
       num_samples := ceil(class_info.reltuples*fraction);
       EXECUTE Format('
-        CREATE TABLE %1$s AS SELECT * FROM %2$s
+        CREATE TABLE %1$I AS SELECT * FROM %2$s
           WHERE ctid = ANY (
             ARRAY[
               (SELECT CDB_RandomTids(''%2$s'', %3$s))
@@ -440,15 +458,15 @@ AS $$
       SELECT * FROM cols
     ) AS s INTO columns;
 
-
-    EXECUTE Format('DROP TABLE IF EXISTS %s CASCADE;', overview_rel);
+    -- FIXME: handle schema name for overview_rel if reloid requires it
+    EXECUTE Format('DROP TABLE IF EXISTS %I CASCADE;', overview_rel);
 
     -- Now we cluster the data using a grid of size grid_m
     -- and selecte the centroid (average coordinates) of each cluster.
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %3$s AS
+      CREATE TABLE %3$I AS
          WITH clusters AS (
            SELECT
              %5$s
