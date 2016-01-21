@@ -77,10 +77,9 @@ DATA_built = \
 EXTRA_CLEAN = cartodb_version.sql
 
 DOCS = README.md
-REGRESS_NEW = test_ddl_triggers
 REGRESS_OLD = $(wildcard test/*.sql)
 REGRESS_LEGACY = $(REGRESS_OLD:.sql=)
-REGRESS = test_setup $(REGRESS_NEW) $(REGRESS_LEGACY)
+REGRESS = test_setup $(REGRESS_LEGACY)
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
