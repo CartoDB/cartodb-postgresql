@@ -53,16 +53,42 @@ CDB_CreateOverviews(table_name, ref_z_strategy, reduction_strategy)
 Obtain overview metadata for a given table (existing overviews).
 The returned relation will be empty if the table has no overviews.
 
+The function can be applied to a single table:
+
 ```sql
 SELECT CDB_Overviews('table_name');
 --- Return existing overview Z levels and corresponding tables
 ```
 
+Or to multiple tables passed as an array; this can be used
+to obtain the overviews that can be applied to a query by
+combining it with `CDB_QueryTablesText`:
+
+```sql
+SELECT CDB_Overviews(CDB_QueryTablesText('SELECT * FROM table1, table2'));
+--- Return existing overview Z levels and corresponding tables
+```
+
+The result of `CDB_Overviews` has three columns:
+
+| base_table | z | overview_table |
+|------------+---+----------------|
+| table1     | 1 | table1_ov1     |
+| table1     | 2 | table1_ov2     |
+| table1     | 4 | table1_ov4     |
+| table2     | 1 | table1_ov1     |
+| table2     | 2 | table1_ov2     |
+
 #### Arguments
 
 CDB_Overviews(table_name)
 
-* **table_name** regclass, table to obtain existing overviews for
+* **table_name** regclass, oid of table to obtain existing overviews for
+
+CDB_Overviews(table_names)
+
+* **table_names** regclass[], array of table oids
+
 
 ### CDB_DropOverviews
 

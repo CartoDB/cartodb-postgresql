@@ -17,25 +17,50 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+
+
 -- Return existing overviews (if any) for a given dataset table
 -- Scope: public
 -- Parameters
 --   reloid: oid of the input table.
 -- Return relation of overviews for the table with
--- z level of the overview and overview table, ordered by z.
+-- the base table oid,
+-- z level of the overview and overview table oid, ordered by z.
 CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
-RETURNS TABLE(z integer, overview_table REGCLASS)
+RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   -- FIXME: this will fail if the overview tables
   -- require a explicit schema name
   -- possible solutions: return table names as text instead of regclass
   -- or add schema of reloid before casting to regclass
   SELECT
+    reloid as base_table,
     substring(cdb_usertables from '\d+$')::integer as z,
     cdb_usertables::regclass as overview_table
     FROM CDB_UserTables()
     WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=reloid) || '_ov[\d]+'
     ORDER BY z;
+$$ LANGUAGE SQL;
+
+-- Return existing overviews (if any) for multiple dataset tables.
+-- Scope: public
+-- Parameters
+--   tables: Array of input tables oids
+-- Return relation of overviews for the table with
+-- the base table oid,
+-- z level of the overview and overview table oid, ordered by z.
+-- Note: CDB_Overviews can be applied to the result of CDB_QueryTablesText
+-- to obtain the overviews applicable to a query.
+CREATE OR REPLACE FUNCTION CDB_Overviews(tables regclass[])
+RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
+AS $$
+  SELECT
+    base_table::regclass AS base_table, substring(cdb_usertables from '\d+$')::integer as z,
+    cdb_usertables::regclass as overview_table
+    FROM
+      CDB_UserTables(), unnest(tables) base_table
+    WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=base_table) || '_ov[\d]+'
+    ORDER BY base_table, z;
 $$ LANGUAGE SQL;
 
 -- Schema and relation names of a table given its reloid
