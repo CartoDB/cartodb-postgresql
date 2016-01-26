@@ -1,3 +1,72 @@
+-- Pattern that can be used to detect overview tables and Extract
+-- the intended zoom level from the table name.
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_OverviewTableDiscriminator()
+RETURNS TEXT
+AS $$
+  BEGIN
+    RETURN '\A_vovw_(\d+)_';
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+-- substring(tablename from _CDB_OverviewTableDiscriminator())
+
+
+-- Pattern matched by the overview tables of a given base table name.
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_OverviewTablePattern(base_table TEXT)
+RETURNS TEXT
+AS $$
+  BEGIN
+    RETURN _CDB_OverviewTableDiscriminator() || base_table;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+-- tablename SIMILAR TO _CDB_OverviewTablePattern(base_table)
+
+-- Name of an overview table, given the base table name and the Z level
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_OverviewTableName(base_table TEXT, z INTEGER)
+RETURNS TEXT
+AS $$
+  BEGIN
+    RETURN '_vovw_' || z::text || '_' || base_table;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Condition to check if a tabla is an overview table of some base table
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_IsOverviewTableOf(base_table TEXT, otable TEXT)
+RETURNS BOOLEAN
+AS $$
+  BEGIN
+    RETURN otable SIMILAR TO _CDB_OverviewTablePattern(base_table);
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Extract the Z level from an overview table name
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_OverviewTableZ(otable TEXT)
+RETURNS INTEGER
+AS $$
+  BEGIN
+    RETURN substring(otable from _CDB_OverviewTableDiscriminator())::integer;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Name of the base table corresponding to an overview table
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTableName(overview_table TEXT)
+RETURNS TEXT
+AS $$
+  BEGIN
+    IF _CDB_OverviewTableZ(overview_table) IS NULL THEN
+      RETURN overview_table;
+    ELSE
+      RETURN regexp_replace(overview_table, _CDB_OverviewTableDiscriminator(), '');
+    END IF;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+
 -- Remove a dataset's existing  overview tables.
 -- Scope: public
 -- Parameters:
@@ -34,11 +103,11 @@ AS $$
   -- possible solutions: return table names as text instead of regclass
   -- or add schema of reloid before casting to regclass
   SELECT
-    reloid as base_table,
-    substring(cdb_usertables from '\d+$')::integer as z,
-    cdb_usertables::regclass as overview_table
+    reloid AS base_table,
+    _CDB_OverviewTableZ(cdb_usertables) AS z,
+    cdb_usertables::regclass AS overview_table
     FROM CDB_UserTables()
-    WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=reloid) || '_ov[\d]+'
+    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
     ORDER BY z;
 $$ LANGUAGE SQL;
 
@@ -55,11 +124,12 @@ CREATE OR REPLACE FUNCTION CDB_Overviews(tables regclass[])
 RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   SELECT
-    base_table::regclass AS base_table, substring(cdb_usertables from '\d+$')::integer as z,
-    cdb_usertables::regclass as overview_table
+    base_table::regclass AS base_table,
+    _CDB_OverviewTableZ(cdb_usertables) AS z,
+    cdb_usertables::regclass AS overview_table
     FROM
       CDB_UserTables(), unnest(tables) base_table
-    WHERE cdb_usertables SIMILAR TO (SELECT relname FROM pg_class WHERE oid=base_table) || '_ov[\d]+'
+    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), cdb_usertables)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL;
 
@@ -236,12 +306,8 @@ AS $$
     is_overview BOOLEAN;
   BEGIN
     SELECT * FROM _cdb_split_table_name(ref) INTO schema_name, base;
-    suffix := Format('_ov%s', ref_z);
-    SELECT base LIKE Format('%%%s', suffix) INTO is_overview;
-    IF is_overview THEN
-      SELECT substring(base FROM 1 FOR length(base)-length(suffix)) INTO base;
-    END IF;
-    RETURN Format('%s_ov%s', base, overview_z);
+    SELECT _CDB_OverviewBaseTableName(base) INTO base;
+    RETURN _CDB_OverviewTableName(base, overview_z);
   END
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
