@@ -463,7 +463,9 @@ BEGIN
     --     'A', 'B', 'A', 'C', 'D' => 'A/B/C/...'
     -- Other ideas: if value is unique then use it, otherwise use something
     -- like '*' or '(varies)' or '(multiple values)', or NULL
-    RETURN 'CASE count(*) WHEN 1 THEN string_agg(' || qualified_column || ',''/'') ELSE ''*''' || ' END::' || column_type;
+    -- Using 'string_agg(' || qualified_column || ',''/'')'
+    -- here causes
+    RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
   ELSE
     RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
   END CASE;
