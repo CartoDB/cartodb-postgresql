@@ -1,3 +1,5 @@
+-- security definer
+
 -- Pattern that can be used to detect overview tables and Extract
 -- the intended zoom level from the table name.
 -- Scope: private.
@@ -629,4 +631,4 @@ BEGIN
 
   RETURN overview_tables;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL SECURITY DEFINER;
