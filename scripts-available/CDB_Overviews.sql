@@ -368,33 +368,51 @@ $$ LANGUAGE PLPGSQL;
 --   dataset: oid of the input dataset table,  It must be a cartodbfy'ed table.
 --   overview_table: oid of the overview table to be registered.
 --   overview_z: intended Z level for the overview table
+-- This function is declared SECURITY DEFINER so it executes with the privileges
+-- of the function creator to have a chance to alter the privileges of the
+-- overview table to match those of the dataset. It will only perform any change
+-- if the overview table belgons to the same scheme as the dataset and it
+-- matches the scheme naming for overview tables.
 CREATE OR REPLACE FUNCTION _CDB_Register_Overview(dataset REGCLASS, overview_table REGCLASS, overview_z INTEGER)
 RETURNS VOID
 AS $$
   DECLARE
     sql TEXT;
     table_owner TEXT;
+    dataset_scheme TEXT;
+    dataset_name TEXT;
+    overview_scheme TEXT;
+    overview_name TEXT;
   BEGIN
-    -- preserve the owner of the base table
-    SELECT u.usename
-      FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
-      WHERE c.relname = dataset::text
-      INTO table_owner;
-    EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
+    -- This function will only register a table as an overview table if it matches
+    -- the overviews naming scheme for the dataset and z level and the table belongs
+    -- to the same scheme as the the dataset
+    SELECT * FROM _cdb_split_table_name(dataset) INTO dataset_scheme, dataset_name;
+    SELECT * FROM _cdb_split_table_name(overview_table) INTO overview_scheme, overview_name;
+    IF dataset_scheme = overview_scheme AND
+       overview_name = _CDB_OverviewTableName(dataset_name, overview_z) THEN
 
-    -- preserve the table privileges
-    UPDATE pg_class c_to
-      SET  relacl = c_from.relacl
-      FROM  pg_class c_from
-      WHERE c_from.oid  = dataset
-      AND   c_to.oid    = overview_table;
+      -- preserve the owner of the base table
+      SELECT u.usename
+        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
+        WHERE c.relname = dataset::text
+        INTO table_owner;
+      EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
 
-    PERFORM _CDB_Add_Indexes(overview_table);
+      -- preserve the table privileges
+      UPDATE pg_class c_to
+        SET  relacl = c_from.relacl
+        FROM  pg_class c_from
+        WHERE c_from.oid  = dataset
+        AND   c_to.oid    = overview_table;
 
-    -- TODO: If metadata about existing overviews is to be stored
-    -- it should be done here (CDB_Overviews would consume such metadata)
+      PERFORM _CDB_Add_Indexes(overview_table);
+
+      -- TODO: If metadata about existing overviews is to be stored
+      -- it should be done here (CDB_Overviews would consume such metadata)
+    END IF;
   END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL SECURITY DEFINER;
 
 -- Dataset attributes (column names other than the
 -- CartoDB primary key and geometry columns) which should be aggregated
@@ -631,4 +649,4 @@ BEGIN
 
   RETURN overview_tables;
 END;
-$$ LANGUAGE PLPGSQL SECURITY DEFINER;
+$$ LANGUAGE PLPGSQL;
