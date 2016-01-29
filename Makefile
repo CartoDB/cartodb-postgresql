@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.12.0
+EXTVERSION = 0.13.0
 
 SED = sed
 
@@ -57,6 +57,7 @@ UPGRADABLE = \
   0.11.4 \
 	0.11.5 \
 	0.12.0 \
+	0.13.0 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
