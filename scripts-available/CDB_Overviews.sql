@@ -513,6 +513,28 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Array of geometry types detected in a cartodbfied table
+-- For effciency only look at a limited number of rwos.
+-- Parameters
+--   reloid: oid of the input table. It must be a cartodbfy'ed table.
+-- Return value: array of geometry type names
+CREATE OR REPLACE FUNCTION _CDB_GeometryTypes(reloid REGCLASS)
+RETURNS TEXT[]
+AS $$
+DECLARE
+  gtypes TEXT[];
+BEGIN
+  EXECUTE Format('
+    SELECT array_agg(DISTINCT ST_GeometryType(the_geom)) FROM (
+      SELECT the_geom FROM %s
+        WHERE (the_geom is not null) LIMIT 10
+    ) as geom_types
+  ', reloid)
+  INTO gtypes;
+  RETURN gtypes;
+END
+$$ LANGUAGE PLPGSQL STABLE;
+
 -- Experimental Overview reduction method for point datasets.
 -- It clusters the points using a grid, then aggregates the point in each
 -- cluster into a point at the centroid of the clustered records.
@@ -535,7 +557,17 @@ AS $$
     aggr_attributes TEXT;
     attributes TEXT;
     columns TEXT;
+    gtypes TEXT[];
   BEGIN
+    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+      -- This strategy only supports datasets with point geomety
+      RETURN NULL;
+      RETURN 'x';
+    END IF;
+
+    --TODO: check applicability: geometry type, minimum number of points...
+
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
 
     -- compute grid cell size using the overview_z dimension...
@@ -630,7 +662,7 @@ BEGIN
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'');', reloid) INTO ref_z;
 
   -- Determine overlay zoom levels
-  -- TODO: should be handled by the refscale_stragegy?
+  -- TODO: should be handled by the refscale_strategy?
   overview_z := ref_z - 1;
   WHILE overview_z >= 0 LOOP
     SELECT array_append(overviews_z, overview_z) INTO overviews_z;
@@ -642,6 +674,9 @@ BEGIN
   base_rel := reloid;
   FOREACH overview_z IN ARRAY overviews_z LOOP
     EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s);', base_rel, base_z, overview_z) INTO base_rel;
+    IF base_rel IS NULL THEN
+      EXIT;
+    END IF;
     base_z := overview_z;
     PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;

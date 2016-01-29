@@ -2232,3 +2232,11 @@ INSERT INTO base_t VALUES
 (1112, 'SRID=4326;POINT(-1.544993 33.333714)'::geometry, ST_Transform('SRID=4326;POINT(-1.544993 33.333714)'::geometry, 3857)),
 (1113, 'SRID=4326;POINT(-1.544859 33.333711)'::geometry, ST_Transform('SRID=4326;POINT(-1.544859 33.333711)'::geometry, 3857)),
 (1114, 'SRID=4326;POINT(-1.544863 33.334479)'::geometry, ST_Transform('SRID=4326;POINT(-1.544863 33.334479)'::geometry, 3857));
+-- polygons table
+CREATE TABLE polyg_t (cartodb_id integer, name text, the_geom geometry, the_geom_webmercator geometry);
+INSERT INTO polyg_t VALUES
+(1, 'A', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857)),
+(2, 'B', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857)),
+(3, 'C', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857)),
+(4, 'D', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857)),
+(5, 'E', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857));

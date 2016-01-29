@@ -3,6 +3,8 @@ CREATE TABLE
 INSERT 0 1114
 CREATE TABLE
 INSERT 0 1114
+CREATE TABLE
+INSERT 0 5
 
 
 
@@ -13,6 +15,7 @@ AVG(number)::double precision AS number,AVG(int_number)::integer AS int_number,C
 AVG(tab.number)::double precision AS number,AVG(tab.int_number)::integer AS int_number,CASE count(*) WHEN 1 THEN MIN(tab.name) ELSE NULL END::text AS name,CASE count(*) WHEN 1 THEN MIN(tab.start) ELSE NULL END::date AS start
 {_vovw_5_base_t,_vovw_4_base_t,_vovw_3_base_t,_vovw_2_base_t,_vovw_1_base_t,_vovw_0_base_t}
 125
+
 (base_t,0,_vovw_0_base_t)
 (base_t,1,_vovw_1_base_t)
 (base_t,2,_vovw_2_base_t)
@@ -36,5 +39,6 @@ AVG(tab.number)::double precision AS number,AVG(tab.int_number)::integer AS int_
 ERROR:  relation "_vovw_5_base_t" does not exist
 LINE 1: SELECT count(*) FROM _vovw_5_base_t;
                              ^
+DROP TABLE
 DROP TABLE
 DROP TABLE
