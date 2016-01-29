@@ -1,3 +1,8 @@
+0.12.0 (2016-01-27)
+-------------------
+* Remove schema_triggers extension dependency, to ensure compatibility with PostgreSQL 9.5. [#190](https://github.com/CartoDB/cartodb-postgresql/pull/190)
+* Remove DDL trigger functions (unused by CartoDB).
+
 0.11.5 (2015-11-27)
 -------------------
 * Disable log invalidation time [#178](https://github.com/CartoDB/cartodb-postgresql/pull/178)

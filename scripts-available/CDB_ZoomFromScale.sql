@@ -1,10 +1,9 @@
 CREATE OR REPLACE FUNCTION cartodb.CDB_ZoomFromScale(scaleDenominator numeric) RETURNS int AS $$
 BEGIN
   CASE
-    WHEN scaleDenominator > 1000000000 THEN RETURN 0;
-    WHEN scaleDenominator <= 1000000000 AND scaleDenominator > 500000000 THEN RETURN 1;
-    WHEN scaleDenominator <= 500000000 AND scaleDenominator > 200000000 THEN RETURN 2;
-    WHEN scaleDenominator <= 200000000 AND scaleDenominator > 100000000 THEN RETURN 3;
+    WHEN scaleDenominator > 500000000 THEN RETURN 0;
+    WHEN scaleDenominator <= 500000000 AND scaleDenominator > 200000000 THEN RETURN 1;
+    WHEN scaleDenominator <= 200000000 AND scaleDenominator > 100000000 THEN RETURN 2;
     WHEN scaleDenominator <= 100000000 AND scaleDenominator > 50000000 THEN RETURN 3;
     WHEN scaleDenominator <= 50000000 AND scaleDenominator > 25000000 THEN RETURN 4;
     WHEN scaleDenominator <= 25000000 AND scaleDenominator > 12500000 THEN RETURN 5;
