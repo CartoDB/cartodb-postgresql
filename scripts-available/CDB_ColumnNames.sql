@@ -8,8 +8,9 @@ AS $$
       WHERE table_name = _tn.relname
         AND table_schema = _sn.nspname
         AND _tn.oid = $1::oid
-        AND _sn.oid = _tn.relnamespace;
-         
+        AND _sn.oid = _tn.relnamespace
+      ORDER BY ordinal_position;
+
 $$ LANGUAGE SQL;
 
 -- This is to migrate from pre-0.2.0 version

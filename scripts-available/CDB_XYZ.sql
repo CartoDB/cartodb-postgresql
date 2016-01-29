@@ -5,24 +5,9 @@
 CREATE OR REPLACE FUNCTION CDB_XYZ_Resolution(z INTEGER)
 RETURNS FLOAT8
 AS $$
-DECLARE
-  earth_circumference FLOAT8;
-  tile_size INTEGER;
-  full_resolution FLOAT8;
-BEGIN
-
-  -- Earth equatorial circumference in meters (according to wikipedia)
-  earth_circumference := 40075017;
-
-  -- Size of each tile in pixels (1:1 aspect ratio)
-  tile_size := 256;
-
-  full_resolution := earth_circumference/tile_size;
-
-  RETURN full_resolution / (power(2,z));
-
-END
-$$ LANGUAGE 'plpgsql' IMMUTABLE STRICT;
+  -- circumference divided by 256 is z0 resolution, then divide by 2^z
+  SELECT 40075017.0 / 256 / power(2, z);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
 -- }
 
 -- {
