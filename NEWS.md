@@ -1,3 +1,6 @@
+0.13.0 (2016-02-01)
+* Fix migration fron unpackaged. [193](https://github.com/CartoDB/cartodb-postgresql/pull/193)
+
 0.13.0 (2016-01-29)
 * Add CDB_CreateOverviews, CDB_DropOverviews and CDB_Overviews for vector overviews support. [185](https://github.com/CartoDB/cartodb-postgresql/pull/185)
 * Convert some simple functions from plpgsql to sql. [188](https://github.com/CartoDB/cartodb-postgresql/pull/188)
