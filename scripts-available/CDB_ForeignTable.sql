@@ -92,6 +92,20 @@ BEGIN
   $$
   LANGUAGE PLPGSQL;
 
+
+CREATE OR REPLACE FUNCTION cartodb._CDB_Create_FDW(name text)
+  RETURNS void AS
+$BODY$
+DECLARE
+config json;
+BEGIN
+  SELECT p.value FROM LATERAL json_each(cartodb.CDB_Conf_GetConf('fdws')) p WHERE p.key = name INTO config;
+  EXECUTE 'SELECT cartodb._CDB_Create_FDW($1, $2)' USING name, config;
+END
+$BODY$
+LANGUAGE plpgsql VOLATILE
+SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION cartodb.CDB_Add_Remote_Table(source text, table_name text)
 RETURNS void AS
 $$
