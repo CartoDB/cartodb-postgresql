@@ -108,3 +108,25 @@ BEGIN
 END
 $$
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION cartodb.CDB_Get_Foreign_Updated_At(foreign_table regclass)
+  RETURNS timestamp with time zone AS
+$$
+DECLARE
+  remote_table_name text;
+  fdw_schema_name text;
+  time timestamp with time zone;
+BEGIN
+  -- This will turn a local foreign table (referenced as regclass) to its fully qualified text remote table reference.
+  WITH a AS (SELECT ftoptions FROM pg_foreign_table WHERE ftrelid=foreign_table LIMIT 1),
+    b as (SELECT (pg_options_to_table(ftoptions)).* FROM a)
+    SELECT FORMAT('%I.%I', (SELECT option_value FROM b WHERE option_name='schema_name'), (SELECT option_value FROM b WHERE option_name='table_name'))
+  INTO remote_table_name;
+
+  -- We assume that the remote cdb_tablemetadata is called cdb_tablemetadata and is on the same schema as the queried table.
+  SELECT nspname FROM pg_class c, pg_namespace n WHERE c.oid=foreign_table AND c.relnamespace = n.oid INTO fdw_schema_name;
+  EXECUTE FORMAT('SELECT updated_at FROM %I.cdb_tablemetadata WHERE tabname::text=%L ORDER BY updated_at DESC LIMIT 1', fdw_schema_name, remote_table_name) INTO time
+  RETURN time;
+END
+$$
+LANGUAGE plpgsql;
