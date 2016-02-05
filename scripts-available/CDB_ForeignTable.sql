@@ -38,13 +38,13 @@ BEGIN
     FOR row IN SELECT p.key, p.value from lateral json_each(config->'users') p LOOP
         -- Check if entry on pg_user_mappings exists
 
-        IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = name AND usename = row.key ) THEN
+        IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_name AND usename = row.key ) THEN
           EXECUTE FORMAT ('CREATE USER MAPPING FOR %I SERVER %I', row.key, fdw_name);
         END IF;
 
     -- Update user mapping settings
     FOR option IN SELECT o.key, o.value from lateral json_each_text(row.value) o LOOP
-        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = name AND usename = row.key) SELECT * from a where options = option.key) THEN
+        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_name AND usename = row.key) SELECT * from a where options = option.key) THEN
           EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (ADD %I %L)', row.key, fdw_name, option.key, option.value);
         ELSE
           EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (SET %I %L)', row.key, fdw_name, option.key, option.value);
@@ -59,10 +59,10 @@ BEGIN
 
     -- Give the organization role usage permisions over the schema
     SELECT cartodb.CDB_Organization_Member_Group_Role_Member_Name() INTO org_role;
-    EXECUTE FORMAT ('GRANT USAGE ON SCHEMA %I TO %I', name, org_role);
+    EXECUTE FORMAT ('GRANT USAGE ON SCHEMA %I TO %I', fdw_name, org_role);
 
     -- Bring here the remote cdb_tablemetadata
-    IF NOT EXISTS ( SELECT * FROM PG_CLASS WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname='do') and relname='cdb_tablemetadata') THEN
+    IF NOT EXISTS ( SELECT * FROM PG_CLASS WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname=fdw_name) and relname='cdb_tablemetadata') THEN
       EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA cartodb LIMIT TO (cdb_tablemetadata) FROM SERVER %I INTO %I;', fdw_name, fdw_name, fdw_name);
     END IF;
     EXECUTE FORMAT ('GRANT SELECT ON %I.cdb_tablemetadata TO %I', fdw_name, org_role);
