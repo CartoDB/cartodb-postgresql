@@ -125,7 +125,7 @@ BEGIN
 
   -- We assume that the remote cdb_tablemetadata is called cdb_tablemetadata and is on the same schema as the queried table.
   SELECT nspname FROM pg_class c, pg_namespace n WHERE c.oid=foreign_table AND c.relnamespace = n.oid INTO fdw_schema_name;
-  EXECUTE FORMAT('SELECT updated_at FROM %I.cdb_tablemetadata WHERE tabname::text=%L ORDER BY updated_at DESC LIMIT 1', fdw_schema_name, remote_table_name) INTO time
+  EXECUTE FORMAT('SELECT updated_at FROM %I.cdb_tablemetadata WHERE tabname::text=%L ORDER BY updated_at DESC LIMIT 1', fdw_schema_name, remote_table_name) INTO time;
   RETURN time;
 END
 $$
