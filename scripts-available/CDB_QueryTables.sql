@@ -78,6 +78,7 @@ END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
 --------------------------------------------------------------------------------
+
 -- Return a set of {db_name, schema_name, table_name. updated_at}
 CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
 RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamp)
@@ -139,8 +140,12 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION _cdb_dbname_of_foreign_table(reloid oid)
 RETURNS TEXT AS $$
-BEGIN
-  --TODO: implement
-  RETURN 'cartodb_dev_user_36c4a45a-eb92-4af4-a8ff-1065ecfd041f_db';
-END;
-$$ LANGUAGE plpgsql;
+    SELECT option_value FROM pg_options_to_table((
+
+        SELECT fs.srvoptions
+        FROM pg_foreign_table ft
+        LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
+        WHERE ft.ftrelid = reloid
+
+    )) WHERE option_name='dbname';
+$$ LANGUAGE SQL;
