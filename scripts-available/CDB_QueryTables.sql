@@ -111,25 +111,21 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 -- Take a text containing "schema_name"."table_name" as input and
 -- return a record of the form (dbname text, schema_name text, table_name text)
 CREATE OR REPLACE FUNCTION _cdb_fqtn_from_text(schema_table_name text)
-RETURNS RECORD AS $$
+RETURNS TABLE(dbname text, schema_name text, table_name text) AS $$
 DECLARE
   reloid oid;
-  ret RECORD;
 BEGIN
   SELECT schema_table_name::regclass INTO STRICT reloid;
 
-  SELECT
+  RETURN QUERY SELECT
     (CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(reloid)
          ELSE current_database()
     END)::text AS dbname,
     n.nspname::text schema_name,
     c.relname::text table_name
-  INTO ret
   FROM pg_catalog.pg_class c
   LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
   WHERE c.oid = reloid;
-
-  RETURN ret;
 END;
 $$ LANGUAGE plpgsql;
 
