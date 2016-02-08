@@ -81,45 +81,37 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
 -- Return a set of {dbname, schema_name, table_name. updated_at}
 CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
-RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamp)
+RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
 BEGIN
 
   RETURN QUERY
     WITH query_tables AS (
       SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
-    ), fqtn AS (
-      SELECT (_cdb_fqtn_from_text(schema_table_name)).*
+    ), query_tables_oid AS (
+      SELECT schema_table_name, schema_table_name::regclass::oid AS reloid
       FROM query_tables
+    ),
+    fqtn AS (
+      SELECT
+        (CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(query_tables_oid.reloid)
+              ELSE current_database()
+         END)::text AS dbname,
+         n.nspname::text schema_name,
+         c.relname::text table_name,
+         c.relkind,
+         query_tables_oid.reloid
+      FROM query_tables_oid, pg_catalog.pg_class c
+      LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+      WHERE c.oid = query_tables_oid.reloid
     )
-    SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name, now()::timestamp AS udpated_at
+    SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
+      (CASE WHEN relkind = 'f' THEN CDB_Get_Foreign_Updated_At(reloid)
+            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE tabname = reloid)
+      END) AS updated_at
     FROM fqtn;
-
-  -- TODO: Get the updated_at
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
-
-
--- Take a text containing "schema_name"."table_name" as input and
--- return a record of the form (dbname text, schema_name text, table_name text)
-CREATE OR REPLACE FUNCTION _cdb_fqtn_from_text(schema_table_name text)
-RETURNS TABLE(dbname text, schema_name text, table_name text) AS $$
-DECLARE
-  reloid oid;
-BEGIN
-  SELECT schema_table_name::regclass INTO STRICT reloid;
-
-  RETURN QUERY SELECT
-    (CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(reloid)
-         ELSE current_database()
-    END)::text AS dbname,
-    n.nspname::text schema_name,
-    c.relname::text table_name
-  FROM pg_catalog.pg_class c
-  LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
-  WHERE c.oid = reloid;
-END;
-$$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION _cdb_dbname_of_foreign_table(reloid oid)
