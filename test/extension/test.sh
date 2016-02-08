@@ -459,10 +459,10 @@ function test_foreign_tables() {
 
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
 
-    sql postgres "SELECT CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
-    sql postgres "SELECT CDB_Add_Remote_Table('test_fdw', 'foo')"
+    sql postgres "SELECT cartodb.CDB_Add_Remote_Table('test_fdw', 'foo')"
     sql postgres "SELECT * from test_fdw.foo;"
     sql postgres "SELECT n.nspname,
   c.relname,
