@@ -79,30 +79,22 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
 --------------------------------------------------------------------------------
 
--- Return a set of {db_name, schema_name, table_name. updated_at}
+-- Return a set of {dbname, schema_name, table_name. updated_at}
 CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
 RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamp)
 AS $$
-DECLARE
-  qualified_table_names text[];
-  qualified_table_name text;
-  ret RECORD;
 BEGIN
-  -- Get the tables involved in the query
-  SELECT CDB_QueryTablesText(query) INTO qualified_table_names;
-
-  FOREACH qualified_table_name IN ARRAY qualified_table_names LOOP
-    --ret.db_name := 'db_name';
-    RAISE DEBUG 'hola';
-  END LOOP;
 
   RETURN QUERY
-    WITH qt AS (SELECT unnest(CDB_QueryTablesText(query)) qualified_table_name)
-    SELECT 'db_name'::text AS db_name, 'schema_name'::text AS schema_name, qt.qualified_table_name::text AS table_name, now()::timestamp AS udpated_at 
-    FROM qt;
+    WITH query_tables AS (
+      SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
+    ), fqtn AS (
+      SELECT (_cdb_fqtn_from_text(schema_table_name)).*
+      FROM query_tables
+    )
+    SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name, now()::timestamp AS udpated_at
+    FROM fqtn;
 
-
-  -- TODO: Get the local/remote db_names involved in the query
   -- TODO: Get the updated_at
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
