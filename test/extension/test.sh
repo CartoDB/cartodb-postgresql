@@ -462,8 +462,18 @@ function test_foreign_tables() {
     sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
-    sql postgres "SELECT cartodb.CDB_Add_Remote_Table('test_fdw', 'foo')"
-    sql postgres "SELECT * from test_fdw.foo;"
+    sql postgres "SELECT cartodb._CDB_Setup_FDW('test_fdw')"
+
+    sql postgres "SHOW server_version_num"
+    if [ "$RESULT" -gt 90499 ]
+    then
+        sql postgres "SELECT cartodb.CDB_Add_Remote_Table('test_fdw', 'foo')"
+        sql postgres "SELECT * from test_fdw.foo;"
+    else
+        echo "NOTICE: PostgreSQL version is less than 9.5 ($RESULT). Skipping CDB_Add_Remote_Table."
+        sql postgres "CREATE FOREIGN TABLE test_fdw.foo (a int) SERVER test_fdw OPTIONS (table_name 'foo', schema_name 'test_fdw')"
+    fi
+
     sql postgres "SELECT n.nspname,
   c.relname,
   s.srvname FROM pg_catalog.pg_foreign_table ft
