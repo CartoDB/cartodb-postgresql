@@ -109,30 +109,26 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
 
 -- Take a text containing "schema_name"."table_name" as input and
--- return a record of the form (db_name text, schema_name text, table_name text)
+-- return a record of the form (dbname text, schema_name text, table_name text)
 CREATE OR REPLACE FUNCTION _cdb_fqtn_from_text(schema_table_name text)
 RETURNS RECORD AS $$
 DECLARE
-  ret RECORD;
   reloid oid;
-  db_name text;
-  schema_name text;
-  table_name text;
+  ret RECORD;
 BEGIN
   SELECT schema_table_name::regclass INTO STRICT reloid;
 
-  -- TODO: get if the table is local or remote
   SELECT
-    CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(reloid)
+    (CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(reloid)
          ELSE current_database()
-    END as dbname,
-    n.nspname schema_name, c.relname table_name
+    END)::text AS dbname,
+    n.nspname::text schema_name,
+    c.relname::text table_name
+  INTO ret
   FROM pg_catalog.pg_class c
   LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
   WHERE c.oid = reloid;
 
-
-  SELECT 'my_db_name'::text, 'my_schema_name'::text, 'my_table_name'::text INTO ret;
   RETURN ret;
 END;
 $$ LANGUAGE plpgsql;
