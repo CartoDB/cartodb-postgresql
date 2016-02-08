@@ -77,14 +77,70 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
-
+--------------------------------------------------------------------------------
 -- Return a set of {db_name, schema_name, table_name. updated_at}
 CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
 RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamp)
 AS $$
+DECLARE
+  qualified_table_names text[];
+  qualified_table_name text;
+  ret RECORD;
 BEGIN
-  -- TODO: Get the tables involved in the query
+  -- Get the tables involved in the query
+  SELECT CDB_QueryTablesText(query) INTO qualified_table_names;
+
+  FOREACH qualified_table_name IN ARRAY qualified_table_names LOOP
+    --ret.db_name := 'db_name';
+    RAISE DEBUG 'hola';
+  END LOOP;
+
+  RETURN QUERY
+    WITH qt AS (SELECT unnest(CDB_QueryTablesText(query)) qualified_table_name)
+    SELECT 'db_name'::text AS db_name, 'schema_name'::text AS schema_name, qt.qualified_table_name::text AS table_name, now()::timestamp AS udpated_at 
+    FROM qt;
+
+
   -- TODO: Get the local/remote db_names involved in the query
   -- TODO: Get the updated_at
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+
+
+-- Take a text containing "schema_name"."table_name" as input and
+-- return a record of the form (db_name text, schema_name text, table_name text)
+CREATE OR REPLACE FUNCTION _cdb_fqtn_from_text(schema_table_name text)
+RETURNS RECORD AS $$
+DECLARE
+  ret RECORD;
+  reloid oid;
+  db_name text;
+  schema_name text;
+  table_name text;
+BEGIN
+  SELECT schema_table_name::regclass INTO STRICT reloid;
+
+  -- TODO: get if the table is local or remote
+  SELECT
+    CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(reloid)
+         ELSE current_database()
+    END as dbname,
+    n.nspname schema_name, c.relname table_name
+  FROM pg_catalog.pg_class c
+  LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+  WHERE c.oid = reloid;
+
+
+  SELECT 'my_db_name'::text, 'my_schema_name'::text, 'my_table_name'::text INTO ret;
+  RETURN ret;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION _cdb_dbname_of_foreign_table(reloid oid)
+RETURNS TEXT AS $$
+BEGIN
+  --TODO: implement
+  RETURN 'cartodb_dev_user_36c4a45a-eb92-4af4-a8ff-1065ecfd041f_db';
+END;
+$$ LANGUAGE plpgsql;
