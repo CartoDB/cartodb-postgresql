@@ -172,8 +172,7 @@ function drop_raster_table() {
     sql ${ROLE} "DROP TABLE ${ROLE}.${TABLENAME};"
 }
 
-
-function setup() {
+function setup_database() {
     ${CMD} -c "CREATE DATABASE ${DATABASE}"
     sql "CREATE SCHEMA cartodb;"
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
@@ -184,7 +183,10 @@ function setup() {
     ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
     # trick to allow forcing a schema when loading SQL files (see: http://bit.ly/1HeLnhL)
     ${CMD} -d ${DATABASE} -f test/extension/run_at_cartodb_schema.sql
+}
 
+function setup() {
+    setup_database
 
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_testmember_1
@@ -199,6 +201,10 @@ function setup() {
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
 }
 
+
+function tear_down_database() {
+    ${CMD} -c "DROP DATABASE ${DATABASE}"
+}
 function tear_down() {
     log_info "########################### USER TEAR DOWN ###########################"
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2');"
@@ -219,8 +225,9 @@ function tear_down() {
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
 
-    ${CMD} -c "DROP DATABASE ${DATABASE}"
+    tear_down_database
 }
+
 
 function run_tests() {
     local FAILED_TESTS=()
@@ -427,6 +434,56 @@ function test_cdb_querytables_happy_cases() {
     sql postgres 'DROP TABLE "FOOBAR";'
     sql postgres 'DROP TABLE foo.wadus;'
     sql postgres 'DROP SCHEMA foo;'
+}
+
+function test_foreign_tables() {
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_TableMetadata.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
+    ${CMD} -d ${DATABASE} -f scripts-available/CDB_ForeignTable.sql
+
+
+    DATABASE=fdw_target setup_database
+    ${CMD} -d fdw_target -f scripts-available/CDB_QueryStatements.sql
+    ${CMD} -d fdw_target -f scripts-available/CDB_QueryTables.sql
+    ${CMD} -d fdw_target -f scripts-available/CDB_TableMetadata.sql
+
+    DATABASE=fdw_target sql postgres 'CREATE SCHEMA test_fdw;'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo (a int);'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo (a) values (42);'
+    DATABASE=fdw_target sql postgres "CREATE USER fdw_user WITH PASSWORD 'foobarino';"
+    DATABASE=fdw_target sql postgres 'GRANT USAGE ON SCHEMA test_fdw TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.foo TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE public.cdb_tablemetadata TO fdw_user;'
+
+    DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
+
+    sql postgres "SELECT CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
+                                           \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
+
+    sql postgres "SELECT CDB_Add_Remote_Table('test_fdw', 'foo')"
+    sql postgres "SELECT * from test_fdw.foo;"
+    sql postgres "SELECT n.nspname,
+  c.relname,
+  s.srvname FROM pg_catalog.pg_foreign_table ft
+  INNER JOIN pg_catalog.pg_class c ON c.oid = ft.ftrelid
+  INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  INNER JOIN pg_catalog.pg_foreign_server s ON s.oid = ft.ftserver
+ORDER BY 1, 2" should "test_fdw|cdb_tablemetadata|test_fdw
+test_fdw|foo|test_fdw"
+
+    sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo'::regclass) < NOW()" should 't'
+
+    sql postgres "SELECT a from test_fdw.foo LIMIT 1;" should 42
+
+
+    DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
+
+    DATABASE=fdw_target tear_down_database
 }
 
 #################################################### TESTS END HERE ####################################################
