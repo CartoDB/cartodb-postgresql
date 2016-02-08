@@ -76,3 +76,15 @@ BEGIN
   RETURN CDB_QueryTablesText(query)::name[];
 END
 $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+
+
+-- Return a set of {db_name, schema_name, table_name. updated_at}
+CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
+RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamp)
+AS $$
+BEGIN
+  -- TODO: Get the tables involved in the query
+  -- TODO: Get the local/remote db_names involved in the query
+  -- TODO: Get the updated_at
+END
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
