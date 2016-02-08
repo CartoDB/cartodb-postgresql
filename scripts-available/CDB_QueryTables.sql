@@ -83,9 +83,6 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
 RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
-BEGIN
-
-  RETURN QUERY
     WITH query_tables AS (
       SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
     ), query_tables_oid AS (
@@ -107,11 +104,10 @@ BEGIN
     )
     SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
       (CASE WHEN relkind = 'f' THEN CDB_Get_Foreign_Updated_At(reloid)
-            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE tabname = reloid)
+            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
-END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+$$ LANGUAGE SQL;
 
 
 CREATE OR REPLACE FUNCTION _cdb_dbname_of_foreign_table(reloid oid)
