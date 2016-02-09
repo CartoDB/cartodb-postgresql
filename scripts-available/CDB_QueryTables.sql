@@ -79,8 +79,9 @@ $$ LANGUAGE 'plpgsql' VOLATILE STRICT;
 
 --------------------------------------------------------------------------------
 
--- Return a set of {dbname, schema_name, table_name. updated_at}
-CREATE OR REPLACE FUNCTION CDB_QueryTablesUpdatedAt(query text)
+-- Return a set of (dbname, schema_name, table_name, updated_at)
+-- This assumes the local (schema_name, table_name) maps to the remote one with the same name
+CREATE OR REPLACE FUNCTION CDB_QueryTables_Updated_At(query text)
 RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
     WITH query_tables AS (
