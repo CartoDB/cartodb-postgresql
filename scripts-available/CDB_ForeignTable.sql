@@ -172,7 +172,7 @@ AS $$
     )
     SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
       (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
-            ELSE (SELECT md.updated_at FROM cartodb.CDB_TableMetadata md WHERE md.tabname = reloid)
+            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
 $$ LANGUAGE SQL;
@@ -190,7 +190,7 @@ RETURNS timestamptz AS $$
     ), t_updated_at AS (
         SELECT
             (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
-                  ELSE (SELECT md.updated_at FROM cartodb.CDB_TableMetadata md WHERE md.tabname = reloid)
+                  ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
              END) AS updated_at
         FROM t_oid
         LEFT JOIN pg_catalog.pg_class c ON c.oid = reloid
