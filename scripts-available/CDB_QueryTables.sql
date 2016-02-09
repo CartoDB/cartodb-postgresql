@@ -122,3 +122,22 @@ RETURNS TEXT AS $$
 
     )) WHERE option_name='dbname';
 $$ LANGUAGE SQL;
+
+
+-- TODO: move to the right place
+-- Return the last updated time of a set of tables
+CREATE OR REPLACE FUNCTION CDB_Last_Updated_Time(tables text[])
+RETURNS timestamptz AS $$
+    WITH t AS (
+        SELECT unnest(tables) AS schema_table_name
+    ), t_oid AS (
+        SELECT (t.schema_table_name)::regclass::oid as reloid FROM t
+    ), t_updated_at AS (
+        SELECT
+            (CASE WHEN relkind = 'f' THEN CDB_Get_Foreign_Updated_At(reloid)
+                  ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
+             END) AS updated_at
+        FROM t_oid
+        LEFT JOIN pg_catalog.pg_class c ON c.oid = reloid
+    ) SELECT max(updated_at) FROM t_updated_at;
+$$ LANGUAGE SQL;
