@@ -136,7 +136,7 @@ LANGUAGE plpgsql;
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
 CREATE OR REPLACE FUNCTION cartodb.CDB_QueryTables_Updated_At(query text)
-RETURNS TABLE(db_name text, schema_name text, table_name text, updated_at timestamptz)
+RETURNS TABLE(dbname text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
     WITH query_tables AS (
       SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
@@ -146,7 +146,7 @@ AS $$
     ),
     fqtn AS (
       SELECT
-        (CASE WHEN c.relkind = 'f' THEN _cdb_dbname_of_foreign_table(query_tables_oid.reloid)
+        (CASE WHEN c.relkind = 'f' THEN cartodb._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
               ELSE current_database()
          END)::text AS dbname,
          n.nspname::text schema_name,
@@ -158,7 +158,7 @@ AS $$
       WHERE c.oid = query_tables_oid.reloid
     )
     SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
-      (CASE WHEN relkind = 'f' THEN CDB_Get_Foreign_Updated_At(reloid)
+      (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
             ELSE (SELECT md.updated_at FROM cartodb.CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
@@ -189,7 +189,7 @@ RETURNS timestamptz AS $$
         SELECT (t.schema_table_name)::regclass::oid as reloid FROM t
     ), t_updated_at AS (
         SELECT
-            (CASE WHEN relkind = 'f' THEN CDB_Get_Foreign_Updated_At(reloid)
+            (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
                   ELSE (SELECT md.updated_at FROM cartodb.CDB_TableMetadata md WHERE md.tabname = reloid)
              END) AS updated_at
         FROM t_oid
