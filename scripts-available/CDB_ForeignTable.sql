@@ -132,6 +132,19 @@ $$
 LANGUAGE plpgsql;
 
 
+CREATE OR REPLACE FUNCTION cartodb._cdb_dbname_of_foreign_table(reloid oid)
+RETURNS TEXT AS $$
+    SELECT option_value FROM pg_options_to_table((
+
+        SELECT fs.srvoptions
+        FROM pg_foreign_table ft
+        LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
+        WHERE ft.ftrelid = reloid
+
+    )) WHERE option_name='dbname';
+$$ LANGUAGE SQL;
+
+
 -- Return a set of (dbname, schema_name, table_name, updated_at)
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
@@ -162,19 +175,6 @@ AS $$
             ELSE (SELECT md.updated_at FROM cartodb.CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
-$$ LANGUAGE SQL;
-
-
-CREATE OR REPLACE FUNCTION cartodb._cdb_dbname_of_foreign_table(reloid oid)
-RETURNS TEXT AS $$
-    SELECT option_value FROM pg_options_to_table((
-
-        SELECT fs.srvoptions
-        FROM pg_foreign_table ft
-        LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
-        WHERE ft.ftrelid = reloid
-
-    )) WHERE option_name='dbname';
 $$ LANGUAGE SQL;
 
 
