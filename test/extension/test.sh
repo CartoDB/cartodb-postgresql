@@ -501,6 +501,15 @@ local'
     sql postgres "SELECT cartodb.CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) < now()" should 't'
     sql postgres "SELECT cartodb.CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) > (now() - interval '1 minute')" should 't'
 
+    # Check we quote names on output as needed (as CDB_QueryTablesText does)
+    sql postgres 'CREATE TABLE "local-table-with-dashes" (c int)';
+    sql postgres 'INSERT INTO "local-table-with-dashes" (c) VALUES (44)';
+    sql postgres "SELECT cdb_tablemetadatatouch('public.local-table-with-dashes'::regclass);"
+    query='$query$ SELECT * FROM test_fdw.foo, local, public."local-table-with-dashes" $query$::text'
+    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) ORDER BY dbname, schema_name, table_name;" should 'fdw_target|test_fdw|foo
+test_extension|public|local
+test_extension|public|"local-table-with-dashes"'
+
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata FROM fdw_user;'
