@@ -459,15 +459,15 @@ function test_foreign_tables() {
 
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
 
-    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
+    sql postgres "SELECT CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
-    sql postgres "SELECT cartodb._CDB_Setup_FDW('test_fdw')"
+    sql postgres "SELECT CDB_Setup_FDW('test_fdw')"
 
     sql postgres "SHOW server_version_num"
     if [ "$RESULT" -gt 90499 ]
     then
-        sql postgres "SELECT cartodb.CDB_Add_Remote_Table('test_fdw', 'foo')"
+        sql postgres "SELECT CDB_Add_Remote_Table('test_fdw', 'foo')"
         sql postgres "SELECT * from test_fdw.foo;"
     else
         echo "NOTICE: PostgreSQL version is less than 9.5 ($RESULT). Skipping CDB_Add_Remote_Table."
