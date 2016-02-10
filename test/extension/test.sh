@@ -510,6 +510,10 @@ local'
 test_extension|public|local
 test_extension|public|"local-table-with-dashes"'
 
+    # Check CDB_Last_Updated_Time supports quoted identifiers
+    sql postgres "SELECT cartodb.CDB_Last_Updated_Time(ARRAY['test_extension.public.\"local-table-with-dashes\"']::text[]) < now()" should 't'
+    sql postgres "SELECT cartodb.CDB_Last_Updated_Time(ARRAY['test_extension.public.\"local-table-with-dashes\"']::text[]) > (now() - interval '1 minute')" should 't'
+
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata FROM fdw_user;'
