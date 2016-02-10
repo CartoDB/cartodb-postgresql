@@ -483,7 +483,7 @@ function test_foreign_tables() {
 ORDER BY 1, 2" should "test_fdw|cdb_tablemetadata|test_fdw
 test_fdw|foo|test_fdw"
 
-    sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo'::regclass) < NOW()" should 't'
+    sql postgres "SELECT CDB_Get_Foreign_Updated_At('test_fdw.foo'::regclass) < NOW()" should 't'
 
     sql postgres "SELECT a from test_fdw.foo LIMIT 1;" should 42
 
@@ -492,14 +492,14 @@ test_fdw|foo|test_fdw"
     sql postgres 'INSERT INTO local (b) VALUES (43);'
     sql postgres "SELECT cdb_tablemetadatatouch('public.local'::regclass);"
     local query='$query$ SELECT * FROM test_fdw.foo, local $query$::text'
-    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) ORDER BY dbname;" should 'fdw_target|test_fdw|foo
+    sql postgres "SELECT dbname, schema_name, table_name FROM CDB_QueryTables_Updated_At(${query}) ORDER BY dbname;" should 'fdw_target|test_fdw|foo
 test_extension|public|local'
-    sql postgres "SELECT table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) order by updated_at;" should 'foo
+    sql postgres "SELECT table_name FROM CDB_QueryTables_Updated_At(${query}) order by updated_at;" should 'foo
 local'
 
     # Check function CDB_Last_Updated_Time
-    sql postgres "SELECT cartodb.CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) < now()" should 't'
-    sql postgres "SELECT cartodb.CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) > (now() - interval '1 minute')" should 't'
+    sql postgres "SELECT CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) < now()" should 't'
+    sql postgres "SELECT CDB_Last_Updated_Time('{test_fdw.foo,public.local}'::text[]) > (now() - interval '1 minute')" should 't'
 
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
