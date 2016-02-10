@@ -462,7 +462,7 @@ function test_foreign_tables() {
     sql postgres "SELECT CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
-    sql postgres "SELECT CDB_Setup_FDW('test_fdw')"
+    sql postgres "SELECT _CDB_Setup_FDW('test_fdw')"
 
     sql postgres "SHOW server_version_num"
     if [ "$RESULT" -gt 90499 ]
