@@ -130,3 +130,69 @@ BEGIN
 END
 $$
 LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION cartodb._cdb_dbname_of_foreign_table(reloid oid)
+RETURNS TEXT AS $$
+    SELECT option_value FROM pg_options_to_table((
+
+        SELECT fs.srvoptions
+        FROM pg_foreign_table ft
+        LEFT JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
+        WHERE ft.ftrelid = reloid
+
+    )) WHERE option_name='dbname';
+$$ LANGUAGE SQL;
+
+
+-- Return a set of (dbname, schema_name, table_name, updated_at)
+-- It is aware of foreign tables
+-- It assumes the local (schema_name, table_name) map to the remote ones with the same name
+CREATE OR REPLACE FUNCTION cartodb.CDB_QueryTables_Updated_At(query text)
+RETURNS TABLE(dbname text, schema_name text, table_name text, updated_at timestamptz)
+AS $$
+    WITH query_tables AS (
+      SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
+    ), query_tables_oid AS (
+      SELECT schema_table_name, schema_table_name::regclass::oid AS reloid
+      FROM query_tables
+    ),
+    fqtn AS (
+      SELECT
+        (CASE WHEN c.relkind = 'f' THEN cartodb._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
+              ELSE current_database()
+         END)::text AS dbname,
+         n.nspname::text schema_name,
+         c.relname::text table_name,
+         c.relkind,
+         query_tables_oid.reloid
+      FROM query_tables_oid, pg_catalog.pg_class c
+      LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+      WHERE c.oid = query_tables_oid.reloid
+    )
+    SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
+      (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
+            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
+      END) AS updated_at
+    FROM fqtn;
+$$ LANGUAGE SQL;
+
+
+-- Return the last updated time of a set of tables
+-- It is aware of foreign tables
+-- It assumes the local (schema_name, table_name) map to the remote ones with the same name
+CREATE OR REPLACE FUNCTION cartodb.CDB_Last_Updated_Time(tables text[])
+RETURNS timestamptz AS $$
+    WITH t AS (
+        SELECT unnest(tables) AS schema_table_name
+    ), t_oid AS (
+        SELECT (t.schema_table_name)::regclass::oid as reloid FROM t
+    ), t_updated_at AS (
+        SELECT
+            (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
+                  ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
+             END) AS updated_at
+        FROM t_oid
+        LEFT JOIN pg_catalog.pg_class c ON c.oid = reloid
+    ) SELECT max(updated_at) FROM t_updated_at;
+$$ LANGUAGE SQL;
