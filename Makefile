@@ -93,6 +93,7 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	cat $(CDBSCRIPTS) | \
     $(SED) -e 's/public\./cartodb./g' \
         -e 's/:DATABASE_USERNAME/cdb_org_admin/g' >> $@
+        -e "s/''public''/''cartodb''/g" >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_version.sql >> $@
 
