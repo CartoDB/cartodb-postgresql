@@ -159,10 +159,9 @@ AS $$
     ),
     fqtn AS (
       SELECT
-        quote_ident(
-          (CASE WHEN c.relkind = 'f' THEN cartodb._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
-                ELSE current_database()
-           END)::text) AS dbname,
+        (CASE WHEN c.relkind = 'f' THEN cartodb._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
+              ELSE current_database()
+         END)::text AS dbname,
          quote_ident(n.nspname::text) schema_name,
          quote_ident(c.relname::text) table_name,
          c.relkind,
