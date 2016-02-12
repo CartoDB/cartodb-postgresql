@@ -5,6 +5,11 @@ CREATE TABLE IF NOT EXISTS
     updated_at timestamp with time zone not null default now()
   );
 
+CREATE OR REPLACE VIEW public.CDB_TableMetadata_Text AS
+       SELECT FORMAT('%I.%I', n.nspname::text, c.relname::text) tabname, updated_at
+       FROM public.CDB_TableMetadata, pg_catalog.pg_class c
+       LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid;
+
 -- No one can see this
 -- Updates are only possible trough the security definer trigger
 -- GRANT SELECT ON public.CDB_TableMetadata TO public;
