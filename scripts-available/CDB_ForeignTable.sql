@@ -63,7 +63,7 @@ BEGIN
 
     -- Bring here the remote cdb_tablemetadata
     IF NOT EXISTS ( SELECT * FROM PG_CLASS WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname=fdw_name) and relname='cdb_tablemetadata') THEN
-      EXECUTE FORMAT ('CREATE FOREIGN TABLE %I.cdb_tablemetadata (tabname regclass, updated_at timestamp with time zone) SERVER %I OPTIONS (table_name ''cdb_tablemetadata'', schema_name ''public'', updatable ''false'')', fdw_name, fdw_name);
+      EXECUTE FORMAT ('CREATE FOREIGN TABLE %I.cdb_tablemetadata (tabname text, updated_at timestamp with time zone) SERVER %I OPTIONS (table_name ''cdb_tablemetadata_text'', schema_name ''public'', updatable ''false'')', fdw_name, fdw_name);
     END IF;
     EXECUTE FORMAT ('GRANT SELECT ON %I.cdb_tablemetadata TO %I', fdw_name, org_role);
 
@@ -125,7 +125,7 @@ BEGIN
 
   -- We assume that the remote cdb_tablemetadata is called cdb_tablemetadata and is on the same schema as the queried table.
   SELECT nspname FROM pg_class c, pg_namespace n WHERE c.oid=foreign_table AND c.relnamespace = n.oid INTO fdw_schema_name;
-  EXECUTE FORMAT('SELECT updated_at FROM %I.cdb_tablemetadata WHERE tabname::text=%L ORDER BY updated_at DESC LIMIT 1', fdw_schema_name, remote_table_name) INTO time;
+  EXECUTE FORMAT('SELECT updated_at FROM %I.cdb_tablemetadata WHERE tabname=%L ORDER BY updated_at DESC LIMIT 1', fdw_schema_name, remote_table_name) INTO time;
   RETURN time;
 END
 $$
@@ -148,6 +148,7 @@ $$ LANGUAGE SQL;
 -- Return a set of (dbname, schema_name, table_name, updated_at)
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
+-- Note: dbname is never quoted whereas schema and table names are when needed.
 CREATE OR REPLACE FUNCTION cartodb.CDB_QueryTables_Updated_At(query text)
 RETURNS TABLE(dbname text, schema_name text, table_name text, updated_at timestamptz)
 AS $$

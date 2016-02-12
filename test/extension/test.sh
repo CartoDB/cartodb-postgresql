@@ -452,12 +452,16 @@ function test_foreign_tables() {
     DATABASE=fdw_target sql postgres 'CREATE SCHEMA test_fdw;'
     DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo (a int);'
     DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo (a) values (42);'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo2 (a int);'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo2 (a) values (42);'
     DATABASE=fdw_target sql postgres "CREATE USER fdw_user WITH PASSWORD 'foobarino';"
     DATABASE=fdw_target sql postgres 'GRANT USAGE ON SCHEMA test_fdw TO fdw_user;'
     DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.foo TO fdw_user;'
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE public.cdb_tablemetadata TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.foo2 TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON cdb_tablemetadata_text TO fdw_user;'
 
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
+    DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
 
     sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
@@ -516,9 +520,11 @@ test_extension|public|"local-table-with-dashes"'
 
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
 
+    sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
 }
 
