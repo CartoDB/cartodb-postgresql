@@ -148,6 +148,7 @@ $$ LANGUAGE SQL;
 -- Return a set of (dbname, schema_name, table_name, updated_at)
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
+-- Note: dbname is never quoted whereas schema and table names are when needed.
 CREATE OR REPLACE FUNCTION cartodb.CDB_QueryTables_Updated_At(query text)
 RETURNS TABLE(dbname text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
