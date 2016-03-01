@@ -28,6 +28,18 @@ trigger-protected the_geom cartodbfied fine
 extent|BOX(1 1,2 2)
 DROP TABLE
 SELECT 1
+text cartodb_id cartodbfied fine
+0
+DROP TABLE
+SELECT 1
+uncasting text cartodb_id cartodbfied fine
+1|nan
+DROP TABLE
+SELECT 1
+empty text cartodb_id cartodbfied fine
+1|
+DROP TABLE
+SELECT 1
 unsequenced cartodb_id cartodbfied fine
 1
 DROP TABLE
