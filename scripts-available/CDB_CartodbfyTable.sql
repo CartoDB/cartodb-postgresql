@@ -521,11 +521,14 @@ BEGIN
 
           BEGIN
             sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I::integer', reloid::text, rec.attname);
-            RAISE DEBUG 'Running %', sql;
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): Running %', sql;
             EXECUTE sql;
             EXCEPTION
+            WHEN invalid_text_representation THEN
+              RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): Column % of type text is not a valid integer column', rec.attname;
+              useable_key := false;
             WHEN others THEN
-              RAISE DEBUG 'Column % of type text is not a valid integer column', rec.attname;
+              RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): Exception %', SQLSTATE;
               useable_key := false;
           END;
 
