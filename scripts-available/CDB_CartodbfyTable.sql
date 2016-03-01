@@ -499,40 +499,57 @@ BEGIN
 
   -- Found something named right...
   IF FOUND THEN
-  
-    -- And it's an integer column...
-    IF rec.atttypid IN (20,21,23) THEN
-          
+
+    -- And it's an integer or varchar column...
+    IF rec.atttypid IN (20,21,23,1043) THEN
+
       -- And it's a unique primary key! Done!
       IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
         RETURN true;
 
-      -- Check and see if the column values are unique and not null, 
+      -- Check and see if the column values are unique and not null,
       -- if they are, we can use this column...
       ELSE
 
         -- Assume things are OK until proven otherwise...
         useable_key := true;
-      
-        BEGIN
-          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
-          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
-          EXECUTE sql;
-          EXCEPTION      
-          -- Failed unique check...
-          WHEN unique_violation THEN
-            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
-            useable_key := false;
-          -- Failed not null check...
-          WHEN not_null_violation THEN
-            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
-            useable_key := false;
-          -- Other fatal error
-          WHEN others THEN
-            PERFORM _CDB_Error(sql, '_CDB_Has_Usable_Primary_ID');          
-        END;
-  
+
+        -- If the column is varchar, try to cast it to integer
+        IF rec.atttypid IN (1043) THEN
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): Found text column %', rec.atttypid;
+
+          BEGIN
+            sql := Format('ALTER TABLE %s ALTER cartodb_id TYPE int USING %I::integer', reloid::text, rec.attname);
+            RAISE DEBUG 'Running %', sql;
+            EXECUTE sql;
+            EXCEPTION
+            WHEN others THEN
+              RAISE DEBUG 'Column % of type text is not a valid integer column', rec.attname;
+              useable_key := false;
+          END;
+
+        END IF;
+
+        IF useable_key THEN
+          BEGIN
+            sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
+            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
+            EXECUTE sql;
+            EXCEPTION
+            -- Failed unique check...
+            WHEN unique_violation THEN
+              RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+              useable_key := false;
+            -- Failed not null check...
+            WHEN not_null_violation THEN
+              RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
+              useable_key := false;
+            -- Other fatal error
+            WHEN others THEN
+              PERFORM _CDB_Error(sql, '_CDB_Has_Usable_Primary_ID');
+          END;
+        END IF;
         -- Clean up test constraint
         IF useable_key THEN
           PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
