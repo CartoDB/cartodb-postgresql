@@ -527,7 +527,7 @@ BEGIN
           useable_key := false;
         -- Other fatal error
         WHEN others THEN
-          PERFORM _CDB_Error(sql, '_CDB_Has_Usable_Primary_ID');
+          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: %s', SQLERRM));
       END;
 
       -- Clean up test constraint
