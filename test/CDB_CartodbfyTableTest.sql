@@ -171,9 +171,8 @@ select cartodb_id/2 FROM t;
 DROP TABLE t;
 
 -- table with existing cartodb_id field of type text not casting
-CREATE TABLE t AS SELECT 'nan' as cartodb_id;
+CREATE TABLE t AS SELECT 'nan'::text as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
-select cartodb_id,cartodb_id_0 FROM t;
 DROP TABLE t;
 
 -- table with empty cartodb_id field of type text

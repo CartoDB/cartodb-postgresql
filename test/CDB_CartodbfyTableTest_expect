@@ -32,8 +32,13 @@ text cartodb_id cartodbfied fine
 5
 DROP TABLE
 SELECT 1
-uncasting text cartodb_id cartodbfied fine
-1|nan
+ERROR:  CDB(_CDB_Rewrite_Table:22P02:invalid input syntax for integer: "nan"): CREATE TABLE public.t_0 AS SELECT cartodb_id::bigint ,NULL::geometry(Geometry,4326) AS the_geom,NULL::geometry(Geometry,3857) AS the_geom_webmercator FROM t
+CONTEXT:  SQL statement "SELECT _CDB_SQL(sql, '_CDB_Rewrite_Table')"
+PL/pgSQL function _cdb_rewrite_table(regclass,text) line 295 at PERFORM
+SQL statement "SELECT _CDB_Rewrite_Table(reloid, destschema)"
+PL/pgSQL function cdb_cartodbfytable(text,regclass) line 51 at PERFORM
+SQL statement "SELECT CDB_CartodbfyTable('public', tabname)"
+PL/pgSQL function cdb_cartodbfytablecheck(regclass,text) line 31 at PERFORM
 DROP TABLE
 SELECT 1
 empty text cartodb_id cartodbfied fine
@@ -89,7 +94,15 @@ Table with both the_geom and wkb_geometry #141 cartodbfied fine
 DROP TABLE
 CREATE TABLE
 INSERT 0 1
-Many colliding columns #141 cartodbfied fine
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: multiple primary keys for table "many_colliding_columns" are not allowed): ALTER TABLE many_colliding_columns ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+CONTEXT:  SQL statement "SELECT _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: %s', SQLERRM))"
+PL/pgSQL function _cdb_has_usable_primary_id(regclass) line 56 at PERFORM
+SQL statement "SELECT _CDB_Has_Usable_Primary_ID(reloid)"
+PL/pgSQL function _cdb_rewrite_table(regclass,text) line 50 at SQL statement
+SQL statement "SELECT _CDB_Rewrite_Table(reloid, destschema)"
+PL/pgSQL function cdb_cartodbfytable(text,regclass) line 51 at PERFORM
+SQL statement "SELECT CDB_CartodbfyTable('public', tabname)"
+PL/pgSQL function cdb_cartodbfytablecheck(regclass,text) line 31 at PERFORM
 DROP TABLE
 CREATE TABLE
 INSERT 0 4
