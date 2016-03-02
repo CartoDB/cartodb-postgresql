@@ -1,5 +1,5 @@
 SET client_min_messages TO error;
-\set VERBOSITY default
+\set VERBOSITY terse
 
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTableCheck(tabname regclass, label text)
 RETURNS text AS
