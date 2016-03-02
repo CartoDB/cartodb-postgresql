@@ -29,7 +29,7 @@ extent|BOX(1 1,2 2)
 DROP TABLE
 SELECT 1
 text cartodb_id cartodbfied fine
-0
+5
 DROP TABLE
 SELECT 1
 uncasting text cartodb_id cartodbfied fine
