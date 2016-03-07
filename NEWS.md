@@ -1,3 +1,7 @@
+0.14.1 (2016-03-07)
+-------------------
+* Fully qualify table names in cache cdb_invalidate_varnish calls [#198](https://github.com/CartoDB/cartodb-postgresql/issues/198)
+
 0.14.0 (2016-02-14)
 -------------------
 * Add CDB_ForeignTable.sql to support FDW's [#199](https://github.com/CartoDB/cartodb-postgresql/pull/199)
