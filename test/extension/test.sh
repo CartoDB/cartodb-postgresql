@@ -350,6 +350,41 @@ function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
     sql postgres "REVOKE ALL ON CDB_TableMetadata FROM cdb_testmember_1;"
 }
 
+function test_cdb_tablemetadatatouch_fully_qualifies_names() {
+    sql postgres "CREATE TABLE touch_invalidations (table_name text);"
+    sql postgres "create or replace function cartodb.cdb_invalidate_varnish(table_name text) returns void as \$\$ begin insert into touch_invalidations select table_name; end; \$\$ language 'plpgsql';"
+
+    #default schema
+    sql "CREATE TABLE touch_example (a int);"
+    sql postgres "SELECT CDB_TableMetadataTouch('touch_example');"
+    sql postgres "SELECT table_name FROM touch_invalidations" should "public.touch_example"
+    sql postgres "TRUNCATE TABLE touch_invalidations"
+    sql postgres "DROP TABLE touch_example"
+
+    #setup different schema
+    sql postgres "CREATE SCHEMA test_schema;"
+    sql postgres "CREATE TABLE test_schema.touch_example (a int);"
+
+    #different schema outside search_path
+    sql postgres "SELECT CDB_TableMetadataTouch('test_schema.touch_example');"
+    sql postgres "SELECT table_name FROM touch_invalidations" should "test_schema.touch_example"
+    sql postgres "TRUNCATE TABLE touch_invalidations"
+
+    #different schema in default search_path
+    sql postgres "SET search_path=test_schema,public,cartodb; SELECT CDB_TableMetadataTouch('test_schema.touch_example');"
+    sql postgres "SELECT table_name FROM touch_invalidations" should "test_schema.touch_example"
+    sql postgres "TRUNCATE TABLE touch_invalidations"
+
+    #teardown different schema
+    sql postgres 'DROP TABLE test_schema.touch_example;'
+    sql postgres 'DROP SCHEMA test_schema;'
+
+
+
+    sql postgres 'DROP FUNCTION cartodb.cdb_invalidate_varnish(table_name text);'
+    sql postgres 'DROP TABLE touch_invalidations'
+}
+
 function test_cdb_column_names() {
     sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_cnames(c int, a int, r int, t int, o int);'
     sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_cnames(d int, b int);'

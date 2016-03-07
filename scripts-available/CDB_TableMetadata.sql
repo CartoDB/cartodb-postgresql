@@ -66,9 +66,11 @@ CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Updated()
 RETURNS trigger AS
 $$
 DECLARE
-  tabname TEXT;
+  tabname regclass;
   rec RECORD;
   found BOOL;
+  schema_name TEXT;
+  table_name TEXT;
 BEGIN
 
   IF TG_OP = 'UPDATE' or TG_OP = 'INSERT' THEN
@@ -103,9 +105,10 @@ BEGIN
                AND u.usesuper
              ORDER BY n.nspname
   LOOP
+    SELECT n.nspname, c.relname FROM pg_class c, pg_namespace n WHERE c.oid=tabname AND c.relnamespace = n.oid INTO schema_name, table_name;
     EXECUTE 'SELECT ' || quote_ident(rec.nspname) || '.'
             || quote_ident(rec.proname)
-            || '(' || quote_literal(tabname) || ')';
+            || '(' || quote_literal(quote_ident(schema_name) || '.' || quote_ident(table_name)) || ')';
     found := true;
     EXIT;
   END LOOP;
@@ -116,11 +119,11 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS table_modified ON CDB_TableMetadata;
+DROP TRIGGER IF EXISTS table_modified ON public.CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table
 --       oid (regclass) to its name
 CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
-ON CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
+ON public.CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
 
 
