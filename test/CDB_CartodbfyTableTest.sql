@@ -178,7 +178,7 @@ DROP TABLE t;
 -- table with empty cartodb_id field of type text
 CREATE TABLE t AS SELECT null::text as cartodb_id;
 SELECT CDB_CartodbfyTableCheck('t', 'empty text cartodb_id');
-select cartodb_id,cartodb_id_0 FROM t;
+SELECT cartodb_id from t;
 DROP TABLE t;
 
 -- table with existing cartodb_id field of type int4 not sequenced
@@ -294,7 +294,7 @@ INSERT INTO test VALUES
   (NULL),
   (3);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 -- Table with non unique cartodb_id
@@ -306,7 +306,7 @@ INSERT INTO test VALUES
   (2),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 -- Table with non unique and null cartodb_id
@@ -319,7 +319,7 @@ INSERT INTO test VALUES
   (NULL),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 CREATE TABLE test (

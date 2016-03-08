@@ -527,7 +527,7 @@ BEGIN
           useable_key := false;
         -- Other fatal error
         WHEN others THEN
-          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: %s', SQLERRM));
+          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: not valid %s', SQLERRM));
       END;
 
       -- Clean up test constraint
@@ -538,13 +538,9 @@ BEGIN
       ELSE
 
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
-          Format('found non-unique ''%s'', renaming it', const.pkey);
+          Format('found non-unique ''%s''', const.pkey);
 
-        PERFORM _CDB_SQL(
-          Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-            reloid::text, rec.attname,
-            cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
-          '_CDB_Has_Usable_Primary_ID');
+        PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: non-unique %s', const.pkey));
 
       END IF;
 
