@@ -470,6 +470,7 @@ $$ LANGUAGE 'plpgsql';
 -- If the table has both a usable key and usable geometry
 -- we can no-op on the table copy and just ensure that the 
 -- indexes and triggers are in place
+DROP FUNCTION IF EXISTS _CDB_Has_Usable_Primary_ID(reloid REGCLASS);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Primary_ID(reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
