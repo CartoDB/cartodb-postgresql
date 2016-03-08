@@ -124,11 +124,19 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
--- table with single non-geometrical column
+-- check cartodbfytable idempotence
 CREATE TABLE t AS SELECT 1::int as a;
 SELECT CDB_CartodbfyTable('public', 't'); -- should fail
 SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
 SELECT CDB_CartodbfyTableCheck('t', 'single non-geometrical column');
+DROP TABLE t;
+
+-- table with single non-geometrical column
+CREATE TABLE t AS SELECT ST_SetSRID(ST_MakePoint(-1,-1),4326) as the_geom, 1::int as cartodb_id, 'this is a sentence' as description;
+SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
+SELECT * FROM t;
+SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
+SELECT * FROM t;
 DROP TABLE t;
 
 -- table with existing srid-unconstrained (but type-constrained) the_geom
