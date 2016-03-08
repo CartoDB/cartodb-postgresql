@@ -7,9 +7,9 @@ single non-geometrical column cartodbfied fine
 DROP TABLE
 SELECT 1
 check function idempotence cartodbfied fine
-1|0101000020E6100000000000000000F0BF000000000000F0BF|0101000020110F0000DB0B4ADA772DFBC046432E49D22DFBC0|this is a sentence
+1|0101000020E6100000000000000000F0BF000000000000F0BF|0101000020110F0000DB0B4ADA772DFBC077432E49D22DFBC0|this is a sentence
 check function idempotence cartodbfied fine
-1|0101000020E6100000000000000000F0BF000000000000F0BF|0101000020110F0000DB0B4ADA772DFBC046432E49D22DFBC0|this is a sentence
+1|0101000020E6100000000000000000F0BF000000000000F0BF|0101000020110F0000DB0B4ADA772DFBC077432E49D22DFBC0|this is a sentence
 DROP TABLE
 SELECT 1
 srid-unconstrained the_geom cartodbfied fine
@@ -36,10 +36,10 @@ text cartodb_id cartodbfied fine
 5
 DROP TABLE
 SELECT 1
-ERROR:  CDB(_CDB_Rewrite_Table:22P02:invalid input syntax for integer: "nan"): CREATE TABLE public.t_0 AS SELECT cartodb_id::bigint ,NULL::geometry(Geometry,4326) AS the_geom,NULL::geometry(Geometry,3857) AS the_geom_webmercator FROM t
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, cartodb_id): ALTER TABLE t ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 DROP TABLE
 SELECT 1
-ERROR:  CDB(_CDB_Has_Usable_Primary_ID: non-unique cartodb_id): ALTER TABLE t ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, cartodb_id): ALTER TABLE t ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 
 DROP TABLE
 SELECT 1
@@ -92,11 +92,11 @@ Table with both the_geom and wkb_geometry #141 cartodbfied fine
 DROP TABLE
 CREATE TABLE
 INSERT 0 1
-ERROR:  CDB(_CDB_Has_Usable_Primary_ID: not valid multiple primary keys for table "many_colliding_columns" are not allowed): ALTER TABLE many_colliding_columns ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: multiple primary keys for table "many_colliding_columns" are not allowed): ALTER TABLE many_colliding_columns ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 DROP TABLE
 CREATE TABLE
 INSERT 0 4
-ERROR:  CDB(_CDB_Has_Usable_Primary_ID: non-unique cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 1
 2
 
@@ -104,14 +104,14 @@ ERROR:  CDB(_CDB_Has_Usable_Primary_ID: non-unique cartodb_id): ALTER TABLE test
 DROP TABLE
 CREATE TABLE
 INSERT 0 3
-ERROR:  CDB(_CDB_Has_Usable_Primary_ID: non-unique cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 1
 2
 2
 DROP TABLE
 CREATE TABLE
 INSERT 0 4
-ERROR:  CDB(_CDB_Has_Usable_Primary_ID: non-unique cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id)
+ERROR:  CDB(_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, cartodb_id): ALTER TABLE test ADD CONSTRAINT cartodb_id_pk PRIMARY KEY (cartodb_id), ADD CONSTRAINT cartodb_id_integer CHECK (cartodb_id::integer >=0);
 1
 2
 

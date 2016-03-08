@@ -515,6 +515,7 @@ BEGIN
       useable_key := true;
       BEGIN
         sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
+        sql := sql || ', ' || Format('ADD CONSTRAINT %s_integer CHECK (%s::integer >=0);', const.pkey, const.pkey);
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
         EXECUTE sql;
         EXCEPTION
@@ -526,22 +527,27 @@ BEGIN
         WHEN not_null_violation THEN
           RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
           useable_key := false;
+        -- Failed integer check...
+        WHEN invalid_text_representation THEN
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('invalid input syntax for integer %s', const.pkey);
+          useable_key := false;
         -- Other fatal error
         WHEN others THEN
-          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: not valid %s', SQLERRM));
+          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: %s', SQLERRM));
       END;
 
       -- Clean up test constraint
       IF useable_key THEN
         PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
+        PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_integer', reloid::text, const.pkey));
 
-      -- Move non-unique column out of the way
+      -- Move non-valid column out of the way
       ELSE
 
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
-          Format('found non-unique ''%s''', const.pkey);
+          Format('found non-valid ''%s''', const.pkey);
 
-        PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: non-unique %s', const.pkey));
+        PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, %s', const.pkey));
 
       END IF;
 
@@ -1076,7 +1082,7 @@ BEGIN
 
   -- Run it!
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
-  
+
   -- Set up the primary key sequence
   -- If we copied the primary key from the original data, we need
   -- to set the sequence to the maximum value of that key
