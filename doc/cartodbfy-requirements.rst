@@ -33,8 +33,7 @@ Additionally, a CartoDB table can contain other columns.
 
 See the `CartoDB User Table documentation`_
 
-.. _CartoDB User Table documentation: https://github.com/CartoDB/cartodb-postgresql/blob/master/doc/CartoDB-user-table.md
-
+.. _CartoDB User Table documentation: https://github.com/CartoDB/cartodb-postgresql/blob/master/doc/CartoDB-user-table.md 
 for further information.
 
 High level requirements
