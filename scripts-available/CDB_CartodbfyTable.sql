@@ -480,7 +480,6 @@ DECLARE
   i INTEGER;
   sql TEXT;
   useable_key BOOLEAN = false;
-  has_usable_primary_key BOOLEAN = false;
 BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 'entered function';
