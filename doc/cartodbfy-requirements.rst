@@ -31,7 +31,11 @@ A valid CartoDB table shall meet the following conditions:
 
 Additionally, a CartoDB table can contain other columns.
 
-See [CartoDB User Table documentation](https://github.com/CartoDB/cartodb-postgresql/blob/master/doc/CartoDB-user-table.rst) for further information.
+See the `CartoDB User Table documentation`_
+
+.. _CartoDB User Table documentation: https://github.com/CartoDB/cartodb-postgresql/blob/master/doc/CartoDB-user-table.md
+
+for further information.
 
 High level requirements
 -----------------------
