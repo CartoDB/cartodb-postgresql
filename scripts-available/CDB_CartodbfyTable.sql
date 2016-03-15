@@ -919,7 +919,7 @@ BEGIN
 
   -- Add cartodb ID!
   IF has_usable_primary_key THEN
-    sql := sql || const.pkey || '::bigint ';
+    sql := sql || const.pkey || '::integer ';
   ELSE
     sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
   END IF;
