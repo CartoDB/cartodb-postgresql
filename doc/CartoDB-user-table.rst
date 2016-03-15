@@ -11,7 +11,7 @@ The required columns of a CartoDB table are:
 
 -  ``cartodb_id``
   - This column will be used as the primary key of the table and it has a sequence as default value
-  - Its values must be integer, non-null and unique
+  - Its values must be integer, non-zero, non-null and unique
   - The type of the column in the Postgres database is ``bigint``
   -  B-Tree indexed
 -  ``the_geom``
