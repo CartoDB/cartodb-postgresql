@@ -470,6 +470,7 @@ $$ LANGUAGE 'plpgsql';
 -- If the table has both a usable key and usable geometry
 -- we can no-op on the table copy and just ensure that the 
 -- indexes and triggers are in place
+DROP FUNCTION IF EXISTS _CDB_Has_Usable_Primary_ID(reloid REGCLASS);
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Primary_ID(reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
@@ -489,114 +490,98 @@ BEGIN
   -- Do we already have a properly named column?
   SELECT a.attname, i.indisprimary, i.indisunique, a.attnotnull, a.atttypid
   INTO rec
-  FROM pg_class c 
-  JOIN pg_attribute a ON a.attrelid = c.oid 
+  FROM pg_class c
+  JOIN pg_attribute a ON a.attrelid = c.oid
   JOIN pg_type t ON a.atttypid = t.oid
   LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
-  WHERE c.oid = reloid 
+  WHERE c.oid = reloid
   AND NOT a.attisdropped
   AND a.attname = const.pkey;
 
   -- Found something named right...
   IF FOUND THEN
-  
-    -- And it's an integer column...
-    IF rec.atttypid IN (20,21,23) THEN
-          
-      -- And it's a unique primary key! Done!
-      IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
-        RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
-        RETURN true;
 
-      -- Check and see if the column values are unique and not null, 
-      -- if they are, we can use this column...
+    -- And it's a unique primary key! Done!
+    IF (rec.indisprimary OR rec.indisunique) AND rec.attnotnull THEN
+      RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('found good ''%s''', const.pkey);
+      RETURN true;
+
+    -- Check and see if the column values are unique and not null,
+    -- if they are, we can use this column...
+    ELSE
+
+      -- Assume things are OK until proven otherwise...
+      useable_key := true;
+      BEGIN
+        sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
+        sql := sql || ', ' || Format('ADD CONSTRAINT %s_integer CHECK (%s::integer >=0);', const.pkey, const.pkey);
+        RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
+        EXECUTE sql;
+        EXCEPTION
+        -- Failed unique check...
+        WHEN unique_violation THEN
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
+          useable_key := false;
+        -- Failed not null check...
+        WHEN not_null_violation THEN
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
+          useable_key := false;
+        -- Failed integer check...
+        WHEN invalid_text_representation THEN
+          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('invalid input syntax for integer %s', const.pkey);
+          useable_key := false;
+        -- Other fatal error
+        WHEN others THEN
+          PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: %s', SQLERRM));
+      END;
+
+      -- Clean up test constraint
+      IF useable_key THEN
+        PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
+        PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_integer', reloid::text, const.pkey));
+
+      -- Move non-valid column out of the way
       ELSE
 
-        -- Assume things are OK until proven otherwise...
-        useable_key := true;
-      
-        BEGIN
-          sql := Format('ALTER TABLE %s ADD CONSTRAINT %s_pk PRIMARY KEY (%s)', reloid::text, const.pkey, const.pkey);
-          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', sql;
-          EXECUTE sql;
-          EXCEPTION      
-          -- Failed unique check...
-          WHEN unique_violation THEN
-            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s is not unique', const.pkey);
-            useable_key := false;
-          -- Failed not null check...
-          WHEN not_null_violation THEN
-            RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', Format('column %s contains nulls', const.pkey);
-            useable_key := false;
-          -- Other fatal error
-          WHEN others THEN
-            PERFORM _CDB_Error(sql, '_CDB_Has_Usable_Primary_ID');          
-        END;
-  
-        -- Clean up test constraint
-        IF useable_key THEN
-          PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
+        RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
+          Format('found non-valid ''%s''', const.pkey);
 
-        -- Move non-unique column out of the way
-        ELSE
-        
-          RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
-            Format('found non-unique ''%s'', renaming it', const.pkey);
-
-          PERFORM _CDB_SQL(
-            Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-              reloid::text, rec.attname,
-              cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
-            '_CDB_Has_Usable_Primary_ID');
-        
-        END IF;
-        
-        return useable_key;
+        PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, %s', const.pkey));
 
       END IF;
-    
-    -- It's not an integer column, we have to rename it
-    ELSE
-  
-      RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 
-        Format('found non-integer ''%s'', renaming it', const.pkey);
 
-      PERFORM _CDB_SQL(
-        Format('ALTER TABLE %s RENAME COLUMN %s TO %I',
-                reloid::text, rec.attname, cartodb._CDB_Unique_Column_Identifier(NULL, const.pkey, NULL, reloid)),
-                '_CDB_Has_Usable_Primary_ID');
-    
+      RETURN useable_key;
+
     END IF;
-    
+
   -- There's no column there named pkey
   ELSE
 
-    -- Is there another suitable primary key already?
+    -- Is there another integer suitable primary key already?
     SELECT a.attname
     INTO rec
     FROM pg_class c 
-    JOIN pg_attribute a ON a.attrelid = c.oid 
+    JOIN pg_attribute a ON a.attrelid = c.oid
     JOIN pg_type t ON a.atttypid = t.oid
     LEFT JOIN pg_index i ON c.oid = i.indrelid AND a.attnum = ANY(i.indkey)
     WHERE c.oid = reloid AND NOT a.attisdropped
     AND i.indisprimary AND i.indisunique AND a.attnotnull AND a.atttypid IN (20,21,23);
-  
+
     -- Yes! Ok, rename it.
     IF FOUND THEN
       PERFORM _CDB_SQL(Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, const.pkey),'_CDB_Has_Usable_Primary_ID');
       RETURN true;
     ELSE
-      RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 
+      RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
         Format('found no useful column for ''%s''', const.pkey);
     END IF;
-  
+
   END IF;
-  
+
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 'function complete';
 
   -- Didn't find re-usable key, so return FALSE
   RETURN false;
-
 END;
 $$ LANGUAGE 'plpgsql';
 
@@ -825,10 +810,10 @@ DECLARE
   str TEXT;
   table_srid INTEGER;
   geom_srid INTEGER;
-  
+
   has_usable_primary_key BOOLEAN;
   has_usable_pk_sequence BOOLEAN;
-  
+
 BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): %', 'entered function';
@@ -839,7 +824,7 @@ BEGIN
   -- Save the raw schema/table names for later
   SELECT n.nspname, c.relname, c.relname
   INTO STRICT relschema, relname, destname
-  FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid 
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
   WHERE c.oid = reloid;
 
   -- Default the destination to current schema if unspecified
@@ -890,7 +875,7 @@ BEGIN
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_geoms %', gc.has_usable_geoms;
 
-  -- We can only avoid a rewrite if both the key and 
+  -- We can only avoid a rewrite if both the key and
   -- geometry are usable
 
   -- No table re-write is required, BUT a rename is required to
@@ -934,7 +919,7 @@ BEGIN
 
   -- Add cartodb ID!
   IF has_usable_primary_key THEN
-    sql := sql || const.pkey;
+    sql := sql || const.pkey || '::bigint ';
   ELSE
     sql := sql || 'nextval(''' || destseq || ''') AS ' || const.pkey;
   END IF;
@@ -1096,7 +1081,7 @@ BEGIN
 
   -- Run it!
   PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
-  
+
   -- Set up the primary key sequence
   -- If we copied the primary key from the original data, we need
   -- to set the sequence to the maximum value of that key

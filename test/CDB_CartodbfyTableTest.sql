@@ -1,5 +1,5 @@
 SET client_min_messages TO error;
-\set VERBOSITY default
+\set VERBOSITY terse
 
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTableCheck(tabname regclass, label text)
 RETURNS text AS
@@ -124,11 +124,19 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
--- table with single non-geometrical column
+-- check cartodbfytable idempotence
 CREATE TABLE t AS SELECT 1::int as a;
 SELECT CDB_CartodbfyTable('public', 't'); -- should fail
 SELECT CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
 SELECT CDB_CartodbfyTableCheck('t', 'single non-geometrical column');
+DROP TABLE t;
+
+-- table with single non-geometrical column
+CREATE TABLE t AS SELECT ST_SetSRID(ST_MakePoint(-1,-1),4326) as the_geom, 1::int as cartodb_id, 'this is a sentence' as description;
+SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
+SELECT * FROM t;
+SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
+SELECT * FROM t;
 DROP TABLE t;
 
 -- table with existing srid-unconstrained (but type-constrained) the_geom
@@ -164,19 +172,22 @@ SELECT CDB_CartodbfyTableCheck('t', 'trigger-protected the_geom');
 SELECT 'extent',ST_Extent(ST_SnapToGrid(the_geom,0.2)) FROM t;
 DROP TABLE t;
 
--- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
--- -- table with existing cartodb_id field of type text
--- CREATE TABLE t AS SELECT 10::text as cartodb_id;
--- SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
--- select cartodb_id/2 FROM t;
--- DROP TABLE t;
+-- table with existing cartodb_id field of type text
+CREATE TABLE t AS SELECT 10::text as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'text cartodb_id');
+select cartodb_id/2 FROM t;
+DROP TABLE t;
 
--- INFO: disabled because cartodbfy does not longer consider text columns for primary ID
--- -- table with existing cartodb_id field of type text not casting
--- CREATE TABLE t AS SELECT 'nan' as cartodb_id;
--- SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
--- select cartodb_id,_cartodb_id0 FROM t;
--- DROP TABLE t;
+-- table with existing cartodb_id field of type text not casting
+CREATE TABLE t AS SELECT 'nan'::text as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'uncasting text cartodb_id');
+DROP TABLE t;
+
+-- table with empty cartodb_id field of type text
+CREATE TABLE t AS SELECT null::text as cartodb_id;
+SELECT CDB_CartodbfyTableCheck('t', 'empty text cartodb_id');
+SELECT cartodb_id from t;
+DROP TABLE t;
 
 -- table with existing cartodb_id field of type int4 not sequenced
 CREATE TABLE t AS SELECT 1::int4 as cartodb_id;
@@ -291,7 +302,7 @@ INSERT INTO test VALUES
   (NULL),
   (3);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 -- Table with non unique cartodb_id
@@ -303,7 +314,7 @@ INSERT INTO test VALUES
   (2),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 -- Table with non unique and null cartodb_id
@@ -316,7 +327,7 @@ INSERT INTO test VALUES
   (NULL),
   (2);
 SELECT CDB_CartodbfyTableCheck('test', 'Table with non unique and null cartodb_id #148');
-SELECT cartodb_id, cartodb_id_0 from test;
+SELECT cartodb_id from test;
 DROP TABLE test;
 
 CREATE TABLE test (
