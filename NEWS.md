@@ -1,3 +1,7 @@
+0.14.3 (2016-03-17)
+-------------------
+* Fix for `cartodb_id` bigint casting hardcoded in 0.14.2 to support `cartodb_id` text columns [#210](https://github.com/CartoDB/cartodb-postgresql/pull/210)
+
 0.14.2 (2016-03-15)
 -------------------
 * Support text `cartodb_id` columns in `_CDB_Has_Usable_Primary_ID` [#202](https://github.com/CartoDB/cartodb-postgresql/pull/202)
