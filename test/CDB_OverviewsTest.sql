@@ -23,11 +23,14 @@ SELECT CDB_CreateOverviews('polyg_t'::regclass);
 SELECT CDB_Overviews('base_t'::regclass);
 SELECT CDB_Overviews(ARRAY['base_t'::regclass, 'base_bare_t'::regclass]);
 SELECT CDB_Overviews('polyg_t'::regclass);
+SELECT CDB_Overviews('column_types_t'::regclass);
 
+SELECT CDB_DropOverviews('column_types_t'::regclass);
 SELECT CDB_DropOverviews('base_bare_t'::regclass);
 SELECT CDB_DropOverviews('base_t'::regclass);
 SELECT count(*) FROM _vovw_5_base_t;
 
+DROP TABLE column_types_t;
 DROP TABLE base_bare_t;
 DROP TABLE base_t;
 DROP TABLE polyg_t;
