@@ -2241,7 +2241,9 @@ INSERT INTO polyg_t VALUES
 (4, 'D', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857)),
 (5, 'E', 'SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, ST_Transform('SRID=4326;POLYGON((9 40,8 39,8.5 40,9 41,9 40))'::geometry, 3857));
 
-CREATE TABLE column_types_t (cartodb_id integer, the_geom geometry, the_geom_webmercator geometry, odd boolean)
-AS SELECT cartodb_id, the_geom, the_geom_webmercator,
-          (CASE cartodb_id % 2 WHEN 0 THEN 'f' ELSE 't' END)::boolean
-   FROM base_bare_t;
+CREATE TABLE column_types_t
+AS SELECT cartodb_id,
+          the_geom,
+          the_geom_webmercator,
+          (CASE cartodb_id % 2 WHEN 0 THEN 'f' ELSE 't' END)::boolean AS is_odd
+FROM base_bare_t;

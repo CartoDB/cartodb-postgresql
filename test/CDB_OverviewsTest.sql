@@ -20,6 +20,8 @@ SELECT count(*) FROM _vovw_5_base_t;
 
 SELECT CDB_CreateOverviews('polyg_t'::regclass);
 
+SELECT CDB_CreateOverviews('column_types_t'::regclass);
+
 SELECT CDB_Overviews('base_t'::regclass);
 SELECT CDB_Overviews(ARRAY['base_t'::regclass, 'base_bare_t'::regclass]);
 SELECT CDB_Overviews('polyg_t'::regclass);
