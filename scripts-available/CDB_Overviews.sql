@@ -486,6 +486,8 @@ BEGIN
     -- Using 'string_agg(' || qualified_column || ',''/'')'
     -- here causes
     RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+  WHEN 'boolean' THEN
+    RETURN 'CASE count(*) WHEN 1 THEN BOOL_AND(' || qualified_column || ') ELSE NULL END::' || column_type;
   ELSE
     RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
   END CASE;
