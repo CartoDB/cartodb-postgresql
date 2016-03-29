@@ -1,3 +1,8 @@
+0.14.4 (2016-03-29)
+* Fix creating overviews for tables with boolean columns
+  [#214](https://github.com/CartoDB/cartodb-postgresql/pull/214)
+* Fix tests for some systems [#215](https://github.com/CartoDB/cartodb-postgresql/pull/215)
+
 0.14.3 (2016-03-17)
 -------------------
 * Fix for `cartodb_id` bigint casting hardcoded in 0.14.2 to support `cartodb_id` text columns [#210](https://github.com/CartoDB/cartodb-postgresql/pull/210)
