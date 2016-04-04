@@ -8,7 +8,7 @@ SELECT _CDB_Aggregated_Attributes_Expression('base_bare_t'::regclass);
 SELECT _CDB_Aggregated_Attributes_Expression('base_bare_t'::regclass, 'tab');
 
 SELECT CDB_CreateOverviews('base_bare_t'::regclass);
-SELECT count(*) FROM _vovw_5_base_bare_t;
+SELECT count(*) FROM _vovw_2_base_bare_t;
 
 
 SELECT _CDB_Aggregable_Attributes_Expression('base_t'::regclass);
@@ -16,7 +16,7 @@ SELECT _CDB_Aggregated_Attributes_Expression('base_t'::regclass);
 SELECT _CDB_Aggregated_Attributes_Expression('base_t'::regclass, 'tab');
 
 SELECT CDB_CreateOverviews('base_t'::regclass);
-SELECT count(*) FROM _vovw_5_base_t;
+SELECT count(*) FROM _vovw_2_base_t;
 
 SELECT CDB_CreateOverviews('polyg_t'::regclass);
 
@@ -30,7 +30,11 @@ SELECT CDB_Overviews('column_types_t'::regclass);
 SELECT CDB_DropOverviews('column_types_t'::regclass);
 SELECT CDB_DropOverviews('base_bare_t'::regclass);
 SELECT CDB_DropOverviews('base_t'::regclass);
-SELECT count(*) FROM _vovw_5_base_t;
+SELECT count(*) FROM _vovw_2_base_t;
+
+SELECT CDB_CreateOverviewsWithToleranceInPixels('base_t'::regclass, 7.5);
+SELECT count(*) FROM _vovw_2_base_t;
+SELECT CDB_DropOverviews('base_t'::regclass);
 
 DROP TABLE column_types_t;
 DROP TABLE base_bare_t;
