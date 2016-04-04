@@ -100,18 +100,21 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
 RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
-  -- FIXME: this will fail if the overview tables
-  -- require a explicit schema name
-  -- possible solutions: return table names as text instead of regclass
-  -- or add schema of reloid before casting to regclass
-  SELECT
-    reloid AS base_table,
-    _CDB_OverviewTableZ(cdb_usertables) AS z,
-    cdb_usertables::regclass AS overview_table
-    FROM CDB_UserTables()
-    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
-    ORDER BY z;
-$$ LANGUAGE SQL;
+  DECLARE
+    schema_name TEXT;
+    table_name TEXT;
+  BEGIN
+    -- TODO: review implementation of CDB_UserTables an suitability for this
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    RETURN QUERY SELECT
+      reloid AS base_table,
+      _CDB_OverviewTableZ(cdb_usertables) AS z,
+      (schema_name||'.'||cdb_usertables)::regclass AS overview_table
+      FROM CDB_UserTables()
+      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
+      ORDER BY z;
+  END
+$$ LANGUAGE PLPGSQL;
 
 -- Return existing overviews (if any) for multiple dataset tables.
 -- Scope: public
