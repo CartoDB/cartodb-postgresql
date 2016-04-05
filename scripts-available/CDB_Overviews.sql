@@ -686,7 +686,7 @@ $$ LANGUAGE PLPGSQL;
 --                    created by the strategy must have the same columns
 --                    as the base table and in the same order.
 -- Return value: Array with the names of the generated overview tables
-CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy'::regproc)
+CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -699,7 +699,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 -- Create overviews with additional parameter to define the desired detail/tolerance in pixels
-CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy'::regproc)
+CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT  '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -738,3 +738,7 @@ BEGIN
   RETURN overview_tables;
 END;
 $$ LANGUAGE PLPGSQL;
+
+DROP FUNCTION IF EXISTS _CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
+DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
