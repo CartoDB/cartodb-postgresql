@@ -739,6 +739,9 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+-- Here are some older signatures of these functions, no longar in use.
+-- They must be droped here, after the (new) definition of the function `CDB_CreateOverviews`
+-- because that function used to contain references to them in the default argument values.
 DROP FUNCTION IF EXISTS _CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
 DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
 DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
