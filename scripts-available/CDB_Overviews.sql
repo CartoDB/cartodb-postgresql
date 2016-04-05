@@ -291,15 +291,21 @@ $$ LANGUAGE PLPGSQL STABLE;
 -- Parameters:
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: Z level as an integer
-CREATE OR REPLACE FUNCTION _CDB_Feature_Density_Ref_Z_Strategy(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION _CDB_Feature_Density_Ref_Z_Strategy(reloid REGCLASS, tolerance_px FLOAT8 DEFAULT NULL)
 RETURNS INTEGER
 AS $$
   DECLARE
-    lim FLOAT8 := 500; -- TODO: determine/parameterize this
+    lim FLOAT8;
     nz integer := 4;
     fd FLOAT8;
     c FLOAT8;
   BEGIN
+    IF (tolerance_px IS NULL) OR tolerance_px = 0 THEN
+      lim := 500;
+    ELSE
+      lim := floor(power(256/tolerance_px, 2))/2;
+    END IF;
+
     -- Compute fd as an estimation of the (maximum) number
     -- of features per unit of tile area (in webmercator squared meters)
     SELECT _CDB_Feature_Density(reloid, nz) INTO fd;
@@ -346,7 +352,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, tolerance_px FLOAT8 DEFAULT NULL)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -359,6 +365,7 @@ AS $$
     table_name TEXT;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+    -- TODO: compute fraction from tolerance_px if not NULL
     fraction := power(2, 2*(overview_z - ref_z));
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
@@ -575,14 +582,13 @@ $$ LANGUAGE PLPGSQL STABLE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
 RETURNS REGCLASS
 AS $$
   DECLARE
     overview_rel TEXT;
     reduction FLOAT8;
     base_name TEXT;
-    grid_px FLOAT8 = 7.5; -- Grid size in pixels at Z level overview_z
     grid_m FLOAT8;
     aggr_attributes TEXT;
     attributes TEXT;
@@ -601,6 +607,11 @@ AS $$
     --TODO: check applicability: geometry type, minimum number of points...
 
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+
+    -- Grid size in pixels at Z level overview_z
+    IF grid_px IS NULL THEN
+      grid_px := 7.5;
+    END IF;
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
@@ -675,7 +686,20 @@ $$ LANGUAGE PLPGSQL;
 --                    created by the strategy must have the same columns
 --                    as the base table and in the same order.
 -- Return value: Array with the names of the generated overview tables
-CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy'::regproc, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy'::regproc)
+CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
+RETURNS text[]
+AS $$
+DECLARE
+  tolerance_px FLOAT8;
+BEGIN
+  -- Use the default tolerance
+  tolerance_px := 2.0;
+  RETURN CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
+END;
+$$ LANGUAGE PLPGSQL;
+
+-- Create overviews with additional parameter to define the desired detail/tolerance in pixels
+CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT  '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -688,7 +712,7 @@ DECLARE
   overviews_step integer := 1;
 BEGIN
   -- Determine the referece zoom level
-  EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'');', reloid) INTO ref_z;
+  EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
 
   -- Determine overlay zoom levels
   -- TODO: should be handled by the refscale_strategy?
@@ -702,7 +726,7 @@ BEGIN
   base_z := ref_z;
   base_rel := reloid;
   FOREACH overview_z IN ARRAY overviews_z LOOP
-    EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s);', base_rel, base_z, overview_z) INTO base_rel;
+    EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s, %s);', base_rel, base_z, overview_z, tolerance_px) INTO base_rel;
     IF base_rel IS NULL THEN
       EXIT;
     END IF;
@@ -714,3 +738,10 @@ BEGIN
   RETURN overview_tables;
 END;
 $$ LANGUAGE PLPGSQL;
+
+-- Here are some older signatures of these functions, no longar in use.
+-- They must be droped here, after the (new) definition of the function `CDB_CreateOverviews`
+-- because that function used to contain references to them in the default argument values.
+DROP FUNCTION IF EXISTS _CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
+DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);

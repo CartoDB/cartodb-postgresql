@@ -48,6 +48,13 @@ CDB_CreateOverviews(table_name, ref_z_strategy, reduction_strategy)
   - **base_z** integer, base Z level assigned to the base table.
   - **overview_z** integer, Z level for which to generate the overview.
 
+#### Tolerance / level of detail
+
+The level of detail to be representable by each overview layer can
+be specified as a tolerance in pixels (if different from the default of 2 pixels)
+with the function `CDB_CreateOverviewsWithToleranceInPixels`
+which has as a second additional argument the desired tolerance.
+
 ### CDB_Overviews
 
 Obtain overview metadata for a given table (existing overviews).
