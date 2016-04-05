@@ -68,6 +68,41 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+-- Schema and relation names of a table given its reloid
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the table.
+-- Return (schema_name, table_name)
+-- note that returned names will be quoted if necessary
+CREATE OR REPLACE FUNCTION _cdb_split_table_name(reloid REGCLASS, OUT schema_name TEXT, OUT table_name TEXT)
+AS $$
+  BEGIN
+    SELECT n.nspname, c.relname
+    INTO STRICT schema_name, table_name
+    FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.oid = reloid;
+  END
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Schema and relation names of a table given its reloid
+-- Scope: private.
+-- Parameters
+--   reloid: oid of the table.
+-- Return (schema_name, table_name)
+-- note that returned names will be quoted if necessary
+CREATE OR REPLACE FUNCTION _cdb_schema_name(reloid REGCLASS)
+RETURNS TEXT
+AS $$
+  DECLARE
+    schema_name TEXT;
+  BEGIN
+    SELECT n.nspname
+    INTO STRICT schema_name
+    FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.oid = reloid;
+    RETURN schema_name;
+  END
+$$ LANGUAGE PLPGSQL IMMUTABLE;
 
 -- Remove a dataset's existing  overview tables.
 -- Scope: public
@@ -77,12 +112,15 @@ CREATE OR REPLACE FUNCTION CDB_DropOverviews(reloid REGCLASS)
 RETURNS void
 AS $$
 DECLARE
-    row     record;
+    row record;
+    schema_name TEXT;
+    table_name TEXT;
 BEGIN
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
     FOR row IN
         SELECT * FROM CDB_Overviews(reloid)
     LOOP
-        EXECUTE Format('DROP TABLE %s;', row.overview_table);
+        EXECUTE Format('DROP TABLE %I.%I;', schema_name, row.overview_table);
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
     END LOOP;
 END;
@@ -100,18 +138,21 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
 RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
-  -- FIXME: this will fail if the overview tables
-  -- require a explicit schema name
-  -- possible solutions: return table names as text instead of regclass
-  -- or add schema of reloid before casting to regclass
-  SELECT
-    reloid AS base_table,
-    _CDB_OverviewTableZ(cdb_usertables) AS z,
-    cdb_usertables::regclass AS overview_table
-    FROM CDB_UserTables()
-    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
-    ORDER BY z;
-$$ LANGUAGE SQL;
+  DECLARE
+    schema_name TEXT;
+    table_name TEXT;
+  BEGIN
+    -- TODO: review implementation of CDB_UserTables an suitability for this
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    RETURN QUERY SELECT
+      reloid AS base_table,
+      _CDB_OverviewTableZ(cdb_usertables) AS z,
+      ('"' || schema_name|| '"."' ||cdb_usertables || '"')::regclass AS overview_table
+      FROM CDB_UserTables()
+      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
+      ORDER BY z;
+  END
+$$ LANGUAGE PLPGSQL;
 
 -- Return existing overviews (if any) for multiple dataset tables.
 -- Scope: public
@@ -128,28 +169,12 @@ AS $$
   SELECT
     base_table::regclass AS base_table,
     _CDB_OverviewTableZ(cdb_usertables) AS z,
-    cdb_usertables::regclass AS overview_table
+    ('"' || _cdb_schema_name(base_table::regclass) || '"."' || cdb_usertables || '"')::regclass AS overview_table
     FROM
       CDB_UserTables(), unnest(tables) base_table
     WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), cdb_usertables)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL;
-
--- Schema and relation names of a table given its reloid
--- Scope: private.
--- Parameters
---   reloid: oid of the table.
--- Return (schema_name, table_name)
--- note that returned names will be quoted if necessary
-CREATE OR REPLACE FUNCTION _cdb_split_table_name(reloid REGCLASS, OUT schema_name TEXT, OUT table_name TEXT)
-AS $$
-  BEGIN
-    SELECT n.nspname, c.relname
-    INTO STRICT schema_name, table_name
-    FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE c.oid = reloid;
-  END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
 
 -- Calculate the estimated extent of a cartodbfy'ed table.
 -- Scope: private.
@@ -286,8 +311,8 @@ AS $$
     SELECT _CDB_Feature_Density(reloid, nz) INTO fd;
     -- lim maximum number of (desiderable) features per tile
     -- we have c = 2*Pi*R = CDB_XYZ_Resolution(-8) (earth circumference)
-    -- ta(z): tile area = power(c*power(2,z), 2) = c*c*power(2,2*z)
-    -- => fd*ta(z) if the average number of features per tile at level z
+    -- ta(z): tile area = power(c*power(2,-z), 2) = c*c*power(2,-2*z)
+    -- => fd*ta(z) is the average number of features per tile at level z
     -- find minimum z so that fd*ta(z) <= lim
     -- compute a rough 'feature density' value
     SELECT CDB_XYZ_Resolution(-8) INTO c;
@@ -336,13 +361,16 @@ AS $$
     base_name TEXT;
     class_info RECORD;
     num_samples INTEGER;
+    schema_name TEXT;
+    table_name TEXT;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
     -- TODO: compute fraction from tolerance_px if not NULL
     fraction := power(2, 2*(overview_z - ref_z));
 
-    -- FIXME: handle schema name for overview_rel if reloid requires it
-    EXECUTE Format('DROP TABLE IF EXISTS %I CASCADE;', overview_rel);
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name.overview_rel);
 
     -- Estimate number of rows
     SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
@@ -566,6 +594,8 @@ AS $$
     attributes TEXT;
     columns TEXT;
     gtypes TEXT[];
+    schema_name TEXT;
+    table_name TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
     IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
@@ -582,6 +612,8 @@ AS $$
     IF grid_px IS NULL THEN
       grid_px := 7.5;
     END IF;
+
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
     -- compute grid cell size using the overview_z dimension...
     SELECT CDB_XYZ_Resolution(overview_z)*grid_px INTO grid_m;
@@ -616,8 +648,7 @@ AS $$
       SELECT * FROM cols
     ) AS s INTO columns;
 
-    -- FIXME: handle schema name for overview_rel if reloid requires it
-    EXECUTE Format('DROP TABLE IF EXISTS %I CASCADE;', overview_rel);
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
     -- Now we cluster the data using a grid of size grid_m
     -- and selecte the centroid (average coordinates) of each cluster.
