@@ -370,7 +370,7 @@ AS $$
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name.overview_rel);
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
     -- Estimate number of rows
     SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
