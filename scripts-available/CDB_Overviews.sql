@@ -1,4 +1,30 @@
--- security definer
+-- Information about tables in a schema.
+-- If the schema name parameter is NULL, then tables from all schemas
+-- that may contain user tables are returned.
+-- The optional second argument restricts the result to tables
+-- of the specified access type.
+-- Currently accepted permissions are: 'public', 'private' or 'all'.
+-- For each table, the regclass, schema name and table name are returned.
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_UserTablesInSchema(schema_name text DEFAULT NULL, perm text DEFAULT 'all')
+RETURNS TABLE(table_regclass REGCLASS, schema_name TEXT, table_name TEXT)
+AS $$
+  SELECT
+    c.oid::regclass AS table_regclass,
+    n.nspname::text AS schema_name,
+    c.relname::text AS table_relname
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relkind = 'r'
+  AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
+  AND CASE WHEN schema_name IS NULL
+             THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
+           ELSE n.nspname = schema_name END
+  AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SELECT')
+           WHEN perm = 'private' THEN has_table_privilege(current_user, c.oid, 'SELECT') AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
+           WHEN perm = 'all' THEN has_table_privilege(current_user, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
+           ELSE false END;
+$$ LANGUAGE 'sql';
 
 -- Pattern that can be used to detect overview tables and Extract
 -- the intended zoom level from the table name.
@@ -140,19 +166,15 @@ RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   DECLARE
     schema_name TEXT;
-    table_name TEXT;
+    _table_name TEXT;
   BEGIN
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
-    -- TODO: replace use of CDB_UserTables by obtaining the user tables
-    --       in a specific schema
-    -- Meanwhile we'll use DISTINCT here to avoid picking multiple tables
-    -- from different schemas
-    RETURN QUERY SELECT DISTINCT
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, _table_name;
+    RETURN QUERY SELECT
       reloid AS base_table,
-      _CDB_OverviewTableZ(cdb_usertables) AS z,
-      ('"' || schema_name|| '"."' ||cdb_usertables || '"')::regclass AS overview_table
-      FROM CDB_UserTables()
-      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
+      _CDB_OverviewTableZ(table_name) AS z,
+      table_regclass AS overview_table
+      FROM _CDB_UserTablesInSchema(schema_name)
+      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), table_name)
       ORDER BY z;
   END
 $$ LANGUAGE PLPGSQL;
@@ -171,11 +193,13 @@ RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   SELECT
     base_table::regclass AS base_table,
-    _CDB_OverviewTableZ(cdb_usertables) AS z,
-    ('"' || _cdb_schema_name(base_table::regclass) || '"."' || cdb_usertables || '"')::regclass AS overview_table
+    _CDB_OverviewTableZ(table_name) AS z,
+    table_regclass AS overview_table
     FROM
-      CDB_UserTables(), unnest(tables) base_table
-    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), cdb_usertables)
+      _CDB_UserTablesInSchema(), unnest(tables) base_table
+    WHERE
+      schema_name = _cdb_schema_name(base_table)
+      AND _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL;
 
