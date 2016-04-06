@@ -142,9 +142,12 @@ AS $$
     schema_name TEXT;
     table_name TEXT;
   BEGIN
-    -- TODO: review implementation of CDB_UserTables an suitability for this
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
-    RETURN QUERY SELECT
+    -- TODO: replace use of CDB_UserTables by obtaining the user tables
+    --       in a specific schema
+    -- Meanwhile we'll use DISTINCT here to avoid picking multiple tables
+    -- from different schemas
+    RETURN QUERY SELECT DISTINCT
       reloid AS base_table,
       _CDB_OverviewTableZ(cdb_usertables) AS z,
       ('"' || schema_name|| '"."' ||cdb_usertables || '"')::regclass AS overview_table
