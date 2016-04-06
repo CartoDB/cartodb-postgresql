@@ -120,7 +120,7 @@ BEGIN
     FOR row IN
         SELECT * FROM CDB_Overviews(reloid)
     LOOP
-        EXECUTE Format('DROP TABLE %I.%I;', schema_name, row.overview_table);
+        EXECUTE Format('DROP TABLE %s;', row.overview_table);
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
     END LOOP;
 END;
