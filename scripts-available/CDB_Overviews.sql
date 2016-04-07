@@ -166,9 +166,9 @@ RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   DECLARE
     schema_name TEXT;
-    _table_name TEXT;
+    base_table_name TEXT;
   BEGIN
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, _table_name;
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, base_table_name;
     RETURN QUERY SELECT
       reloid AS base_table,
       _CDB_OverviewTableZ(table_name) AS z,
