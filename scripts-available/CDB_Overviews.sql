@@ -1,12 +1,9 @@
 -- Information about tables in a schema.
 -- If the schema name parameter is NULL, then tables from all schemas
 -- that may contain user tables are returned.
--- The optional second argument restricts the result to tables
--- of the specified access type.
--- Currently accepted permissions are: 'public', 'private' or 'all'.
 -- For each table, the regclass, schema name and table name are returned.
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_UserTablesInSchema(schema_name text DEFAULT NULL, perm text DEFAULT 'all')
+CREATE OR REPLACE FUNCTION _CDB_UserTablesInSchema(schema_name text DEFAULT NULL)
 RETURNS TABLE(table_regclass REGCLASS, schema_name TEXT, table_name TEXT)
 AS $$
   SELECT
@@ -19,11 +16,8 @@ AS $$
   AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
   AND CASE WHEN schema_name IS NULL
              THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
-           ELSE n.nspname = schema_name END
-  AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SELECT')
-           WHEN perm = 'private' THEN has_table_privilege(current_user, c.oid, 'SELECT') AND NOT has_table_privilege('publicuser', c.oid, 'SELECT')
-           WHEN perm = 'all' THEN has_table_privilege(current_user, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
-           ELSE false END;
+           ELSE n.nspname = schema_name
+           END;
 $$ LANGUAGE 'sql';
 
 -- Pattern that can be used to detect overview tables and Extract
