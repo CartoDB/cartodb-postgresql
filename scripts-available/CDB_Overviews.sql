@@ -411,16 +411,16 @@ AS $$
     ELSE
       num_samples := ceil(class_info.reltuples*fraction);
       EXECUTE Format('
-        CREATE TABLE %1$I AS SELECT * FROM %2$s
+        CREATE TABLE %4$I.%1$I AS SELECT * FROM %2$s
           WHERE ctid = ANY (
             ARRAY[
               (SELECT CDB_RandomTids(''%2$s'', %3$s))
             ]
           );
-      ', overview_rel, reloid, num_samples);
+      ', overview_rel, reloid, num_samples, schema_name);
     END IF;
 
-    RETURN overview_rel;
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
@@ -456,9 +456,12 @@ AS $$
 
       -- preserve the owner of the base table
       SELECT u.usename
-        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
-        WHERE c.relname = dataset::text
+        FROM pg_catalog.pg_class c
+          JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = dataset_name::text AND n.nspname = dataset_scheme
         INTO table_owner;
+
       EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
 
       -- preserve the table privileges
@@ -682,7 +685,7 @@ AS $$
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %3$I AS
+      CREATE TABLE %7$I.%3$I AS
          WITH clusters AS (
            SELECT
              %5$s
@@ -696,9 +699,9 @@ AS $$
           GROUP BY gx, gy
          )
          SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns);
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
 
-    RETURN overview_rel;
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
