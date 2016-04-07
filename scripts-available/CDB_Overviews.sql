@@ -620,6 +620,7 @@ AS $$
     gtypes TEXT[];
     schema_name TEXT;
     table_name TEXT;
+    point_geom TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
     IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
@@ -651,19 +652,17 @@ AS $$
       aggr_attributes := aggr_attributes || ', ';
     END IF;
 
+    point_geom = Format('ST_SetSRID(ST_MakePoint(gx*%1$s + %2$s, gy*%1$s + %2$s), 3857)', grid_m, grid_m/2);
+
     -- compute the resulting columns in the same order as in the base table
-    -- cartodb_id,
-    -- ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom,
-    -- ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator
-    -- %4$s
     WITH cols AS (
       SELECT
         CASE c
         WHEN 'cartodb_id' THEN 'cartodb_id'
         WHEN 'the_geom' THEN
-          'ST_Transform(ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857), 4326) AS the_geom'
+          Format('ST_Transform(%s, 4326) AS the_geom', point_geom)
         WHEN 'the_geom_webmercator' THEN
-           'ST_SetSRID(ST_MakePoint(sx/n, sy/n), 3857) AS the_geom_webmercator'
+           Format('%s AS the_geom_webmercator', point_geom)
         ELSE c
         END AS column
         FROM CDB_ColumnNames(reloid) c
@@ -684,8 +683,6 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             SUM(ST_X(f.the_geom_webmercator)) AS sx,
-             SUM(ST_Y(f.the_geom_webmercator)) AS sy,
              Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
              Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
              MIN(cartodb_id) AS cartodb_id
