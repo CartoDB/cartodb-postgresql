@@ -231,7 +231,7 @@ AS $$
         -- This is the typical ERROR: stats for "mytable" do not exist
         WHEN internal_error THEN
           -- Get stats and execute again
-          EXECUTE format('ANALYZE %1$I', reloid);
+          EXECUTE format('ANALYZE %1$s', reloid);
           EXECUTE ext_query INTO ext;
     END;
 
