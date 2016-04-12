@@ -510,7 +510,11 @@ BEGIN
 
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint' THEN
-    RETURN Format('AVG(%s)::' || column_type, qualified_column);
+    IF column_name = '_vovw_count' THEN
+      RETURN 'SUM(_vovw_count)';
+    ELSE
+      RETURN Format('AVG(%s)::' || column_type, qualified_column);
+    END IF;
   WHEN 'text' THEN
     -- TODO: we could define a new aggregate function that returns distinct
     -- separated values with a limit, adding ellipsis if more values existed
@@ -647,6 +651,10 @@ AS $$
     SELECT string_agg(s.column, ',') FROM (
       SELECT * FROM cols
     ) AS s INTO columns;
+
+    IF NOT columns LIKE '%_vovw_count%' THEN
+      columns := columns || ', n AS _vovw_count';
+    END IF;
 
     EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
