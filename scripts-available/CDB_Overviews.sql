@@ -226,6 +226,12 @@ AS $$
         WHEN internal_error THEN
           -- Get stats and execute again
           EXECUTE format('ANALYZE %1$s', reloid);
+
+          -- We check the geometry type in case the error is due to empty geometries
+          IF _CDB_GeometryTypes(reloid) IS NULL THEN
+            RETURN NULL;
+          END IF;
+
           EXECUTE ext_query INTO ext;
     END;
 
@@ -622,7 +628,7 @@ AS $$
     table_name TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
-    IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
       RETURN 'x';
@@ -737,6 +743,10 @@ DECLARE
 BEGIN
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
+
+  IF ref_z < 0 OR ref_z IS NULL THEN
+    RETURN NULL;
+  END IF;
 
   -- Determine overlay zoom levels
   -- TODO: should be handled by the refscale_strategy?
