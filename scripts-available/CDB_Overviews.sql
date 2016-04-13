@@ -221,7 +221,7 @@ AS $$
 
     BEGIN
       EXECUTE ext_query INTO ext;
-      EXCEPTION
+    EXCEPTION
         -- This is the typical ERROR: stats for "mytable" do not exist
         WHEN internal_error THEN
           -- Get stats and execute again
