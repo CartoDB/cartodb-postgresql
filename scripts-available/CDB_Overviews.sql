@@ -509,7 +509,7 @@ BEGIN
   column_type := CDB_ColumnType(reloid, column_name);
 
   CASE column_type
-  WHEN 'double precision', 'real', 'integer', 'bigint' THEN
+  WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
     IF column_name = '_vovw_count' THEN
       RETURN 'SUM(_vovw_count)';
     ELSE
