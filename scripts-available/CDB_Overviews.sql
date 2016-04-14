@@ -693,7 +693,7 @@ DECLARE
   tolerance_px FLOAT8;
 BEGIN
   -- Use the default tolerance
-  tolerance_px := 2.0;
+  tolerance_px := 1.0;
   RETURN CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
 END;
 $$ LANGUAGE PLPGSQL;
