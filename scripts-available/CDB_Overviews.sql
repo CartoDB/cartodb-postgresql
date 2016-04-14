@@ -601,7 +601,6 @@ AS $$
     IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
-      RETURN 'x';
     END IF;
 
     --TODO: check applicability: geometry type, minimum number of points...
@@ -610,7 +609,7 @@ AS $$
 
     -- Grid size in pixels at Z level overview_z
     IF grid_px IS NULL THEN
-      grid_px := 7.5;
+      grid_px := 1.0;
     END IF;
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
@@ -693,7 +692,7 @@ DECLARE
   tolerance_px FLOAT8;
 BEGIN
   -- Use the default tolerance
-  tolerance_px := 2.0;
+  tolerance_px := 1.0;
   RETURN CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
 END;
 $$ LANGUAGE PLPGSQL;
