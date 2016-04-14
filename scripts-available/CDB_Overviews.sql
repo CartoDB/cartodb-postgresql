@@ -510,8 +510,8 @@ BEGIN
 
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
-    IF column_name = '_vovw_count' THEN
-      RETURN 'SUM(_vovw_count)';
+    IF column_name = '_feature_count' THEN
+      RETURN 'SUM(_feature_count)';
     ELSE
       RETURN Format('AVG(%s)::' || column_type, qualified_column);
     END IF;
@@ -652,8 +652,8 @@ AS $$
       SELECT * FROM cols
     ) AS s INTO columns;
 
-    IF NOT columns LIKE '%_vovw_count%' THEN
-      columns := columns || ', n AS _vovw_count';
+    IF NOT columns LIKE '%_feature_count%' THEN
+      columns := columns || ', n AS _feature_count';
     END IF;
 
     EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
@@ -746,11 +746,11 @@ BEGIN
 
   IF overview_tables IS NOT NULL AND array_length(overview_tables, 1) > 0 THEN
     SELECT EXISTS (
-      SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_vovw_count'
+      SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
     ) INTO has_counter_column;
     IF NOT has_counter_column THEN
       EXECUTE Format('
-        ALTER TABLE %s ADD COLUMN _vovw_count integer DEFAULT 1;
+        ALTER TABLE %s ADD COLUMN _feature_count integer DEFAULT 1;
       ', reloid);
     END IF;
   END IF;
