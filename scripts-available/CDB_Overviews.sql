@@ -718,6 +718,7 @@ DECLARE
   overview_z integer;
   overview_tables REGCLASS[];
   overviews_step integer := 1;
+  has_counter_column boolean;
 BEGIN
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
@@ -742,6 +743,17 @@ BEGIN
     PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
   END LOOP;
+
+  IF overview_tables IS NOT NULL AND array_length(overview_tables, 1) > 0 THEN
+    SELECT EXISTS (
+      SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_vovw_count'
+    ) INTO has_counter_column;
+    IF NOT has_counter_column THEN
+      EXECUTE Format('
+        ALTER TABLE %s ADD COLUMN _vovw_count integer DEFAULT 1;
+      ', reloid);
+    END IF;
+  END IF;
 
   RETURN overview_tables;
 END;
