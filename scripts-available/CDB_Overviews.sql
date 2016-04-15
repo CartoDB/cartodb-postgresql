@@ -529,6 +529,9 @@ AS $$
 DECLARE
   column_type TEXT;
   qualified_column TEXT;
+  has_counter_column BOOLEAN;
+  feature_count TEXT;
+  total_feature_count TEXT;
 BEGIN
   IF table_alias <> '' THEN
     qualified_column := Format('%I.%I', table_alias, column_name);
@@ -538,12 +541,23 @@ BEGIN
 
   column_type := CDB_ColumnType(reloid, column_name);
 
+  SELECT EXISTS (
+    SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
+  ) INTO has_counter_column;
+  IF has_counter_column THEN
+    feature_count := '_feature_count';
+    total_feature_count := 'SUM(_feature_count)';
+  ELSE
+    feature_count := '1';
+    total_feature_count := 'count(*)';
+  END IF;
+
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
     IF column_name = '_feature_count' THEN
       RETURN 'SUM(_feature_count)';
     ELSE
-      RETURN Format('AVG(%s)::' || column_type, qualified_column);
+      RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
     END IF;
   WHEN 'text' THEN
     -- TODO: we could define a new aggregate function that returns distinct
