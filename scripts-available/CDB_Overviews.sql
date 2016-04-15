@@ -549,7 +549,6 @@ DECLARE
   has_counter_column BOOLEAN;
   feature_count TEXT;
   total_feature_count TEXT;
-  unlimited_text BOOLEAN;
 BEGIN
   IF table_alias <> '' THEN
     qualified_column := Format('%I.%I', table_alias, column_name);
@@ -578,8 +577,7 @@ BEGIN
       RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
     END IF;
   WHEN 'text', 'character varying', 'character' THEN
-    SELECT _cdb_unlimited_text_column(reloid, column_name) INTO unlimited_text;
-    IF unlimited_text THEN
+    IF _cdb_unlimited_text_column(reloid, column_name) THEN
       -- TODO: this should not be applied to columns containing largish text;
       -- it is intended only to short names/identifiers
       RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
