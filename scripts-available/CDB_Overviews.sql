@@ -1,4 +1,24 @@
--- security definer
+-- Information about tables in a schema.
+-- If the schema name parameter is NULL, then tables from all schemas
+-- that may contain user tables are returned.
+-- For each table, the regclass, schema name and table name are returned.
+-- Scope: private.
+CREATE OR REPLACE FUNCTION _CDB_UserTablesInSchema(schema_name text DEFAULT NULL)
+RETURNS TABLE(table_regclass REGCLASS, schema_name TEXT, table_name TEXT)
+AS $$
+  SELECT
+    c.oid::regclass AS table_regclass,
+    n.nspname::text AS schema_name,
+    c.relname::text AS table_relname
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relkind = 'r'
+  AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
+  AND CASE WHEN schema_name IS NULL
+             THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
+           ELSE n.nspname = schema_name
+           END;
+$$ LANGUAGE 'sql';
 
 -- Pattern that can be used to detect overview tables and Extract
 -- the intended zoom level from the table name.
@@ -120,7 +140,7 @@ BEGIN
     FOR row IN
         SELECT * FROM CDB_Overviews(reloid)
     LOOP
-        EXECUTE Format('DROP TABLE %I.%I;', schema_name, row.overview_table);
+        EXECUTE Format('DROP TABLE %s;', row.overview_table);
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
     END LOOP;
 END;
@@ -140,16 +160,15 @@ RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   DECLARE
     schema_name TEXT;
-    table_name TEXT;
+    base_table_name TEXT;
   BEGIN
-    -- TODO: review implementation of CDB_UserTables an suitability for this
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, base_table_name;
     RETURN QUERY SELECT
       reloid AS base_table,
-      _CDB_OverviewTableZ(cdb_usertables) AS z,
-      ('"' || schema_name|| '"."' ||cdb_usertables || '"')::regclass AS overview_table
-      FROM CDB_UserTables()
-      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), cdb_usertables)
+      _CDB_OverviewTableZ(table_name) AS z,
+      table_regclass AS overview_table
+      FROM _CDB_UserTablesInSchema(schema_name)
+      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), table_name)
       ORDER BY z;
   END
 $$ LANGUAGE PLPGSQL;
@@ -168,11 +187,13 @@ RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   SELECT
     base_table::regclass AS base_table,
-    _CDB_OverviewTableZ(cdb_usertables) AS z,
-    ('"' || _cdb_schema_name(base_table::regclass) || '"."' || cdb_usertables || '"')::regclass AS overview_table
+    _CDB_OverviewTableZ(table_name) AS z,
+    table_regclass AS overview_table
     FROM
-      CDB_UserTables(), unnest(tables) base_table
-    WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), cdb_usertables)
+      _CDB_UserTablesInSchema(), unnest(tables) base_table
+    WHERE
+      schema_name = _cdb_schema_name(base_table)
+      AND _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL;
 
@@ -200,11 +221,17 @@ AS $$
 
     BEGIN
       EXECUTE ext_query INTO ext;
-      EXCEPTION
+    EXCEPTION
         -- This is the typical ERROR: stats for "mytable" do not exist
         WHEN internal_error THEN
           -- Get stats and execute again
-          EXECUTE format('ANALYZE %1$I', reloid);
+          EXECUTE format('ANALYZE %1$s', reloid);
+
+          -- We check the geometry type in case the error is due to empty geometries
+          IF _CDB_GeometryTypes(reloid) IS NULL THEN
+            RETURN NULL;
+          END IF;
+
           EXECUTE ext_query INTO ext;
     END;
 
@@ -370,7 +397,7 @@ AS $$
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name.overview_rel);
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
     -- Estimate number of rows
     SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
@@ -384,16 +411,16 @@ AS $$
     ELSE
       num_samples := ceil(class_info.reltuples*fraction);
       EXECUTE Format('
-        CREATE TABLE %1$I AS SELECT * FROM %2$s
+        CREATE TABLE %4$I.%1$I AS SELECT * FROM %2$s
           WHERE ctid = ANY (
             ARRAY[
               (SELECT CDB_RandomTids(''%2$s'', %3$s))
             ]
           );
-      ', overview_rel, reloid, num_samples);
+      ', overview_rel, reloid, num_samples, schema_name);
     END IF;
 
-    RETURN overview_rel;
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
@@ -429,9 +456,12 @@ AS $$
 
       -- preserve the owner of the base table
       SELECT u.usename
-        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
-        WHERE c.relname = dataset::text
+        FROM pg_catalog.pg_class c
+          JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = dataset_name::text AND n.nspname = dataset_scheme
         INTO table_owner;
+
       EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
 
       -- preserve the table privileges
@@ -598,7 +628,7 @@ AS $$
     table_name TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
-    IF array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
     END IF;
@@ -654,7 +684,7 @@ AS $$
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %3$I AS
+      CREATE TABLE %7$I.%3$I AS
          WITH clusters AS (
            SELECT
              %5$s
@@ -668,9 +698,9 @@ AS $$
           GROUP BY gx, gy
          )
          SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns);
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
 
-    RETURN overview_rel;
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
@@ -712,6 +742,10 @@ DECLARE
 BEGIN
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
+
+  IF ref_z < 0 OR ref_z IS NULL THEN
+    RETURN NULL;
+  END IF;
 
   -- Determine overlay zoom levels
   -- TODO: should be handled by the refscale_strategy?
