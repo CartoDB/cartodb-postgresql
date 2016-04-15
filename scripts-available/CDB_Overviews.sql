@@ -515,6 +515,23 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Check if a column of a table is of an unlimited-length text type
+CREATE OR REPLACE FUNCTION _cdb_unlimited_text_column(reloid REGCLASS, col_name TEXT)
+RETURNS BOOLEAN
+AS $$
+  SELECT EXISTS (
+    SELECT  *
+      FROM information_schema.columns c, pg_class _tn, pg_namespace _sn
+      WHERE table_name = _tn.relname
+        AND table_schema = _sn.nspname
+        AND c.column_name = col_name
+        AND _tn.oid = reloid
+        AND _sn.oid = _tn.relnamespace
+        AND character_maximum_length IS NULL
+        AND c.data_type IN ('text', 'character varying', 'character')
+  );
+$$ LANGUAGE SQL STABLE;
+
 -- SQL Aggregation expression for a datase attribute
 -- Scope: private.
 -- Parameters
@@ -559,16 +576,14 @@ BEGIN
     ELSE
       RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
     END IF;
-  WHEN 'text' THEN
-    -- TODO: we could define a new aggregate function that returns distinct
-    -- separated values with a limit, adding ellipsis if more values existed
-    -- e.g. with '/' as separator and a limit of three:
-    --     'A', 'B', 'A', 'C', 'D' => 'A/B/C/...'
-    -- Other ideas: if value is unique then use it, otherwise use something
-    -- like '*' or '(varies)' or '(multiple values)', or NULL
-    -- Using 'string_agg(' || qualified_column || ',''/'')'
-    -- here causes
-    RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+  WHEN 'text', 'character varying', 'character' THEN
+    IF _cdb_unlimited_text_column(reloid, column_name) THEN
+      -- TODO: this should not be applied to columns containing largish text;
+      -- it is intended only to short names/identifiers
+      RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
+    ELSE
+      RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+    END IF;
   WHEN 'boolean' THEN
     RETURN 'CASE count(*) WHEN 1 THEN BOOL_AND(' || qualified_column || ') ELSE NULL END::' || column_type;
   ELSE
