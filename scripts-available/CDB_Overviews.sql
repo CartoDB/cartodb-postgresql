@@ -539,8 +539,12 @@ BEGIN
   column_type := CDB_ColumnType(reloid, column_name);
 
   CASE column_type
-  WHEN 'double precision', 'real', 'integer', 'bigint' THEN
-    RETURN Format('AVG(%s)::' || column_type, qualified_column);
+  WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
+    IF column_name = '_feature_count' THEN
+      RETURN 'SUM(_feature_count)';
+    ELSE
+      RETURN Format('AVG(%s)::' || column_type, qualified_column);
+    END IF;
   WHEN 'text' THEN
     -- TODO: we could define a new aggregate function that returns distinct
     -- separated values with a limit, adding ellipsis if more values existed
@@ -677,6 +681,10 @@ AS $$
       SELECT * FROM cols
     ) AS s INTO columns;
 
+    IF NOT columns LIKE '%_feature_count%' THEN
+      columns := columns || ', n AS _feature_count';
+    END IF;
+
     EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
     -- Now we cluster the data using a grid of size grid_m
@@ -739,6 +747,7 @@ DECLARE
   overview_z integer;
   overview_tables REGCLASS[];
   overviews_step integer := 1;
+  has_counter_column boolean;
 BEGIN
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
@@ -767,6 +776,17 @@ BEGIN
     PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
   END LOOP;
+
+  IF overview_tables IS NOT NULL AND array_length(overview_tables, 1) > 0 THEN
+    SELECT EXISTS (
+      SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
+    ) INTO has_counter_column;
+    IF NOT has_counter_column THEN
+      EXECUTE Format('
+        ALTER TABLE %s ADD COLUMN _feature_count integer DEFAULT 1;
+      ', reloid);
+    END IF;
+  END IF;
 
   RETURN overview_tables;
 END;
