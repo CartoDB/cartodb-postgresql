@@ -1,3 +1,18 @@
+0.15.1 (2016-04-15)
+
+* Fix problems with org users in overviews functions
+  [#224](https://github.com/CartoDB/cartodb-postgresql/pull/224)
+* Add `_feature_count` to overviews
+  [#227](https://github.com/CartoDB/cartodb-postgresql/pull/227)
+* Change point clustering behaviour of overviews
+  [#228](https://github.com/CartoDB/cartodb-postgresql/pull/228)
+* Change default tolerance of overviews
+  [#230](https://github.com/CartoDB/cartodb-postgresql/pull/230)
+* Fix problem with aggregated numerical fields in overviews
+  [#233](https://github.com/CartoDB/cartodb-postgresql/pull/233)
+* Enhance aggregation of text fields in overviews
+  [#234]https://github.com/CartoDB/cartodb-postgresql/pull/234
+
 0.15.0 (2016-04-05)
 
 * New function CDB_CreateOverviewsWithToleranceInPixels that adds tolerance parameter for overview creation
