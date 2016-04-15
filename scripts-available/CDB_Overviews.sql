@@ -582,7 +582,7 @@ BEGIN
     IF unlimited_text THEN
       -- TODO: this should not be applied to columns containing largish text;
       -- it is intended only to short names/identifiers
-      RETURN  'CASE WHEN count(*) = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
+      RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
     ELSE
       RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
     END IF;
