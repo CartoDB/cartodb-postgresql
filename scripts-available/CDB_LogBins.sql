@@ -53,7 +53,7 @@ BEGIN
         END LOOP;
     ELSE
         IF poi = 'center' THEN
-            poi := 0.5 * (max_val - min_val);
+            poi := min_val + 0.5 * (max_val - min_val);
         ELSEIF poi='' THEN
             tmp_val := breaks-1;
             WITH a AS(
