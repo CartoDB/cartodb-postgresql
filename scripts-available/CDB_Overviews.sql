@@ -520,15 +520,14 @@ CREATE OR REPLACE FUNCTION _cdb_unlimited_text_column(reloid REGCLASS, col_name 
 RETURNS BOOLEAN
 AS $$
   SELECT EXISTS (
-    SELECT  *
-      FROM information_schema.columns c, pg_class _tn, pg_namespace _sn
-      WHERE table_name = _tn.relname
-        AND table_schema = _sn.nspname
-        AND c.column_name = col_name
-        AND _tn.oid = reloid
-        AND _sn.oid = _tn.relnamespace
-        AND character_maximum_length IS NULL
-        AND c.data_type IN ('text', 'character varying', 'character')
+    SELECT a.attname
+    FROM pg_class c
+         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+         LEFT JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
+    WHERE c.oid = reloid
+      AND a.attname = col_name
+      AND pg_catalog.format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character')
+      AND pg_catalog.format_type(a.atttypid, NULL) = pg_catalog.format_type(a.atttypid, a.atttypmod)
   );
 $$ LANGUAGE SQL STABLE;
 
