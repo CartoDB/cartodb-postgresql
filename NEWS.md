@@ -1,5 +1,10 @@
-0.15.1 (2016-04-15)
+0.16.0 (2016-04-15)
+-------------------
+* Adds table for storing camshaft analysis nodes
+  [#237](https://github.com/CartoDB/cartodb-postgresql/pull/237)
 
+0.15.1 (2016-04-15)
+-------------------
 * Fix problems with org users in overviews functions
   [#224](https://github.com/CartoDB/cartodb-postgresql/pull/224)
 * Add `_feature_count` to overviews
@@ -14,7 +19,7 @@
   [#234]https://github.com/CartoDB/cartodb-postgresql/pull/234
 
 0.15.0 (2016-04-05)
-
+-------------------
 * New function CDB_CreateOverviewsWithToleranceInPixels that adds tolerance parameter for overview creation
   [#221](https://github.com/CartoDB/cartodb-postgresql/pull/221)
 * New default value for the overviews tolerance in pixels is 2 (used to be 7.5) (also in #221)
@@ -23,7 +28,7 @@
   [#220](https://github.com/CartoDB/cartodb-postgresql/pull/220)
 
 0.14.4 (2016-03-29)
-
+-------------------
 * Fix creating overviews for tables with boolean columns
   [#214](https://github.com/CartoDB/cartodb-postgresql/pull/214)
 * Fix tests for some systems [#215](https://github.com/CartoDB/cartodb-postgresql/pull/215)
