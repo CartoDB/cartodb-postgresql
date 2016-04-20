@@ -9,7 +9,7 @@
 --
 --
 
-CREATE OR REPLACE FUNCTION CDB_EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION CDB_EqualIntervalBins ( in_array NUMERIC[]) RETURNS NUMERIC[] as $$
 DECLARE
     reply numeric[];
 BEGIN
