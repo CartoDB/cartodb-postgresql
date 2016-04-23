@@ -652,7 +652,9 @@ AS $$
     overview_rel TEXT;
     reduction FLOAT8;
     base_name TEXT;
+    pixel_m FLOAT8;
     grid_m FLOAT8;
+    offset_m FLOAT8;
     aggr_attributes TEXT;
     attributes TEXT;
     columns TEXT;
@@ -678,8 +680,10 @@ AS $$
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
-    -- compute grid cell size using the overview_z dimension...
-    SELECT CDB_XYZ_Resolution(overview_z)*grid_px INTO grid_m;
+    -- pixel_m: size of a pixel in webmercator units (meters)
+    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    -- grid size in meters
+    grid_m = grid_px * pixel_m;
 
     attributes := _CDB_Aggregable_Attributes_Expression(reloid);
     aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
@@ -690,7 +694,12 @@ AS $$
       aggr_attributes := aggr_attributes || ', ';
     END IF;
 
-    point_geom = Format('ST_SetSRID(ST_MakePoint(gx*%1$s + %2$s, gy*%1$s + %2$s), 3857)', grid_m, grid_m/2);
+    -- points are displaced to it's cell's center
+    offset_m := grid_m/2;
+    -- then corrected to be at the nearest pixel's center (by up to half a pixel)
+    offset_m := offset_m + pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(gx*%1$s + %2$s, gy*%1$s + %2$s), 3857)', grid_m, offset_m);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (
