@@ -1,3 +1,15 @@
+0.16.1 (2016-04-25)
+-------------------
+
+* Optimize column information functions performance
+  [#238](https://github.com/CartoDB/cartodb-postgresql/pull/238)
+
+* Adjust overview points to pixel CDB_EqualIntervalBins
+  [#242](https://github.com/CartoDB/cartodb-postgresql/pull/242)
+
+* Compute webmercator resolution using full numeric precision
+  [#243](https://github.com/CartoDB/cartodb-postgresql/pull/243)
+
 0.16.0 (2016-04-15)
 -------------------
 * Adds table for storing camshaft analysis nodes
