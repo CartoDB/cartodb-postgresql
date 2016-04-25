@@ -522,12 +522,12 @@ AS $$
   SELECT EXISTS (
     SELECT a.attname
     FROM pg_class c
-         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
-         LEFT JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
+         LEFT JOIN pg_attribute a ON a.attrelid = c.oid
+         LEFT JOIN pg_type t ON t.oid = a.atttypid
     WHERE c.oid = reloid
       AND a.attname = col_name
-      AND pg_catalog.format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character')
-      AND pg_catalog.format_type(a.atttypid, NULL) = pg_catalog.format_type(a.atttypid, a.atttypmod)
+      AND format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character')
+      AND format_type(a.atttypid, NULL) = format_type(a.atttypid, a.atttypmod)
   );
 $$ LANGUAGE SQL STABLE;
 

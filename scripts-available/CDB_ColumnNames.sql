@@ -5,9 +5,9 @@ AS $$
   SELECT
     a.attname::information_schema.sql_identifier column_name
     FROM pg_class c
-         LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+         LEFT JOIN pg_attribute a ON a.attrelid = c.oid
     WHERE c.oid = $1::oid
-    AND a.attstattarget = -1
+    AND a.attstattarget < 0 -- exclude system columns
    ORDER BY a.attnum;
 $$ LANGUAGE SQL;
 
