@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION CDB_XYZ_Resolution(z INTEGER)
 RETURNS FLOAT8
 AS $$
   -- circumference divided by 256 is z0 resolution, then divide by 2^z
-  SELECT 40075017.0 / 256 / power(2, z);
+  SELECT 6378137.0*2.0*pi() / 256.0 / power(2.0, z);
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 -- }
 
