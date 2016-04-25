@@ -655,6 +655,10 @@ AS $$
     pixel_m FLOAT8;
     grid_m FLOAT8;
     offset_m FLOAT8;
+    offset_x TEXT;
+    offset_y TEXT;
+    cell_x TEXT;
+    cell_y TEXT;
     aggr_attributes TEXT;
     attributes TEXT;
     columns TEXT;
@@ -694,12 +698,15 @@ AS $$
       aggr_attributes := aggr_attributes || ', ';
     END IF;
 
-    -- points are displaced to it's cell's center
-    offset_m := grid_m/2;
-    -- then corrected to be at the nearest pixel's center (by up to half a pixel)
-    offset_m := offset_m + pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+    -- Center of each cell:
+    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
+    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
 
-    point_geom := Format('ST_SetSRID(ST_MakePoint(gx*%1$s + %2$s, gy*%1$s + %2$s), 3857)', grid_m, offset_m);
+    -- Displacement to the nearest pixel center:
+    offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+    offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (
