@@ -2,15 +2,13 @@
 CREATE OR REPLACE FUNCTION CDB_ColumnNames(REGCLASS)
 RETURNS SETOF information_schema.sql_identifier
 AS $$
-
-    SELECT c.column_name
-      FROM information_schema.columns c, pg_class _tn, pg_namespace _sn
-      WHERE table_name = _tn.relname
-        AND table_schema = _sn.nspname
-        AND _tn.oid = $1::oid
-        AND _sn.oid = _tn.relnamespace
-      ORDER BY ordinal_position;
-
+  SELECT
+    a.attname::information_schema.sql_identifier column_name
+    FROM pg_class c
+         LEFT JOIN pg_attribute a ON a.attrelid = c.oid
+    WHERE c.oid = $1::oid
+    AND a.attstattarget < 0 -- exclude system columns
+   ORDER BY a.attnum;
 $$ LANGUAGE SQL;
 
 -- This is to migrate from pre-0.2.0 version
