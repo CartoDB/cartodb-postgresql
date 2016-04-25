@@ -703,8 +703,14 @@ AS $$
     cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
 
     -- Displacement to the nearest pixel center:
-    offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
-    offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
+      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+      offset_x := Format('%s', offset_m);
+      offset_y := Format('%s', offset_m);
+    ELSE
+      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    END IF;
 
     point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
