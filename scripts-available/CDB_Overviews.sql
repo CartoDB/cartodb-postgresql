@@ -531,6 +531,44 @@ AS $$
   );
 $$ LANGUAGE SQL STABLE;
 
+CREATE OR REPLACE FUNCTION _cdb_categorical_column(reloid REGCLASS, col_name TEXT)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+    schema_name TEXT;
+    table_name TEXT;
+    categorical BOOLEAN;
+BEGIN
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT n_distinct IS NOT NULL AND n_distinct > 0 AND n_distinct <= 20
+    FROM pg_stats
+    WHERE pg_stats.schemaname = schema_name
+      AND pg_stats.tablename = table_name
+      AND pg_stats.attname = col_name
+    INTO categorical;
+    RETURN categorical;
+END;
+$$ LANGUAGE PLPGSQL STABLE;
+
+CREATE OR REPLACE FUNCTION _cdb_mode_of_array(anyarray)
+  RETURNS anyelement AS
+$$
+    SELECT a
+    FROM unnest($1) a
+    GROUP BY 1
+    ORDER BY COUNT(1) DESC, 1
+    LIMIT 1;
+$$
+LANGUAGE SQL IMMUTABLE;
+
+-- Tell Postgres how to use our aggregate
+CREATE AGGREGATE _cdb_mode(anyelement) (
+  SFUNC=array_append,
+  STYPE=anyarray,
+  FINALFUNC=_cdb_mode_of_array,
+  INITCOND='{}'
+);
+
 -- SQL Aggregation expression for a datase attribute
 -- Scope: private.
 -- Parameters
@@ -573,15 +611,23 @@ BEGIN
     IF column_name = '_feature_count' THEN
       RETURN 'SUM(_feature_count)';
     ELSE
-      RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
+      IF column_type = 'integer' AND _cdb_categorical_column(reloid, column_name) THEN
+        RETURN Format('CDB_Math_Mode(%s)::', qualified_column) || column_type;
+      ELSE
+        RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
+      END IF;
     END IF;
   WHEN 'text', 'character varying', 'character' THEN
-    IF _cdb_unlimited_text_column(reloid, column_name) THEN
-      -- TODO: this should not be applied to columns containing largish text;
-      -- it is intended only to short names/identifiers
-      RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
+    IF _cdb_categorical_column(reloid, column_name) THEN
+      RETURN Format('_cdb_mode(%s)::', qualified_column) || column_type;
     ELSE
-      RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+      IF _cdb_unlimited_text_column(reloid, column_name) THEN
+        -- TODO: this should not be applied to columns containing largish text;
+        -- it is intended only to short names/identifiers
+        RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
+      ELSE
+        RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+      END IF;
     END IF;
   WHEN 'boolean' THEN
     RETURN 'CASE count(*) WHEN 1 THEN BOOL_AND(' || qualified_column || ') ELSE NULL END::' || column_type;
