@@ -88,6 +88,26 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTable(overview_table REGCLASS)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    table_name TEXT;
+    schema_name TEXT;
+    base_name TEXT;
+    base_table REGCLASS;
+  BEGIN
+    SELECT * FROM _cdb_split_table_name(overview_table) INTO schema_name, table_name;
+    base_name := CDB_OverviewBaseTableName(table_name);
+    IF base_name != table_name THEN
+      base_table := Format('%I.%I', schema_name, base_name)::regclass;
+    ELSE
+      base_table := overview_table;
+    END IF;
+    RETURN base_table;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 -- Schema and relation names of a table given its reloid
 -- Scope: private.
 -- Parameters
@@ -586,6 +606,7 @@ DECLARE
   has_counter_column BOOLEAN;
   feature_count TEXT;
   total_feature_count TEXT;
+  base_table REGCLASS;
 BEGIN
   IF table_alias <> '' THEN
     qualified_column := Format('%I.%I', table_alias, column_name);
@@ -606,22 +627,24 @@ BEGIN
     total_feature_count := 'count(*)';
   END IF;
 
+  base_table := _CDB_OverviewBaseTable(reloid);
+
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
     IF column_name = '_feature_count' THEN
       RETURN 'SUM(_feature_count)';
     ELSE
-      IF column_type = 'integer' AND _cdb_categorical_column(reloid, column_name) THEN
+      IF column_type = 'integer' AND _cdb_categorical_column(base_table, column_name) THEN
         RETURN Format('CDB_Math_Mode(%s)::', qualified_column) || column_type;
       ELSE
         RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
       END IF;
     END IF;
   WHEN 'text', 'character varying', 'character' THEN
-    IF _cdb_categorical_column(reloid, column_name) THEN
+    IF _cdb_categorical_column(base_table, column_name) THEN
       RETURN Format('_cdb_mode(%s)::', qualified_column) || column_type;
     ELSE
-      IF _cdb_unlimited_text_column(reloid, column_name) THEN
+      IF _cdb_unlimited_text_column(base_table, column_name) THEN
         -- TODO: this should not be applied to columns containing largish text;
         -- it is intended only to short names/identifiers
         RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
@@ -778,7 +801,7 @@ AS $$
 
     IF NOT columns LIKE '%_feature_count%' THEN
       columns := columns || ', n AS _feature_count';
-    END IF;
+    END IF
 
     EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
