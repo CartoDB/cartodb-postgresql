@@ -98,7 +98,7 @@ AS $$
     base_table REGCLASS;
   BEGIN
     SELECT * FROM _cdb_split_table_name(overview_table) INTO schema_name, table_name;
-    base_name := CDB_OverviewBaseTableName(table_name);
+    base_name := _CDB_OverviewBaseTableName(table_name);
     IF base_name != table_name THEN
       base_table := Format('%I.%I', schema_name, base_name)::regclass;
     ELSE
@@ -801,7 +801,7 @@ AS $$
 
     IF NOT columns LIKE '%_feature_count%' THEN
       columns := columns || ', n AS _feature_count';
-    END IF
+    END IF;
 
     EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
 
