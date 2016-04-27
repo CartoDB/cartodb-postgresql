@@ -1,3 +1,9 @@
+0.16.2 (2016-04-27)
+-------------------
+
+* Use the mode to aggregate category columns in overviews
+  [#246](https://github.com/CartoDB/cartodb-postgresql/pull/246)
+
 0.16.1 (2016-04-25)
 -------------------
 
@@ -9,6 +15,7 @@
 
 * Compute webmercator resolution using full numeric precision
   [#243](https://github.com/CartoDB/cartodb-postgresql/pull/243)
+
 
 0.16.0 (2016-04-15)
 -------------------
