@@ -557,10 +557,20 @@ AS $$
 DECLARE
     schema_name TEXT;
     table_name TEXT;
+    available BOOLEAN;
     categorical BOOLEAN;
 BEGIN
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
-    SELECT n_distinct IS NOT NULL AND n_distinct > 0 AND n_distinct <= 20
+    SELECT n_distinct IS NOT NULL
+    FROM pg_stats
+    WHERE pg_stats.schemaname = schema_name
+      AND pg_stats.tablename = table_name
+      AND pg_stats.attname = col_name
+    INTO available;
+    IF available IS NULL OR NOT available THEN
+      EXECUTE Format('ANALYZE %s;', reloid);
+    END IF;
+    SELECT n_distinct > 0 AND n_distinct <= 20
     FROM pg_stats
     WHERE pg_stats.schemaname = schema_name
       AND pg_stats.tablename = table_name
@@ -568,7 +578,7 @@ BEGIN
     INTO categorical;
     RETURN categorical;
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION _cdb_mode_of_array(anyarray)
   RETURNS anyelement AS
