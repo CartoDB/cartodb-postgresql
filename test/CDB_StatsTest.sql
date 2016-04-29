@@ -2,9 +2,32 @@
 -- http://mathworld.wolfram.com/UniformDistribution.html
 set client_min_messages to ERROR;
 
-WITH dist AS (
-  SELECT generate_series(0,10000)::numeric / 10000.0 i
-)
+WITH dist AS (SELECT generate_series(0,10000)::smallint / 10000.0 i)
+SELECT
+  abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
+  abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
+FROM dist;
+WITH dist AS (SELECT generate_series(0,10000)::int / 10000.0 i)
+SELECT
+  abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
+  abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
+FROM dist;
+WITH dist AS (SELECT generate_series(0,10000)::bigint / 10000.0 i)
+SELECT
+  abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
+  abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
+FROM dist;
+WITH dist AS (SELECT generate_series(0,10000)::real / 10000.0 i)
+SELECT
+  abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
+  abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
+FROM dist;
+WITH dist AS (SELECT generate_series(0,10000)::double precision / 10000.0 i)
+SELECT
+  abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
+  abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
+FROM dist;
+WITH dist AS (SELECT generate_series(0,10000)::numeric / 10000.0 i)
 SELECT
   abs(CDB_Kurtosis(array_agg(i)) + 1.2) < 1e-6 AS kurtosis,
   abs(CDB_Skewness(array_agg(i))) < 1e-6 AS skewness
