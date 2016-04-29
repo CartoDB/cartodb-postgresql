@@ -5,43 +5,27 @@
 --
 -- Returns: statistical quantity chosen
 -- 
--- References: http://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
---
+-- References:
+-- http://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
+-- http://mathworld.wolfram.com/CentralMoment.html
+-- http://researcher.watson.ibm.com/researcher/files/us-ytian/numerical_stability_icde2012.pdf
 
--- Calculate kurtosis
+-- Calculate excess kurtosis
+-- This uses the standard two-pass method, calculating the average and then on
+-- the second pass calculating using the 4th central moment and 2nd central moment
+-- (stddev^2).
+-- This is more accurate than a single-pass calculating from raw moments, which
+-- accumlates floating point error badly.
+-- References: http://mathworld.wolfram.com/Kurtosis.html
 CREATE OR REPLACE FUNCTION CDB_Kurtosis ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
-DECLARE
-    a numeric;
-    c numeric;
-    s numeric;
-    k numeric;
-BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev_pop(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
-
-    EXECUTE 'SELECT sum(power($1 - e, 4)) / ( $2 * power($3, 4)) - 3
-             FROM (SELECT unnest($4) e ) x'
-    INTO k
-    USING a, c, s, in_array;
-
-    RETURN k;
-END;
-$$ language plpgsql IMMUTABLE;
+WITH pass1 AS (SELECT avg(x) a FROM (SELECT unnest(in_array) x) q) -- first pass calculate average
+SELECT avg(power(x-a, 4))/power(stddev_pop(x),4) - 3 FROM pass1, (SELECT unnest(in_array) x) q;
+$$ LANGUAGE SQL IMMUTABLE;
 
 -- Calculate skewness
+-- This uses the same technique as CDB_Kurtosis, except with the 3rd central moment
+-- References: http://mathworld.wolfram.com/Skewness.html
 CREATE OR REPLACE FUNCTION CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
-DECLARE
-    a numeric;
-    c numeric;
-    s numeric;
-    sk numeric;
-BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev_pop(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
-
-    EXECUTE 'SELECT sum(power($1 - e, 3)) / ( $2 * power($3, 3))
-             FROM (SELECT unnest($4) e ) x'
-    INTO sk
-    USING a, c, s, in_array;
-
-    RETURN sk;
-END;
-$$ language plpgsql IMMUTABLE;
+WITH pass1 AS (SELECT avg(x) a FROM (SELECT unnest(in_array) x) q) -- first pass calculate average
+SELECT avg(power(x-a, 3))/power(stddev_pop(x),3) FROM pass1, (SELECT unnest(in_array) x) q;
+$$ LANGUAGE SQL IMMUTABLE;
