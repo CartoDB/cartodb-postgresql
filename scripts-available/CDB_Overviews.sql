@@ -591,7 +591,7 @@ $$
 $$
 LANGUAGE SQL IMMUTABLE;
 
--- Tell Postgres how to use our aggregate
+DROP AGGREGATE IF EXISTS _cdb_mode(anyelement);
 CREATE AGGREGATE _cdb_mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
