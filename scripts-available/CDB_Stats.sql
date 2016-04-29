@@ -16,7 +16,7 @@ DECLARE
     s numeric;
     k numeric;
 BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
+    SELECT AVG(e), COUNT(e)::numeric, stddev_pop(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
 
     EXECUTE 'SELECT sum(power($1 - e, 4)) / ( $2 * power($3, 4)) - 3
              FROM (SELECT unnest($4) e ) x'
@@ -35,7 +35,7 @@ DECLARE
     s numeric;
     sk numeric;
 BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
+    SELECT AVG(e), COUNT(e)::numeric, stddev_pop(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
 
     EXECUTE 'SELECT sum(power($1 - e, 3)) / ( $2 * power($3, 3))
              FROM (SELECT unnest($4) e ) x'
