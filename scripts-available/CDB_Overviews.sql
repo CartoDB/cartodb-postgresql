@@ -235,7 +235,7 @@ AS $$
       FROM pg_class c JOIN pg_namespace n on n.oid = c.relnamespace WHERE c.oid = reloid::oid;
 
     ext_query = format(
-      'SELECT ST_EstimatedExtent(''%1$I'', ''%2$I'', ''%3$I'');',
+      'SELECT ST_EstimatedExtent(''%1$s'', ''%2$s'', ''%3$s'');',
       table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
     );
 
