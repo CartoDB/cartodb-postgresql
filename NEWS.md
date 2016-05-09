@@ -1,3 +1,10 @@
+0.16.3 (2016-05-09)
+-------------------
+
+* Fix overview creation problem for organization users
+  with names that require quoting:
+  [#253](https://github.com/CartoDB/cartodb-postgresql/pull/253)
+
 0.16.2 (2016-04-27)
 -------------------
 
