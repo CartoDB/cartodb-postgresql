@@ -88,6 +88,26 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTable(overview_table REGCLASS)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    table_name TEXT;
+    schema_name TEXT;
+    base_name TEXT;
+    base_table REGCLASS;
+  BEGIN
+    SELECT * FROM _cdb_split_table_name(overview_table) INTO schema_name, table_name;
+    base_name := _CDB_OverviewBaseTableName(table_name);
+    IF base_name != table_name THEN
+      base_table := Format('%I.%I', schema_name, base_name)::regclass;
+    ELSE
+      base_table := overview_table;
+    END IF;
+    RETURN base_table;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 -- Schema and relation names of a table given its reloid
 -- Scope: private.
 -- Parameters
@@ -215,7 +235,7 @@ AS $$
       FROM pg_class c JOIN pg_namespace n on n.oid = c.relnamespace WHERE c.oid = reloid::oid;
 
     ext_query = format(
-      'SELECT ST_EstimatedExtent(''%1$I'', ''%2$I'', ''%3$I'');',
+      'SELECT ST_EstimatedExtent(''%1$s'', ''%2$s'', ''%3$s'');',
       table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
     );
 
@@ -515,6 +535,70 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL STABLE;
 
+-- Check if a column of a table is of an unlimited-length text type
+CREATE OR REPLACE FUNCTION _cdb_unlimited_text_column(reloid REGCLASS, col_name TEXT)
+RETURNS BOOLEAN
+AS $$
+  SELECT EXISTS (
+    SELECT a.attname
+    FROM pg_class c
+         LEFT JOIN pg_attribute a ON a.attrelid = c.oid
+         LEFT JOIN pg_type t ON t.oid = a.atttypid
+    WHERE c.oid = reloid
+      AND a.attname = col_name
+      AND format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character')
+      AND format_type(a.atttypid, NULL) = format_type(a.atttypid, a.atttypmod)
+  );
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION _cdb_categorical_column(reloid REGCLASS, col_name TEXT)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+    schema_name TEXT;
+    table_name TEXT;
+    available BOOLEAN;
+    categorical BOOLEAN;
+BEGIN
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT n_distinct IS NOT NULL
+    FROM pg_stats
+    WHERE pg_stats.schemaname = schema_name
+      AND pg_stats.tablename = table_name
+      AND pg_stats.attname = col_name
+    INTO available;
+    IF available IS NULL OR NOT available THEN
+      EXECUTE Format('ANALYZE %s;', reloid);
+    END IF;
+    SELECT n_distinct > 0 AND n_distinct <= 20
+    FROM pg_stats
+    WHERE pg_stats.schemaname = schema_name
+      AND pg_stats.tablename = table_name
+      AND pg_stats.attname = col_name
+    INTO categorical;
+    RETURN categorical;
+END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE FUNCTION _cdb_mode_of_array(anyarray)
+  RETURNS anyelement AS
+$$
+    SELECT a
+    FROM unnest($1) a
+    GROUP BY 1
+    ORDER BY COUNT(1) DESC, 1
+    LIMIT 1;
+$$
+LANGUAGE SQL IMMUTABLE;
+
+DROP AGGREGATE IF EXISTS _cdb_mode(anyelement);
+CREATE AGGREGATE _cdb_mode(anyelement) (
+  SFUNC=array_append,
+  STYPE=anyarray,
+  FINALFUNC=_cdb_mode_of_array,
+  INITCOND='{}'
+);
+
 -- SQL Aggregation expression for a datase attribute
 -- Scope: private.
 -- Parameters
@@ -532,6 +616,7 @@ DECLARE
   has_counter_column BOOLEAN;
   feature_count TEXT;
   total_feature_count TEXT;
+  base_table REGCLASS;
 BEGIN
   IF table_alias <> '' THEN
     qualified_column := Format('%I.%I', table_alias, column_name);
@@ -552,23 +637,31 @@ BEGIN
     total_feature_count := 'count(*)';
   END IF;
 
+  base_table := _CDB_OverviewBaseTable(reloid);
+
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
     IF column_name = '_feature_count' THEN
       RETURN 'SUM(_feature_count)';
     ELSE
-      RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
+      IF column_type = 'integer' AND _cdb_categorical_column(base_table, column_name) THEN
+        RETURN Format('CDB_Math_Mode(%s)::', qualified_column) || column_type;
+      ELSE
+        RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
+      END IF;
     END IF;
-  WHEN 'text' THEN
-    -- TODO: we could define a new aggregate function that returns distinct
-    -- separated values with a limit, adding ellipsis if more values existed
-    -- e.g. with '/' as separator and a limit of three:
-    --     'A', 'B', 'A', 'C', 'D' => 'A/B/C/...'
-    -- Other ideas: if value is unique then use it, otherwise use something
-    -- like '*' or '(varies)' or '(multiple values)', or NULL
-    -- Using 'string_agg(' || qualified_column || ',''/'')'
-    -- here causes
-    RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+  WHEN 'text', 'character varying', 'character' THEN
+    IF _cdb_categorical_column(base_table, column_name) THEN
+      RETURN Format('_cdb_mode(%s)::', qualified_column) || column_type;
+    ELSE
+      IF _cdb_unlimited_text_column(base_table, column_name) THEN
+        -- TODO: this should not be applied to columns containing largish text;
+        -- it is intended only to short names/identifiers
+        RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
+      ELSE
+        RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
+      END IF;
+    END IF;
   WHEN 'boolean' THEN
     RETURN 'CASE count(*) WHEN 1 THEN BOOL_AND(' || qualified_column || ') ELSE NULL END::' || column_type;
   ELSE
@@ -637,7 +730,13 @@ AS $$
     overview_rel TEXT;
     reduction FLOAT8;
     base_name TEXT;
+    pixel_m FLOAT8;
     grid_m FLOAT8;
+    offset_m FLOAT8;
+    offset_x TEXT;
+    offset_y TEXT;
+    cell_x TEXT;
+    cell_y TEXT;
     aggr_attributes TEXT;
     attributes TEXT;
     columns TEXT;
@@ -663,8 +762,10 @@ AS $$
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
-    -- compute grid cell size using the overview_z dimension...
-    SELECT CDB_XYZ_Resolution(overview_z)*grid_px INTO grid_m;
+    -- pixel_m: size of a pixel in webmercator units (meters)
+    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    -- grid size in meters
+    grid_m = grid_px * pixel_m;
 
     attributes := _CDB_Aggregable_Attributes_Expression(reloid);
     aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
@@ -675,7 +776,21 @@ AS $$
       aggr_attributes := aggr_attributes || ', ';
     END IF;
 
-    point_geom = Format('ST_SetSRID(ST_MakePoint(gx*%1$s + %2$s, gy*%1$s + %2$s), 3857)', grid_m, grid_m/2);
+    -- Center of each cell:
+    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
+    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
+
+    -- Displacement to the nearest pixel center:
+    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
+      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+      offset_x := Format('%s', offset_m);
+      offset_y := Format('%s', offset_m);
+    ELSE
+      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    END IF;
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (

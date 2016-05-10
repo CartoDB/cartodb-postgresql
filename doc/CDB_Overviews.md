@@ -2,18 +2,25 @@ Overviews are tables that represent a *reduced* version of a dataset intended
 for efficient rendering at certain zoom levels while preserving the
 general visual appearance of the complete dataset.
 
-The *reduction* consists in a fewer number of records
+The *reduction* consists in havig a fewer number of records
 (while each overview record may represent an aggregation of multiple records)
 and/or simplified record geometries.
 
-Overviews are created through the `CDB_CreateOverviews`.
+Overviews are created through the `CDB_CreateOverviews` function.
 The statement timeout may need to be adjusted before using this function,
 as overview creation for large tables is a time-consuming operation.
 
 The `CDB_Overviews` function can be used determine what overview tables
 exist for a given dataset table and which zoom levels correspond to it.
 
-The `CDB_DropOverviews` remove a dataset's existing overviews.
+The `CDB_DropOverviews` function removes a dataset's existing overviews.
+
+To know if overview tables exist for some base table, and to obtain
+a list of which overview tables are approrpiate for which zoom levels,
+the `CDB_Overviews` functions can be used.
+
+The zoom level we're referring here to are those used
+by the tiler: http://wiki.openstreetmap.org/wiki/Zoom_levels
 
 ### CDB_CreateOverviews
 
@@ -51,9 +58,13 @@ CDB_CreateOverviews(table_name, ref_z_strategy, reduction_strategy)
 #### Tolerance / level of detail
 
 The level of detail to be representable by each overview layer can
-be specified as a tolerance in pixels (if different from the default of 2 pixels)
+be specified as a tolerance in pixels (if different from the default of 1 pixel)
 with the function `CDB_CreateOverviewsWithToleranceInPixels`
 which has as a second additional argument the desired tolerance.
+
+This tolerance defines the maximum deviation in pixels of the overviews
+geometries with respect to the original geometries when overview tables
+are used for their intendend zoom level.
 
 ### CDB_Overviews
 
@@ -79,7 +90,7 @@ SELECT CDB_Overviews(CDB_QueryTablesText('SELECT * FROM table1, table2'));
 The result of `CDB_Overviews` has three columns:
 
 | base_table | z | overview_table |
-|------------+---+----------------|
+| ---------- | - | -------------- |
 | table1     | 1 | table1_ov1     |
 | table1     | 2 | table1_ov2     |
 | table1     | 4 | table1_ov4     |

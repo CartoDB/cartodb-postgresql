@@ -12,8 +12,8 @@ SELECT 1114
 {_vovw_2_base_bare_t,_vovw_1_base_bare_t,_vovw_0_base_bare_t}
 126
 number,int_number,name,start
-SUM(number*1)/count(*)::double precision AS number,SUM(int_number*1)/count(*)::integer AS int_number,CASE count(*) WHEN 1 THEN MIN(name) ELSE NULL END::text AS name,CASE count(*) WHEN 1 THEN MIN(start) ELSE NULL END::date AS start
-SUM(tab.number*1)/count(*)::double precision AS number,SUM(tab.int_number*1)/count(*)::integer AS int_number,CASE count(*) WHEN 1 THEN MIN(tab.name) ELSE NULL END::text AS name,CASE count(*) WHEN 1 THEN MIN(tab.start) ELSE NULL END::date AS start
+SUM(number*1)/count(*)::double precision AS number,SUM(int_number*1)/count(*)::integer AS int_number,CASE WHEN count(distinct name) = 1 THEN MIN(name) WHEN count(*) < 5 THEN string_agg(distinct name,' / ') ELSE '*' END::text AS name,CASE count(*) WHEN 1 THEN MIN(start) ELSE NULL END::date AS start
+SUM(tab.number*1)/count(*)::double precision AS number,SUM(tab.int_number*1)/count(*)::integer AS int_number,CASE WHEN count(distinct tab.name) = 1 THEN MIN(tab.name) WHEN count(*) < 5 THEN string_agg(distinct tab.name,' / ') ELSE '*' END::text AS name,CASE count(*) WHEN 1 THEN MIN(tab.start) ELSE NULL END::date AS start
 {_vovw_2_base_t,_vovw_1_base_t,_vovw_0_base_t}
 126
 
