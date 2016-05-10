@@ -1,3 +1,112 @@
+CREATE OR REPLACE FUNCTION CDB_QueryRowsEstimate(query text)
+RETURNS INTEGER
+AS $$
+DECLARE
+  exp XML;
+  rows_text TEXT;
+  rec RECORD;
+BEGIN
+  FOR rec IN SELECT CDB_QueryStatements(query) q LOOP
+
+    IF NOT ( rec.q ilike 'select%' or rec.q ilike 'with%' ) THEN
+        --RAISE WARNING 'Skipping %', rec.q;
+        CONTINUE;
+    END IF;
+
+    BEGIN
+      EXECUTE 'EXPLAIN (FORMAT XML) ' || rec.q INTO STRICT exp;
+    EXCEPTION WHEN others THEN
+      RAISE WARNING 'CDB_QueryTables cannot explain query: % (%: %)', rec.q, SQLSTATE, SQLERRM;
+      RAISE EXCEPTION '%', SQLERRM;
+      CONTINUE;
+    END;
+
+    rows_text := (xpath('//x:Plan-Rows/text()[1]', exp, ARRAY[ARRAY['x', 'http://www.postgresql.org/2009/explain']]))[1];
+    RAISE NOTICE 'result %', rows_text;
+
+    RETURN rows_text::integer;
+  END LOOP;
+END
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+
+
+-- Overviews metadata for specific query
+-- estimate rows in the result with EXPLAIN, then
+-- based on the fraction of rows the query represents
+-- compute a Z-shift value to shift the Z target levels
+-- of the overview queries
+-- queryes that reference multiple tables having overviews are not supported
+CREATE OR REPLACE FUNCTION CDB_QueryOverviews(query text)
+RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
+AS $$
+  DECLARE
+    table_rows INTEGER;
+    query_rows INTEGER;
+    fraction FLOAT8;
+    zshift INTEGER;
+  BEGIN
+
+    -- Estimate number of row of the table:
+    SELECT reltuples FROM pg_class INTO table_rows
+      WHERE oid IN (SELECT ovs.base_table FROM CDB_Overviews(CDB_QueryTablesText(query)) AS ovs LIMIT 1);
+
+    IF table_rows IS NULL THEN
+      RETURN;
+    END IF;
+
+    -- Estimate number of rows in query result:
+    query_rows := CDB_QueryRowsEstimate(query);
+
+    IF table_rows > 0 THEN
+      fraction := query_rows::float8 / table_rows::float8;
+    ELSE
+      fraction = 1.0;
+    END IF;
+
+    IF fraction > 0.0 THEN
+      -- zshift := floor(log(fraction) / log(4.0));
+      zshift := floor(log(fraction) / log(2.0));
+    ELSE
+      -- zshift = -1000;
+      RETURN;
+    END IF;
+
+    RETURN QUERY SELECT * FROM _CDB_ShiftedOverviews(ARRAY(SELECT (ovs.base_table, ovs.z, ovs.overview_table)::_cdb_overviews_metadata FROM CDB_Overviews(CDB_QueryTablesText(query)) AS ovs), zshift);
+  END
+$$ LANGUAGE PLPGSQL;
+
+
+
+create type _cdb_overviews_metadata as (base_table REGCLASS, z integer, overview_table REGCLASS);
+
+-- input: overviews metadata (single table)
+CREATE OR REPLACE FUNCTION _CDB_ShiftedOverviews(overviews _cdb_overviews_metadata[], zshift INTEGER)
+RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
+AS $$
+  DECLARE
+    tmp _cdb_overviews_metadata[];
+    min_z INTEGER;
+    min_record _cdb_overviews_metadata;
+  BEGIN
+    SELECT min(ovs.z+zshift) FROM unnest(overviews) as ovs WHERE ovs.z+zshift >= 0 INTO min_z;
+    SELECT ovs.base_table, ovs.z, ovs.overview_table
+      FROM unnest(overviews) as ovs
+      INTO min_record;
+    RETURN QUERY
+      SELECT  min_record.base_table, generate_series(0, min_z - 1) AS z, min_record.overview_table
+      UNION
+      (SELECT ovs.base_table, ovs.z+zshift AS z, ovs.overview_table
+        FROM unnest(overviews) as ovs
+        WHERE ovs.z+zshift >= 0
+        ORDER BY ovs.z)
+      ORDER BY z;
+
+  END
+$$ LANGUAGE PLPGSQL;
+
+-- select _CDB_ShiftedOverviews(ARRAY(SELECT (base_table, z, overview_table)::_cdb_overviews_metadata FROM cdb_overviews('cities_subset'::regclass)), 1);
+
+
 -- Information about tables in a schema.
 -- If the schema name parameter is NULL, then tables from all schemas
 -- that may contain user tables are returned.
