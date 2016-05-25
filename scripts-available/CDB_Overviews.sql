@@ -1,7 +1,16 @@
+-- Maximum zoom level for which overviews may be created
 CREATE OR REPLACE FUNCTION _CDB_MaxOverviewLevel()
 RETURNS INTEGER
 AS $$
   BEGIN
+    -- Zoom level will be limited so that both tile coordinates
+    -- and gridding coordinates within a tile up to 1px
+    -- (i.e. tile coordinates / 256)
+    -- can be stored in a 32-bit signed integer.
+    -- We have 31 bits por positive numbers
+    -- For zoom level Z coordinates range from 0 to 2^Z-1, so they
+    -- need Z bits, and need 8 bits more to address pixels within a tile
+    -- (gridding), so we'll limit Z to a maximum of 31 - 8
     RETURN 23;
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
