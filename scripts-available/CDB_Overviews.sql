@@ -15,6 +15,15 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+-- Maximum zoom level usable with integer coordinates
+CREATE OR REPLACE FUNCTION _CDB_MaxZoomLevel()
+RETURNS INTEGER
+AS $$
+  BEGIN
+    RETURN 31;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 -- Information about tables in a schema.
 -- If the schema name parameter is NULL, then tables from all schemas
 -- that may contain user tables are returned.
@@ -314,7 +323,11 @@ AS $$
     WITH RECURSIVE t(x, y, z, e) AS (
       WITH ext AS (SELECT _cdb_estimated_extent(%6$s) as g),
       base AS (
-        SELECT (-floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)))::integer z
+        SELECT
+          least(
+           -floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)),
+           _CDB_MaxOverviewLevel()+1
+          )::integer z
         FROM ext
       ),
       lim AS (
@@ -326,7 +339,7 @@ AS $$
         FROM ext, base
       ),
       seed AS (
-        SELECT xt, yt, least(base.z, _CDB_MaxOverviewLevel()), (
+        SELECT xt, yt, base.z, (
           SELECT count(*) FROM %1$s
             WHERE the_geom_webmercator && CDB_XYZ_Extent(xt, yt, base.z)
         ) e
@@ -339,7 +352,7 @@ AS $$
           WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, t.z+1)
       )
       FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
-      WHERE t.e > %2$s AND t.z < (base.z + %3$s) AND t.z < _CDB_MaxOverviewLevel()
+      WHERE t.e > %2$s AND t.z < least(base.z + %3$s, _CDB_MaxZoomLevel())
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
   ', reloid::text, min_features, nz, n, c, reloid::oid)
@@ -380,7 +393,7 @@ AS $$
     -- find minimum z so that fd*ta(z) <= lim
     -- compute a rough 'feature density' value
     SELECT CDB_XYZ_Resolution(-8) INTO c;
-    RETURN least(_CDB_MaxOverviewLevel(), ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
+    RETURN least(_CDB_MaxOverviewLevel()+1, ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
   END;
 $$ LANGUAGE PLPGSQL STABLE;
 
