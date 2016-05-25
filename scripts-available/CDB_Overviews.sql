@@ -326,7 +326,7 @@ AS $$
         FROM ext, base
       ),
       seed AS (
-        SELECT xt, yt, base.z, (
+        SELECT xt, yt, least(base.z, _CDB_MaxOverviewLevel()), (
           SELECT count(*) FROM %1$s
             WHERE the_geom_webmercator && CDB_XYZ_Extent(xt, yt, base.z)
         ) e
@@ -339,7 +339,7 @@ AS $$
           WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, t.z+1)
       )
       FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
-      WHERE t.e > %2$s AND t.z < (base.z + %3$s) AND t.z <= _CDB_MaxOverviewLevel()
+      WHERE t.e > %2$s AND t.z < (base.z + %3$s) AND t.z < _CDB_MaxOverviewLevel()
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
   ', reloid::text, min_features, nz, n, c, reloid::oid)
