@@ -349,7 +349,7 @@ AS $$
       UNION ALL
       SELECT x*2 + xx, y*2 + yy, t.z+1, (
         SELECT count(*) FROM %1$s
-          WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, t.z+1)
+          WHERE the_geom_webmercator && CDB_XYZ_Extent(t.x*2 + c.xx, t.y*2 + c.yy, t.z+1)
       )
       FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
       WHERE t.e > %2$s AND t.z < least(base.z + %3$s, _CDB_MaxZoomLevel())
