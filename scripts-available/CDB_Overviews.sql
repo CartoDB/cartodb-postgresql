@@ -11,7 +11,7 @@ AS $$
     -- For zoom level Z coordinates range from 0 to 2^Z-1, so they
     -- need Z bits, and need 8 bits more to address pixels within a tile
     -- (gridding), so we'll limit Z to a maximum of 31 - 8
-    RETURN 23;
+    RETURN 29;
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
@@ -343,7 +343,7 @@ AS $$
           SELECT count(*) FROM %1$s
             WHERE the_geom_webmercator && CDB_XYZ_Extent(xt, yt, base.z)
         ) e
-        FROM base, lim, generate_series(lim.x0, lim.x1) xt, generate_series(lim.y0, lim.y1) yt
+        FROM base, lim, generate_series(lim.x0, lim.x1)::bigint xt, generate_series(lim.y0, lim.y1)::bigint yt
       )
       SELECT * from seed
       UNION ALL
@@ -855,8 +855,8 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(ST_X(f.the_geom_webmercator)/%2$s)::bigint AS gx,
+             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::bigint AS gy,
              MIN(cartodb_id) AS cartodb_id
           FROM %1$s f
           GROUP BY gx, gy
