@@ -1,3 +1,29 @@
+-- Maximum zoom level for which overviews may be created
+CREATE OR REPLACE FUNCTION _CDB_MaxOverviewLevel()
+RETURNS INTEGER
+AS $$
+  BEGIN
+    -- Zoom level will be limited so that both tile coordinates
+    -- and gridding coordinates within a tile up to 1px
+    -- (i.e. tile coordinates / 256)
+    -- can be stored in a 32-bit signed integer.
+    -- We have 31 bits por positive numbers
+    -- For zoom level Z coordinates range from 0 to 2^Z-1, so they
+    -- need Z bits, and need 8 bits more to address pixels within a tile
+    -- (gridding), so we'll limit Z to a maximum of 31 - 8
+    RETURN 23;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+-- Maximum zoom level usable with integer coordinates
+CREATE OR REPLACE FUNCTION _CDB_MaxZoomLevel()
+RETURNS INTEGER
+AS $$
+  BEGIN
+    RETURN 31;
+  END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 -- Information about tables in a schema.
 -- If the schema name parameter is NULL, then tables from all schemas
 -- that may contain user tables are returned.
@@ -297,7 +323,11 @@ AS $$
     WITH RECURSIVE t(x, y, z, e) AS (
       WITH ext AS (SELECT _cdb_estimated_extent(%6$s) as g),
       base AS (
-        SELECT (-floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)))::integer z
+        SELECT
+          least(
+           -floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)),
+           _CDB_MaxOverviewLevel()+1
+          )::integer z
         FROM ext
       ),
       lim AS (
@@ -319,10 +349,10 @@ AS $$
       UNION ALL
       SELECT x*2 + xx, y*2 + yy, t.z+1, (
         SELECT count(*) FROM %1$s
-          WHERE the_geom_webmercator && CDB_XYZ_Extent(x*2 + xx, y*2 + yy, t.z+1)
+          WHERE the_geom_webmercator && CDB_XYZ_Extent(t.x*2 + c.xx, t.y*2 + c.yy, t.z+1)
       )
       FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
-      WHERE t.e > %2$s AND t.z < (base.z + %3$s)
+      WHERE t.e > %2$s AND t.z < least(base.z + %3$s, _CDB_MaxZoomLevel())
     )
     SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
   ', reloid::text, min_features, nz, n, c, reloid::oid)
@@ -363,7 +393,7 @@ AS $$
     -- find minimum z so that fd*ta(z) <= lim
     -- compute a rough 'feature density' value
     SELECT CDB_XYZ_Resolution(-8) INTO c;
-    RETURN ceil(log(2.0, (c*c*fd/lim)::numeric)/2);
+    RETURN least(_CDB_MaxOverviewLevel()+1, ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
   END;
 $$ LANGUAGE PLPGSQL STABLE;
 
