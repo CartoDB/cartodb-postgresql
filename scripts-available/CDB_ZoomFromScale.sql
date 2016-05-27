@@ -17,11 +17,20 @@ RETURNS int
 LANGUAGE SQL
 IMMUTABLE
 AS $$
-SELECT
-  CASE
-    -- Don't bother if the scale is larger than ~zoom level 0
-    WHEN scaleDenominator > 600000000 OR scaleDenominator = 0 THEN NULL
-    WHEN scaleDenominator = 0 THEN _CDB_MaxSupportedZoom()
-    ELSE CAST (LEAST(ROUND(LOG(2, 559082264.028/scaleDenominator)), _CDB_MaxSupportedZoom()) AS INTEGER)
-  END;
+  SELECT
+    CASE
+      WHEN scaleDenominator > 600000000 THEN
+        -- Scale is smaller than zoom level 0
+        NULL
+      WHEN scaleDenominator = 0 THEN
+        -- Actual zoom level would be infinite
+        _CDB_MaxSupportedZoom()
+      ELSE
+        CAST (
+          LEAST(
+            ROUND(LOG(2, 559082264.028/scaleDenominator)),
+            _CDB_MaxSupportedZoom()
+          )
+        AS INTEGER)
+    END;
 $$;
