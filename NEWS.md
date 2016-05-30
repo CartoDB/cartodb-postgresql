@@ -1,3 +1,17 @@
+0.16.4 (2016-05-27)
+-------------------
+
+* Change CDB_ZoomFromScale() to use a formula and raise
+  maximum overview level from 23 to 29.
+  [#259](https://github.com/CartoDB/cartodb-postgresql/pull/259)
+
+* Fix bug in overview creating causing it to fail when `x` or
+  `y` columns exist with non-integer type. Prevent also
+  potential integer overflows limiting maximum overview level
+  to 23.
+  [#258](https://github.com/CartoDB/cartodb-postgresql/pull/258)
+
+
 0.16.3 (2016-05-09)
 -------------------
 
