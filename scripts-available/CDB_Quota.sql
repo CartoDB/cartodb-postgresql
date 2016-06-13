@@ -35,9 +35,11 @@ BEGIN
   table_cat AS (
     SELECT
       table_name,
-      EXISTS(select * from raster_tables where o_table_name = table_name)
-      OR table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*'
-      AS is_overview,
+      (
+        EXISTS(select * from raster_tables where o_table_name = table_name)
+        OR
+        table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*'
+      ) AS is_overview,
       EXISTS(SELECT * FROM raster_tables WHERE r_table_name = table_name) AS is_raster
     FROM user_tables
   ),
