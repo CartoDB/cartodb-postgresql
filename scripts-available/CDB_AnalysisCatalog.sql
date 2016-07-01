@@ -1,6 +1,7 @@
 -- Table to register analysis nodes from https://github.com/cartodb/camshaft
 CREATE TABLE IF NOT EXISTS
 cartodb.cdb_analysis_catalog (
+    -- useful for multi account deployments
     username text,
     -- md5 hex hash
     node_id char(40) CONSTRAINT cdb_analysis_catalog_pkey PRIMARY KEY,
@@ -22,7 +23,9 @@ cartodb.cdb_analysis_catalog (
     hits NUMERIC DEFAULT 0,
     -- should register what was the last node using current node
     last_used_from char(40),
+    -- last job modifying the node
     last_modified_by uuid,
+    -- store error message for failures
     error_message text
 );
 
