@@ -29,6 +29,13 @@ cartodb.cdb_analysis_catalog (
     last_error_message text
 );
 
+-- This can only be called from an SQL script executed by CREATE EXTENSION
+DO LANGUAGE 'plpgsql' $$
+BEGIN
+    PERFORM pg_catalog.pg_extension_config_dump('cartodb.cdb_analysis_catalog', '');
+END
+$$;
+
 DO $$
     BEGIN
         BEGIN
