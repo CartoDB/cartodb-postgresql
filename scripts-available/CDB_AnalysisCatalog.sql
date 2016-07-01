@@ -26,7 +26,7 @@ cartodb.cdb_analysis_catalog (
     -- last job modifying the node
     last_modified_by uuid,
     -- store error message for failures
-    error_message text
+    last_error_message text
 );
 
 DO LANGUAGE 'plpgsql' $$
@@ -52,9 +52,9 @@ $$;
 DO LANGUAGE 'plpgsql' $$
     BEGIN
         BEGIN
-            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN error_message text;
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_error_message text;
         EXCEPTION
-            WHEN duplicate_column THEN RAISE NOTICE 'column <error_message> already exists in <cartodb.cdb_analysis_catalog>.';
+            WHEN duplicate_column THEN RAISE NOTICE 'column <last_error_message> already exists in <cartodb.cdb_analysis_catalog>.';
         END;
     END;
 $$;
