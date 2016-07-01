@@ -34,8 +34,7 @@ DO $$
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username text;
         EXCEPTION
-            WHEN duplicate_column THEN RAISE NOTICE 'column <username> already exists in <cartodb.cdb_analysis_catalog>.';
-        END;
+            WHEN duplicate_column THEN END;
     END;
 $$;
 
@@ -44,8 +43,7 @@ DO $$
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_modified_by uuid;
         EXCEPTION
-            WHEN duplicate_column THEN RAISE NOTICE 'column <last_modified_by> already exists in <cartodb.cdb_analysis_catalog>.';
-        END;
+            WHEN duplicate_column THEN END;
     END;
 $$;
 
@@ -54,7 +52,6 @@ DO $$
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_error_message text;
         EXCEPTION
-            WHEN duplicate_column THEN RAISE NOTICE 'column <last_error_message> already exists in <cartodb.cdb_analysis_catalog>.';
-        END;
+            WHEN duplicate_column THEN END;
     END;
 $$;
