@@ -29,7 +29,7 @@ cartodb.cdb_analysis_catalog (
     last_error_message text
 );
 
-DO LANGUAGE 'plpgsql' $$
+DO $$
     BEGIN
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username text;
@@ -39,7 +39,7 @@ DO LANGUAGE 'plpgsql' $$
     END;
 $$;
 
-DO LANGUAGE 'plpgsql' $$
+DO $$
     BEGIN
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_modified_by uuid;
@@ -49,7 +49,7 @@ DO LANGUAGE 'plpgsql' $$
     END;
 $$;
 
-DO LANGUAGE 'plpgsql' $$
+DO $$
     BEGIN
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_error_message text;
