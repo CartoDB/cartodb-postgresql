@@ -1,6 +1,7 @@
 -- Table to register analysis nodes from https://github.com/cartodb/camshaft
 CREATE TABLE IF NOT EXISTS
 cartodb.cdb_analysis_catalog (
+    username text,
     -- md5 hex hash
     node_id char(40) CONSTRAINT cdb_analysis_catalog_pkey PRIMARY KEY,
     -- being json allows to do queries like analysis_def->>'type' = 'buffer'
@@ -20,5 +21,37 @@ cartodb.cdb_analysis_catalog (
     -- should register the number of times the node was used
     hits NUMERIC DEFAULT 0,
     -- should register what was the last node using current node
-    last_used_from char(40)
+    last_used_from char(40),
+    last_modified_by uuid,
+    error_message text
 );
+
+DO LANGUAGE 'plpgsql' $$
+    BEGIN
+        BEGIN
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username text;
+        EXCEPTION
+            WHEN duplicate_column THEN RAISE NOTICE 'column <username> already exists in <cartodb.cdb_analysis_catalog>.';
+        END;
+    END;
+$$;
+
+DO LANGUAGE 'plpgsql' $$
+    BEGIN
+        BEGIN
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_modified_by uuid;
+        EXCEPTION
+            WHEN duplicate_column THEN RAISE NOTICE 'column <last_modified_by> already exists in <cartodb.cdb_analysis_catalog>.';
+        END;
+    END;
+$$;
+
+DO LANGUAGE 'plpgsql' $$
+    BEGIN
+        BEGIN
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN error_message text;
+        EXCEPTION
+            WHEN duplicate_column THEN RAISE NOTICE 'column <error_message> already exists in <cartodb.cdb_analysis_catalog>.';
+        END;
+    END;
+$$;
