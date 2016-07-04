@@ -1,3 +1,11 @@
+0.17.0 (2016-07-04)
+-------------------
+
+* Add export config for cdb_analysis_catalog table #268.
+* Add some extra fields to cdb_analysis_catalog table. Track user, error_message for failures, and last entity modifying the node #267.
+* Exclude overviews from user data size #262.
+
+
 0.16.4 (2016-05-27)
 -------------------
 
