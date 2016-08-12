@@ -66,7 +66,7 @@ $$;
 DO $$
     BEGIN
         BEGIN
-            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN cache_table text;
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN cache_tables regclass[] NOT NULL DEFAULT '{}';
         EXCEPTION
             WHEN duplicate_column THEN END;
     END;
