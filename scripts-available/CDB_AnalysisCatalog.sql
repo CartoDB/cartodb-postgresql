@@ -26,7 +26,9 @@ cartodb.cdb_analysis_catalog (
     -- last job modifying the node
     last_modified_by uuid,
     -- store error message for failures
-    last_error_message text
+    last_error_message text,
+    -- cached tables involved in the analysis
+    cache_tables regclass[] NOT NULL DEFAULT '{}'
 );
 
 -- This can only be called from an SQL script executed by CREATE EXTENSION
@@ -58,6 +60,15 @@ DO $$
     BEGIN
         BEGIN
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN last_error_message text;
+        EXCEPTION
+            WHEN duplicate_column THEN END;
+    END;
+$$;
+
+DO $$
+    BEGIN
+        BEGIN
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN cache_tables regclass[] NOT NULL DEFAULT '{}';
         EXCEPTION
             WHEN duplicate_column THEN END;
     END;
