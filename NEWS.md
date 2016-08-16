@@ -1,3 +1,9 @@
+0.17.1 (2016-08-16)
+-------------------
+
+* Add cache_tables column to cdb_analysis_catalog table #274.
+
+
 0.17.0 (2016-07-04)
 -------------------
 
