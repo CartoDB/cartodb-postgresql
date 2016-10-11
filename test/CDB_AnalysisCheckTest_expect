@@ -12,3 +12,7 @@ CREATE TABLE
 
 INSERT 0 5
 ERROR:  Analysis cache space limits exceeded
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP FUNCTION
