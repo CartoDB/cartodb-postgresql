@@ -26,19 +26,14 @@ BEGIN
       WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
   ),
   user_tables AS (
-    SELECT table_name FROM information_schema.tables
-      WHERE table_catalog = current_database() AND table_schema = schema_name
-        AND table_name != 'spatial_ref_sys'
-        AND table_name != 'cdb_tablemetadata'
-        AND table_type = 'BASE TABLE'
+    SELECT table_name FROM _CDB_NonAnalysisTablesInSchema(schema_name)
   ),
   table_cat AS (
     SELECT
       table_name,
       (
         EXISTS(select * from raster_tables where o_table_name = table_name)
-        OR
-        table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*'
+        OR table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*'
       ) AS is_overview,
       EXISTS(SELECT * FROM raster_tables WHERE r_table_name = table_name) AS is_raster
     FROM user_tables
