@@ -41,7 +41,7 @@ AS $$
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r'
-  AND c.relname NOT IN ('cdb_tablemetadata', 'spatial_ref_sys')
+  AND c.relname NOT IN ('cdb_tablemetadata', 'cdb_analysis_catalog', 'cdb_conf', 'spatial_ref_sys')
   AND CASE WHEN schema_name IS NULL
              THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
            ELSE n.nspname = schema_name
