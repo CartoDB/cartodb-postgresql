@@ -687,6 +687,7 @@ AS $$
              Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
              MIN(cartodb_id) AS cartodb_id
           FROM %1$s f
+          WHERE f.the_geom_webmercator IS NOT NULL
           GROUP BY gx, gy
          )
          SELECT %6$s FROM clusters
