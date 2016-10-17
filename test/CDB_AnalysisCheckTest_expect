@@ -1,0 +1,18 @@
+SET
+1000000
+0
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+(analysis_2f13a3dbd7_41bd92976fc6dd97072afe4ee450054f4c0715d5,public,analysis_2f13a3dbd7_41bd92976fc6dd97072afe4ee450054f4c0715d5)
+(analysis_2f13a3dbd7_f00cee44e9e6152b450bde3a92eb9ae0d099da94,public,analysis_2f13a3dbd7_f00cee44e9e6152b450bde3a92eb9ae0d099da94)
+0
+
+1
+
+INSERT 0 5
+ERROR:  Analysis cache space limits exceeded
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP FUNCTION
