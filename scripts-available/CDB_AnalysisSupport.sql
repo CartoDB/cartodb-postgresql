@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION _CDB_AnalysisDataSize(schema_name TEXT DEFAULT NULL)
 RETURNS bigint AS
 $$
 DECLARE
-  total_size INT8;
+  total_size bigint;
 BEGIN
   WITH analysis_tables AS (
     SELECT t.schema_name, t.table_name FROM _CDB_AnalysisTablesInSchema(schema_name) t
