@@ -1,3 +1,8 @@
+0.18.1 (2016-10-19)
+-------------------
+
+* Increase analysis limit factor to 2 [#284](https://github.com/CartoDB/cartodb-postgresql/pull/284)
+
 0.18.0 (2016-10-17)
 -------------------
 
