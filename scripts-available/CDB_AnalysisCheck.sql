@@ -21,7 +21,7 @@ BEGIN
   factor := _CDB_GetConfAnalysisQuotaFactor();
   -- With a default value
   IF factor IS NULL THEN
-    factor := 0.2;
+    factor := 2;
   END IF;
   RETURN factor;
 END;
