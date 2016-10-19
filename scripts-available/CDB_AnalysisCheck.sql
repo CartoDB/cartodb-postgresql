@@ -39,7 +39,7 @@ $$
 DECLARE
   schema_name TEXT;
   user_name TEXT;
-  qmax int8;
+  nominal_quota int8;
   cache_size float8;
 BEGIN
   -- We rely on the search_path to determine the user's schema and
@@ -53,8 +53,8 @@ BEGIN
   -- At the moment we're not using the provided table_name.
 
   SELECT current_schema() INTO schema_name;
-  EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO qmax;
-  IF qmax*_CDB_AnalysisQuotaFactor() < _CDB_AnalysisDataSize(schema_name) THEN
+  EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO nominal_quota;
+  IF nominal_quota*_CDB_AnalysisQuotaFactor() < _CDB_AnalysisDataSize(schema_name) THEN
     -- The limit is defined by a factor applied to the total space quota for the user
     RAISE EXCEPTION 'Analysis cache space limits exceeded';
   END IF;
