@@ -1,3 +1,9 @@
+0.18.2 (2016-10-20)
+-------------------
+
+* Fix: cleanup inconsistent position of `username` column in analysis catalog after upgrades
+  [#285](https://github.com/cartodb/cartodb-postgresql/pull/285)
+
 0.18.1 (2016-10-19)
 -------------------
 
