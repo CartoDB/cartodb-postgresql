@@ -1,8 +1,6 @@
 -- Table to register analysis nodes from https://github.com/cartodb/camshaft
 CREATE TABLE IF NOT EXISTS
 cartodb.cdb_analysis_catalog (
-    -- useful for multi account deployments
-    username text,
     -- md5 hex hash
     node_id char(40) CONSTRAINT cdb_analysis_catalog_pkey PRIMARY KEY,
     -- being json allows to do queries like analysis_def->>'type' = 'buffer'
@@ -28,7 +26,9 @@ cartodb.cdb_analysis_catalog (
     -- store error message for failures
     last_error_message text,
     -- cached tables involved in the analysis
-    cache_tables regclass[] NOT NULL DEFAULT '{}'
+    cache_tables regclass[] NOT NULL DEFAULT '{}',
+    -- useful for multi account deployments
+    username text
 );
 
 -- This can only be called from an SQL script executed by CREATE EXTENSION
@@ -38,14 +38,9 @@ BEGIN
 END
 $$;
 
-DO $$
-    BEGIN
-        BEGIN
-            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username text;
-        EXCEPTION
-            WHEN duplicate_column THEN END;
-    END;
-$$;
+-- Migrations to add new columns from old versions.
+-- IMPORTANT: Those columns will be added in order of creation. To be consistent
+-- in column order, ensure that new columns are added at the end and in the same order.
 
 DO $$
     BEGIN
@@ -71,5 +66,30 @@ DO $$
             ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN cache_tables regclass[] NOT NULL DEFAULT '{}';
         EXCEPTION
             WHEN duplicate_column THEN END;
+    END;
+$$;
+
+DO $$
+    BEGIN
+        BEGIN
+            ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username text;
+        EXCEPTION
+            WHEN duplicate_column THEN END;
+    END;
+$$;
+
+-- We want the "username" column to be moved to the last position if it was on a position from other versions
+-- see https://github.com/CartoDB/cartodb-postgresql/issues/276
+DO LANGUAGE 'plpgsql' $$
+    DECLARE
+        column_index int;
+    BEGIN
+        SELECT ordinal_position FROM information_schema.columns WHERE table_name='cdb_analysis_catalog' AND table_schema='cartodb' AND column_name='username' INTO column_index;
+        IF column_index = 1 OR column_index = 10 THEN
+           ALTER TABLE cartodb.cdb_analysis_catalog ADD COLUMN username_final text;
+           UPDATE cartodb.cdb_analysis_catalog SET username_final = username;
+           ALTER TABLE cartodb.cdb_analysis_catalog DROP COLUMN username;
+           ALTER TABLE cartodb.cdb_analysis_catalog RENAME COLUMN username_final TO username;
+        END IF;
     END;
 $$;
