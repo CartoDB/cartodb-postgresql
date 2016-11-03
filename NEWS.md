@@ -1,3 +1,7 @@
+0.18.3 (2016-11-03)
+
+* Exclude analysis cache tables from the quota #281
+
 0.18.2 (2016-10-20)
 -------------------
 
@@ -14,8 +18,6 @@
 
 * Fix: exclude NULL geometries when creating Overviews #269
 * Function to check analysis tables limits #279
-* Exclude analysis cache tables from the quota #281
-
 
 0.17.1 (2016-08-16)
 -------------------
