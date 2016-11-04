@@ -1,3 +1,7 @@
+0.18.4 (2016-11-04)
+
+* No functional changes; fixes the migration from previous versions #288
+
 0.18.3 (2016-11-03)
 
 * Exclude analysis cache tables from the quota #281
