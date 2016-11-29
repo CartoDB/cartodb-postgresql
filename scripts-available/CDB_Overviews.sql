@@ -932,8 +932,6 @@ AS $$
 $$ LANGUAGE PLPGSQL;
 
 -- This strategy places the aggregation of each cluster at the position of one of the cluster members.
--- TODO: the location and the cartodb_id should be chosen to correspond to the same record;
---       a more efficient alternative to the `first` aggregator should be used
 CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
 RETURNS REGCLASS
 AS $$
@@ -1032,15 +1030,17 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             first(the_geom) as the_geom,
-             first(the_geom_webmercator) as the_geom_webmercator,
-             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(ST_X(_f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(ST_Y(_f.the_geom_webmercator)/%2$s)::int AS gy,
              MIN(cartodb_id) AS cartodb_id
-          FROM %1$s f
+          FROM %1$s _f
           GROUP BY gx, gy
+         ),
+         cluster_geom AS (
+           SELECT the_geom, the_geom_webmercator, clusters.*
+             FROM clusters INNER JOIN %1$s _g ON (clusters.cartodb_id = _g.cartodb_id)
          )
-         SELECT %6$s FROM clusters
+         SELECT %6$s FROM cluster_geom
     ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
 
     RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
