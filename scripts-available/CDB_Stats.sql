@@ -4,7 +4,7 @@
 -- @param in_array A numeric array of numbers
 --
 -- Returns: statistical quantity chosen
--- 
+--
 -- References: http://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
 --
 
@@ -13,17 +13,21 @@ CREATE OR REPLACE FUNCTION CDB_Kurtosis ( in_array NUMERIC[] ) RETURNS NUMERIC a
 DECLARE
     a numeric;
     c numeric;
-    s numeric;
     k numeric;
 BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
+    SELECT AVG(e), COUNT(e)::numeric * power(stddev(e),4) INTO a, c FROM ( SELECT unnest(in_array) e ) x;
 
-    EXECUTE 'SELECT sum(power($1 - e, 4)) / ( $2 * power($3, 4)) - 3
-             FROM (SELECT unnest($4) e ) x'
-    INTO k
-    USING a, c, s, in_array;
+    IF c=0 THEN
+      RETURN 0;
+    ELSE
 
-    RETURN k;
+      EXECUTE 'SELECT sum(power($1 - e, 4)) / ($2 ) - 3
+             FROM (SELECT unnest($3) e ) x'
+      INTO k
+      USING a, c, in_array;
+
+      RETURN k;
+    END IF;
 END;
 $$ language plpgsql IMMUTABLE;
 
@@ -32,16 +36,18 @@ CREATE OR REPLACE FUNCTION CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC a
 DECLARE
     a numeric;
     c numeric;
-    s numeric;
     sk numeric;
 BEGIN
-    SELECT AVG(e), COUNT(e)::numeric, stddev(e) INTO a, c, s FROM ( SELECT unnest(in_array) e ) x;
+    SELECT AVG(e), COUNT(e)::numeric * power(stddev(e),3) INTO a, c FROM ( SELECT unnest(in_array) e ) x;
+    IF c=0 THEN
+      RETURN 0;
+    ELSE
+      EXECUTE 'SELECT sum(power($1 - e, 3)) / ( $2 )
+             FROM (SELECT unnest($3) e ) x'
+      INTO sk
+      USING a, c, in_array;
 
-    EXECUTE 'SELECT sum(power($1 - e, 3)) / ( $2 * power($3, 3))
-             FROM (SELECT unnest($4) e ) x'
-    INTO sk
-    USING a, c, s, in_array;
-
-    RETURN sk;
+      RETURN sk;
+    END IF;
 END;
 $$ language plpgsql IMMUTABLE;
