@@ -228,6 +228,7 @@ function tear_down() {
     sql 'DROP ROLE cdb_testmember_2;'
 
     tear_down_database
+    DATABASE=postgres sql postgres 'DROP ROLE IF EXISTS publicuser';
 }
 
 
@@ -486,6 +487,18 @@ function test_foreign_tables() {
     ${CMD} -d fdw_target -f scripts-available/CDB_QueryTables.sql
     ${CMD} -d fdw_target -f scripts-available/CDB_TableMetadata.sql
 
+    DATABASE=fdw_target sql postgres "DO
+\$\$
+BEGIN
+   IF NOT EXISTS (
+      SELECT *
+      FROM   pg_catalog.pg_user
+      WHERE  usename = 'publicuser') THEN
+
+      CREATE ROLE publicuser LOGIN;
+   END IF;
+END
+\$\$;"
     DATABASE=fdw_target sql postgres 'CREATE SCHEMA test_fdw;'
     DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo (a int);'
     DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo (a) values (42);'
