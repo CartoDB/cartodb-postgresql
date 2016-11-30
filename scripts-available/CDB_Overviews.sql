@@ -697,6 +697,356 @@ AS $$
   END;
 $$ LANGUAGE PLPGSQL;
 
+
+CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    overview_rel TEXT;
+    reduction FLOAT8;
+    base_name TEXT;
+    pixel_m FLOAT8;
+    grid_m FLOAT8;
+    offset_m FLOAT8;
+    offset_x TEXT;
+    offset_y TEXT;
+    cell_x TEXT;
+    cell_y TEXT;
+    aggr_attributes TEXT;
+    attributes TEXT;
+    columns TEXT;
+    gtypes TEXT[];
+    schema_name TEXT;
+    table_name TEXT;
+    point_geom TEXT;
+  BEGIN
+    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+      -- This strategy only supports datasets with point geomety
+      RETURN NULL;
+    END IF;
+
+    --TODO: check applicability: geometry type, minimum number of points...
+
+    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+
+    -- Grid size in pixels at Z level overview_z
+    IF grid_px IS NULL THEN
+      grid_px := 1.0;
+    END IF;
+
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+
+    -- pixel_m: size of a pixel in webmercator units (meters)
+    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    -- grid size in meters
+    grid_m = grid_px * pixel_m;
+
+    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    IF attributes <> '' THEN
+      attributes := ', ' || attributes;
+    END IF;
+    IF aggr_attributes <> '' THEN
+      aggr_attributes := aggr_attributes || ', ';
+    END IF;
+
+    -- Center of each cell:
+    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
+    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
+
+    -- Displacement to the nearest pixel center:
+    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
+      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+      offset_x := Format('%s', offset_m);
+      offset_y := Format('%s', offset_m);
+    ELSE
+      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    END IF;
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+
+    -- compute the resulting columns in the same order as in the base table
+    WITH cols AS (
+      SELECT
+        CASE c
+        WHEN 'cartodb_id' THEN 'cartodb_id'
+        WHEN 'the_geom' THEN
+          Format('ST_Transform(%s, 4326) AS the_geom', point_geom)
+        WHEN 'the_geom_webmercator' THEN
+           Format('%s AS the_geom_webmercator', point_geom)
+        ELSE c
+        END AS column
+        FROM CDB_ColumnNames(reloid) c
+    )
+    SELECT string_agg(s.column, ',') FROM (
+      SELECT * FROM cols
+    ) AS s INTO columns;
+
+    IF NOT columns LIKE '%_feature_count%' THEN
+      columns := columns || ', n AS _feature_count';
+    END IF;
+
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+
+    -- Now we cluster the data using a grid of size grid_m
+    -- and selecte the centroid (average coordinates) of each cluster.
+    -- If we had a selected numeric attribute of interest we could use it
+    -- as a weight for the average coordinates.
+    EXECUTE Format('
+      CREATE TABLE %7$I.%3$I AS
+         WITH clusters AS (
+           SELECT
+             %5$s
+             count(*) AS n,
+             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             MIN(cartodb_id) AS cartodb_id
+          FROM %1$s f
+          GROUP BY gx, gy
+         )
+         SELECT %6$s FROM clusters
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+  END;
+$$ LANGUAGE PLPGSQL;
+
+-- This strategy places the aggregation of each cluster at the centroid of the cluster members.
+CREATE OR REPLACE FUNCTION _CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    overview_rel TEXT;
+    reduction FLOAT8;
+    base_name TEXT;
+    pixel_m FLOAT8;
+    grid_m FLOAT8;
+    offset_m FLOAT8;
+    offset_x TEXT;
+    offset_y TEXT;
+    cell_x TEXT;
+    cell_y TEXT;
+    aggr_attributes TEXT;
+    attributes TEXT;
+    columns TEXT;
+    gtypes TEXT[];
+    schema_name TEXT;
+    table_name TEXT;
+    point_geom TEXT;
+  BEGIN
+    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+      -- This strategy only supports datasets with point geomety
+      RETURN NULL;
+    END IF;
+
+    --TODO: check applicability: geometry type, minimum number of points...
+
+    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+
+    -- Grid size in pixels at Z level overview_z
+    IF grid_px IS NULL THEN
+      grid_px := 1.0;
+    END IF;
+
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+
+    -- pixel_m: size of a pixel in webmercator units (meters)
+    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    -- grid size in meters
+    grid_m = grid_px * pixel_m;
+
+    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    IF attributes <> '' THEN
+      attributes := ', ' || attributes;
+    END IF;
+    IF aggr_attributes <> '' THEN
+      aggr_attributes := aggr_attributes || ', ';
+    END IF;
+
+    -- Center of each cell:
+    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
+    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
+
+    -- Displacement to the nearest pixel center:
+    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
+      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+      offset_x := Format('%s', offset_m);
+      offset_y := Format('%s', offset_m);
+    ELSE
+      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    END IF;
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+
+    -- compute the resulting columns in the same order as in the base table
+    WITH cols AS (
+      SELECT
+        CASE c
+        WHEN 'cartodb_id' THEN 'cartodb_id'
+        WHEN 'the_geom' THEN
+          'ST_Transform(ST_SetSRID(ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857), 4326) AS the_geom'
+        WHEN 'the_geom_webmercator' THEN
+          'ST_SetSRID(ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857) AS the_geom_webmercator'
+        ELSE c
+        END AS column
+        FROM CDB_ColumnNames(reloid) c
+    )
+    SELECT string_agg(s.column, ',') FROM (
+      SELECT * FROM cols
+    ) AS s INTO columns;
+
+    IF NOT columns LIKE '%_feature_count%' THEN
+      columns := columns || ', n AS _feature_count';
+    END IF;
+
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+
+    -- Now we cluster the data using a grid of size grid_m
+    -- and selecte the centroid (average coordinates) of each cluster.
+    -- If we had a selected numeric attribute of interest we could use it
+    -- as a weight for the average coordinates.
+    EXECUTE Format('
+      CREATE TABLE %7$I.%3$I AS
+         WITH clusters AS (
+           SELECT
+             %5$s
+             count(*) AS n,
+             SUM(ST_X(f.the_geom_webmercator)) AS _sum_of_x,
+             SUM(ST_Y(f.the_geom_webmercator)) AS _sum_of_y,
+             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
+             MIN(cartodb_id) AS cartodb_id
+          FROM %1$s f
+          GROUP BY gx, gy
+         )
+         SELECT %6$s FROM clusters
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+  END;
+$$ LANGUAGE PLPGSQL;
+
+-- This strategy places the aggregation of each cluster at the position of one of the cluster members.
+CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+RETURNS REGCLASS
+AS $$
+  DECLARE
+    overview_rel TEXT;
+    reduction FLOAT8;
+    base_name TEXT;
+    pixel_m FLOAT8;
+    grid_m FLOAT8;
+    offset_m FLOAT8;
+    offset_x TEXT;
+    offset_y TEXT;
+    cell_x TEXT;
+    cell_y TEXT;
+    aggr_attributes TEXT;
+    attributes TEXT;
+    columns TEXT;
+    gtypes TEXT[];
+    schema_name TEXT;
+    table_name TEXT;
+    point_geom TEXT;
+  BEGIN
+    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
+      -- This strategy only supports datasets with point geomety
+      RETURN NULL;
+    END IF;
+
+    --TODO: check applicability: geometry type, minimum number of points...
+
+    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+
+    -- Grid size in pixels at Z level overview_z
+    IF grid_px IS NULL THEN
+      grid_px := 1.0;
+    END IF;
+
+    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+
+    -- pixel_m: size of a pixel in webmercator units (meters)
+    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    -- grid size in meters
+    grid_m = grid_px * pixel_m;
+
+    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    IF attributes <> '' THEN
+      attributes := ', ' || attributes;
+    END IF;
+    IF aggr_attributes <> '' THEN
+      aggr_attributes := aggr_attributes || ', ';
+    END IF;
+
+    -- Center of each cell:
+    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
+    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
+
+    -- Displacement to the nearest pixel center:
+    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
+      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
+      offset_x := Format('%s', offset_m);
+      offset_y := Format('%s', offset_m);
+    ELSE
+      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
+      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
+    END IF;
+
+    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+
+    -- compute the resulting columns in the same order as in the base table
+    WITH cols AS (
+      SELECT
+        CASE c
+        WHEN 'cartodb_id' THEN 'cartodb_id'
+        ELSE c
+        END AS column
+        FROM CDB_ColumnNames(reloid) c
+    )
+    SELECT string_agg(s.column, ',') FROM (
+      SELECT * FROM cols
+    ) AS s INTO columns;
+
+    IF NOT columns LIKE '%_feature_count%' THEN
+      columns := columns || ', n AS _feature_count';
+    END IF;
+
+    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+
+    -- Now we cluster the data using a grid of size grid_m
+    -- and select the centroid (average coordinates) of each cluster.
+    -- If we had a selected numeric attribute of interest we could use it
+    -- as a weight for the average coordinates.
+    EXECUTE Format('
+      CREATE TABLE %7$I.%3$I AS
+         WITH clusters AS (
+           SELECT
+             %5$s
+             count(*) AS n,
+             Floor(ST_X(_f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(ST_Y(_f.the_geom_webmercator)/%2$s)::int AS gy,
+             MIN(cartodb_id) AS cartodb_id
+          FROM %1$s _f
+          GROUP BY gx, gy
+         ),
+         cluster_geom AS (
+           SELECT the_geom, the_geom_webmercator, clusters.*
+             FROM clusters INNER JOIN %1$s _g ON (clusters.cartodb_id = _g.cartodb_id)
+         )
+         SELECT %6$s FROM cluster_geom
+    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+
+    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+  END;
+$$ LANGUAGE PLPGSQL;
+
 -- Create overview tables for a dataset.
 -- Scope: public
 -- Parameters:
