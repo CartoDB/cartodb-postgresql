@@ -1,3 +1,11 @@
+0.18.5 (2016-11-30)
+
+* Add to new overview creation strategies #290
+* Fix tests: race condition with publicuser #157
+* Fix: CDB_Stats divisions by zero #181
+* Better implementation of `CDB_EqualIntervalBins` #244
+* New tests for binning functions #249
+
 0.18.4 (2016-11-04)
 
 * No functional changes; fixes the migration from previous versions #288
