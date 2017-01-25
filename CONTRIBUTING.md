@@ -62,3 +62,7 @@ A useful query:
 ```sql
 SELECT * FROM pg_extension_update_paths('cartodb') WHERE path IS NOT NULL AND source = cdb_version();
 ```
+
+## Submitting Contributions
+
+* You will need to sign a Contributor License Agreement (CLA) before making a submission. [Learn more here](https://carto.com/contributions).
