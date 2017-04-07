@@ -1,3 +1,7 @@
+0.19.0 (2017-04-XX)
+
+* Add new function `CDB_EstimateRowCount` #295
+
 0.18.5 (2016-11-30)
 
 * Add to new overview creation strategies #290
