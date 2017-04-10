@@ -3,10 +3,12 @@ CREATE OR REPLACE FUNCTION _CDB_GenerateStats(reloid REGCLASS)
 RETURNS VOID
 AS $$
 DECLARE
-  num_cols INTEGER;
+  has_stats BOOLEAN;
 BEGIN
-  SELECT COUNT(*) FROM pg_catalog.pg_statistic WHERE starelid = reloid INTO num_cols;
-  IF num_cols = 0 THEN
+  SELECT EXISTS (
+    SELECT * FROM pg_catalog.pg_statistic WHERE starelid = reloid
+  ) INTO has_stats;
+  IF NOT has_stats THEN
     EXECUTE Format('ANALYZE %s;', reloid);
   END IF;
 END
