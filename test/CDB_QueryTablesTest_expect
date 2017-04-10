@@ -1,3 +1,4 @@
+SET
 SELECT * FROM geometry_columns|{pg_catalog.pg_attribute,pg_catalog.pg_class,pg_catalog.pg_constraint,pg_catalog.pg_namespace,pg_catalog.pg_type}
 SELECT a.attname FROM pg_class c JOIN pg_attribute a on (a.attrelid = c.oid)|{pg_catalog.pg_attribute,pg_catalog.pg_class}
 CREATE table "my'tab;le" as select 1|{}
