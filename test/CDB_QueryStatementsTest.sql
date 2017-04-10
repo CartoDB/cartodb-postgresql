@@ -1,3 +1,6 @@
+SET client_min_messages TO error;
+\set VERBOSITY terse
+
 WITH q AS ( SELECT CDB_QueryStatements('
 SELECT * FROM geometry_columns;
 ') as statement )
