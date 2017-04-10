@@ -1,5 +1,6 @@
 BEGIN
 CREATE TABLE
+COPY 3
 none||
 only_com_dec|.|,
 only_dot_dec|,|.
