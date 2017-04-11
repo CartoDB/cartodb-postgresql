@@ -1,4 +1,4 @@
-0.19.0 (2017-04-XX)
+0.19.0 (2017-04-11)
 
 * Add new function `CDB_EstimateRowCount` #295
 
