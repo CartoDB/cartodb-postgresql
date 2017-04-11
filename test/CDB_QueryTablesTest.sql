@@ -1,3 +1,5 @@
+SET client_min_messages TO warning;
+\set VERBOSITY terse
 
 WITH inp AS ( select 'SELECT * FROM geometry_columns'::text as q )
  SELECT q, CDB_QueryTables(q) from inp;
