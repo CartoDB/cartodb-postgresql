@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.19.0
+EXTVERSION = 0.19.1
 
 SED = sed
 
@@ -80,6 +80,7 @@ UPGRADABLE = \
   0.18.4 \
   0.18.5 \
   0.19.0 \
+  0.19.1 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
@@ -109,7 +110,7 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile 
+$(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
     $(SED) -e 's/public\./cartodb./g' \
@@ -160,7 +161,7 @@ test_organization:
 test_extension_new:
 	bash test/extension/test.sh
 
-legacy_tests: legacy_regress 
+legacy_tests: legacy_regress
 
 installcheck: legacy_tests test_extension_new test_organization
 
