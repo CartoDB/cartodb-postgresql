@@ -279,9 +279,11 @@ AS $$
 
     overview_table_name := Format('%I.%I', schema_name, overview_rel);
     IF has_overview_created THEN
+      RAISE NOTICE 'Sampling reduce stategy deleting and inserting because % has overviews', overview_table_name;
       EXECUTE Format('DELETE FROM %s;', overview_table_name);
       creation_clause := Format('INSERT INTO %s', overview_table_name);
     ELSE
+      RAISE NOTICE 'Sampling reduce stategy creating a new table overview %', overview_table_name;
       creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
     END IF;
 
@@ -683,11 +685,11 @@ AS $$
 
     overview_table_name := Format('%I.%I', schema_name, overview_rel);
     IF has_overview_created THEN
-      RAISE INFO 'Deleting and inserting because % has overviews', overview_table_name;
+      RAISE NOTICE 'Grid cluster strategy deleting and inserting because % has overviews', overview_table_name;
       EXECUTE Format('DELETE FROM %s;', overview_table_name);
       creation_clause := Format('INSERT INTO %s', overview_table_name);
     ELSE
-      RAISE INFO 'Creating a new table overview %', overview_table_name;
+      RAISE NOTICE 'Grid cluster strategy creating a new table overview %', overview_table_name;
       creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
     END IF;
 
@@ -810,9 +812,11 @@ AS $$
 
     overview_table_name := Format('%I.%I', schema_name, overview_rel);
     IF has_overview_created THEN
+      RAISE NOTICE 'Grid cluster centroid strategy deleting and inserting because % has overviews', overview_table_name;
       EXECUTE Format('DELETE FROM %s;', overview_table_name);
       creation_clause := Format('INSERT INTO %s', overview_table_name);
     ELSE
+      RAISE NOTICE 'Grid cluster centroid strategy creating a new table overview %', overview_table_name;
       creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
     END IF;
 
@@ -932,9 +936,11 @@ AS $$
 
     overview_table_name := Format('%I.%I', schema_name, overview_rel);
     IF has_overview_created THEN
+      RAISE NOTICE 'Grid cluster sampling strategy deleting and inserting because % has overviews', overview_table_name;
       EXECUTE Format('DELETE FROM %s;', overview_table_name);
       creation_clause := Format('INSERT INTO %s', overview_table_name);
     ELSE
+      RAISE NOTICE 'Grid cluster sampling strategy creating a new table overview %', overview_table_name;
       creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
     END IF;
 
@@ -1018,13 +1024,11 @@ BEGIN
     overview_z := overview_z - overviews_step;
   END LOOP;
 
-  -- TODO Get the diff between existing overviews and new overviews we're going to create
-  --      FOr example we have overviews until zoom level 10 and we add from lvl 11-16 so
-  --      that new overviews should be created and registered. This should be take into
-  --      account otherwise whe we remove zoom levels from the overviews but this is a tricky
-  --      case because the old query could be using that tables and we can provoke a DeadLock
+  --  TODO Check for non-used overview to delete them but we have to be aware that the
+  --       current queries, for example from a tiler, are been used with the old overviews
+  --       so if we remove the overviews in the process this could lead to errors
 
-  -- Create overlay tables
+  -- Create or reganerate overlay tables
   base_z := ref_z;
   base_rel := reloid;
   FOREACH overview_z IN ARRAY overviews_z LOOP
@@ -1035,7 +1039,7 @@ BEGIN
     END IF;
     base_z := overview_z;
     IF NOT has_overviews_for_z THEN
-      RAISE INFO 'Registering overview: %', base_rel;
+      RAISE NOTICE 'Registering overview: %', base_rel;
       PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
     END IF;
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
