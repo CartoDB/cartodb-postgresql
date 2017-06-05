@@ -1,3 +1,7 @@
+0.19.1 (2017-06-05)
+
+* Fixed a deadlock problem when trying to regenarate overviews #302
+
 0.19.0 (2017-04-11)
 
 * Add new function `CDB_EstimateRowCount` #295
