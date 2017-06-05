@@ -257,7 +257,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, tolerance_px FLOAT8 DEFAULT NULL)
+CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, tolerance_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -268,6 +268,8 @@ AS $$
     num_samples INTEGER;
     schema_name TEXT;
     table_name TEXT;
+    overview_table_name TEXT;
+    creation_clause TEXT;
   BEGIN
     overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
     -- TODO: compute fraction from tolerance_px if not NULL
@@ -275,7 +277,15 @@ AS $$
 
     SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+    overview_table_name := Format('%I.%I', schema_name, overview_rel);
+    IF has_overview_created THEN
+      RAISE NOTICE 'Sampling reduce stategy deleting and inserting because % has overviews', overview_table_name;
+      EXECUTE Format('DELETE FROM %s;', overview_table_name);
+      creation_clause := Format('INSERT INTO %s', overview_table_name);
+    ELSE
+      RAISE NOTICE 'Sampling reduce stategy creating a new table overview %', overview_table_name;
+      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
+    END IF;
 
     -- Estimate number of rows
     SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
@@ -284,21 +294,21 @@ AS $$
     IF class_info.relpages < 2 OR fraction > 0.5 THEN
       -- We'll avoid possible CDB_RandomTids problems
       EXECUTE Format('
-        CREATE TABLE %I AS SELECT * FROM %s WHERE random() < %s;
-      ', overview_rel, reloid, fraction);
+        %s SELECT * FROM %s WHERE random() < %s;
+      ', creation_clause, reloid, fraction);
     ELSE
       num_samples := ceil(class_info.reltuples*fraction);
       EXECUTE Format('
-        CREATE TABLE %4$I.%1$I AS SELECT * FROM %2$s
+        %1$s SELECT * FROM %2$s
           WHERE ctid = ANY (
             ARRAY[
               (SELECT CDB_RandomTids(''%2$s'', %3$s))
             ]
           );
-      ', overview_rel, reloid, num_samples, schema_name);
+      ', creation_clause, reloid, num_samples);
     END IF;
 
-    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+    RETURN Format('%s', overview_table_name)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
@@ -581,7 +591,7 @@ $$ LANGUAGE PLPGSQL STABLE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -602,6 +612,8 @@ AS $$
     schema_name TEXT;
     table_name TEXT;
     point_geom TEXT;
+    overview_table_name TEXT;
+    creation_clause TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
@@ -671,14 +683,22 @@ AS $$
       columns := columns || ', n AS _feature_count';
     END IF;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+    overview_table_name := Format('%I.%I', schema_name, overview_rel);
+    IF has_overview_created THEN
+      RAISE NOTICE 'Grid cluster strategy deleting and inserting because % has overviews', overview_table_name;
+      EXECUTE Format('DELETE FROM %s;', overview_table_name);
+      creation_clause := Format('INSERT INTO %s', overview_table_name);
+    ELSE
+      RAISE NOTICE 'Grid cluster strategy creating a new table overview %', overview_table_name;
+      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
+    END IF;
 
     -- Now we cluster the data using a grid of size grid_m
     -- and selecte the centroid (average coordinates) of each cluster.
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %7$I.%3$I AS
+      %3$s
          WITH clusters AS (
            SELECT
              %5$s
@@ -691,130 +711,14 @@ AS $$
           GROUP BY gx, gy
          )
          SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+    ', reloid::text, grid_m, creation_clause, attributes, aggr_attributes, columns);
 
-    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
-  END;
-$$ LANGUAGE PLPGSQL;
-
-
-CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
-RETURNS REGCLASS
-AS $$
-  DECLARE
-    overview_rel TEXT;
-    reduction FLOAT8;
-    base_name TEXT;
-    pixel_m FLOAT8;
-    grid_m FLOAT8;
-    offset_m FLOAT8;
-    offset_x TEXT;
-    offset_y TEXT;
-    cell_x TEXT;
-    cell_y TEXT;
-    aggr_attributes TEXT;
-    attributes TEXT;
-    columns TEXT;
-    gtypes TEXT[];
-    schema_name TEXT;
-    table_name TEXT;
-    point_geom TEXT;
-  BEGIN
-    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
-    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
-      -- This strategy only supports datasets with point geomety
-      RETURN NULL;
-    END IF;
-
-    --TODO: check applicability: geometry type, minimum number of points...
-
-    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
-
-    -- Grid size in pixels at Z level overview_z
-    IF grid_px IS NULL THEN
-      grid_px := 1.0;
-    END IF;
-
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
-
-    -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
-    -- grid size in meters
-    grid_m = grid_px * pixel_m;
-
-    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
-    IF attributes <> '' THEN
-      attributes := ', ' || attributes;
-    END IF;
-    IF aggr_attributes <> '' THEN
-      aggr_attributes := aggr_attributes || ', ';
-    END IF;
-
-    -- Center of each cell:
-    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
-    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
-
-    -- Displacement to the nearest pixel center:
-    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
-      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
-      offset_x := Format('%s', offset_m);
-      offset_y := Format('%s', offset_m);
-    ELSE
-      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
-      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
-    END IF;
-
-    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
-
-    -- compute the resulting columns in the same order as in the base table
-    WITH cols AS (
-      SELECT
-        CASE c
-        WHEN 'cartodb_id' THEN 'cartodb_id'
-        WHEN 'the_geom' THEN
-          Format('ST_Transform(%s, 4326) AS the_geom', point_geom)
-        WHEN 'the_geom_webmercator' THEN
-           Format('%s AS the_geom_webmercator', point_geom)
-        ELSE c
-        END AS column
-        FROM CDB_ColumnNames(reloid) c
-    )
-    SELECT string_agg(s.column, ',') FROM (
-      SELECT * FROM cols
-    ) AS s INTO columns;
-
-    IF NOT columns LIKE '%_feature_count%' THEN
-      columns := columns || ', n AS _feature_count';
-    END IF;
-
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
-
-    -- Now we cluster the data using a grid of size grid_m
-    -- and selecte the centroid (average coordinates) of each cluster.
-    -- If we had a selected numeric attribute of interest we could use it
-    -- as a weight for the average coordinates.
-    EXECUTE Format('
-      CREATE TABLE %7$I.%3$I AS
-         WITH clusters AS (
-           SELECT
-             %5$s
-             count(*) AS n,
-             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
-             MIN(cartodb_id) AS cartodb_id
-          FROM %1$s f
-          GROUP BY gx, gy
-         )
-         SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
-
-    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+    RETURN Format('%s', overview_table_name)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
 -- This strategy places the aggregation of each cluster at the centroid of the cluster members.
-CREATE OR REPLACE FUNCTION _CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+CREATE OR REPLACE FUNCTION _CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -835,6 +739,8 @@ AS $$
     schema_name TEXT;
     table_name TEXT;
     point_geom TEXT;
+    overview_table_name TEXT;
+    creation_clause TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
@@ -904,14 +810,22 @@ AS $$
       columns := columns || ', n AS _feature_count';
     END IF;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+    overview_table_name := Format('%I.%I', schema_name, overview_rel);
+    IF has_overview_created THEN
+      RAISE NOTICE 'Grid cluster centroid strategy deleting and inserting because % has overviews', overview_table_name;
+      EXECUTE Format('DELETE FROM %s;', overview_table_name);
+      creation_clause := Format('INSERT INTO %s', overview_table_name);
+    ELSE
+      RAISE NOTICE 'Grid cluster centroid strategy creating a new table overview %', overview_table_name;
+      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
+    END IF;
 
     -- Now we cluster the data using a grid of size grid_m
     -- and selecte the centroid (average coordinates) of each cluster.
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %7$I.%3$I AS
+      %3$s
          WITH clusters AS (
            SELECT
              %5$s
@@ -925,14 +839,14 @@ AS $$
           GROUP BY gx, gy
          )
          SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+    ', reloid::text, grid_m, creation_clause, attributes, aggr_attributes, columns);
 
-    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+    RETURN Format('%s', overview_table_name)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
 -- This strategy places the aggregation of each cluster at the position of one of the cluster members.
-CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL)
+CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -953,6 +867,8 @@ AS $$
     schema_name TEXT;
     table_name TEXT;
     point_geom TEXT;
+    overview_table_name TEXT;
+    creation_clause TEXT;
   BEGIN
     SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
@@ -1018,14 +934,22 @@ AS $$
       columns := columns || ', n AS _feature_count';
     END IF;
 
-    EXECUTE Format('DROP TABLE IF EXISTS %I.%I CASCADE;', schema_name, overview_rel);
+    overview_table_name := Format('%I.%I', schema_name, overview_rel);
+    IF has_overview_created THEN
+      RAISE NOTICE 'Grid cluster sampling strategy deleting and inserting because % has overviews', overview_table_name;
+      EXECUTE Format('DELETE FROM %s;', overview_table_name);
+      creation_clause := Format('INSERT INTO %s', overview_table_name);
+    ELSE
+      RAISE NOTICE 'Grid cluster sampling strategy creating a new table overview %', overview_table_name;
+      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
+    END IF;
 
     -- Now we cluster the data using a grid of size grid_m
     -- and select the centroid (average coordinates) of each cluster.
     -- If we had a selected numeric attribute of interest we could use it
     -- as a weight for the average coordinates.
     EXECUTE Format('
-      CREATE TABLE %7$I.%3$I AS
+       %3$s
          WITH clusters AS (
            SELECT
              %5$s
@@ -1041,9 +965,9 @@ AS $$
              FROM clusters INNER JOIN %1$s _g ON (clusters.cartodb_id = _g.cartodb_id)
          )
          SELECT %6$s FROM cluster_geom
-    ', reloid::text, grid_m, overview_rel, attributes, aggr_attributes, columns, schema_name);
+    ', reloid::text, grid_m, creation_clause, attributes, aggr_attributes, columns);
 
-    RETURN Format('%I.%I', schema_name, overview_rel)::regclass;
+    RETURN Format('%s', overview_table_name)::regclass;
   END;
 $$ LANGUAGE PLPGSQL;
 
@@ -1058,7 +982,7 @@ $$ LANGUAGE PLPGSQL;
 --                    created by the strategy must have the same columns
 --                    as the base table and in the same order.
 -- Return value: Array with the names of the generated overview tables
-CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
+CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -1071,7 +995,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 -- Create overviews with additional parameter to define the desired detail/tolerance in pixels
-CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT  '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8)'::regprocedure)
+CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -1083,6 +1007,7 @@ DECLARE
   overview_tables REGCLASS[];
   overviews_step integer := 1;
   has_counter_column boolean;
+  has_overviews_for_z boolean;
 BEGIN
   -- Determine the referece zoom level
   EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
@@ -1099,16 +1024,24 @@ BEGIN
     overview_z := overview_z - overviews_step;
   END LOOP;
 
-  -- Create overlay tables
+  --  TODO Check for non-used overview to delete them but we have to be aware that the
+  --       current queries, for example from a tiler, are been used with the old overviews
+  --       so if we remove the overviews in the process this could lead to errors
+
+  -- Create or reganerate overlay tables
   base_z := ref_z;
   base_rel := reloid;
   FOREACH overview_z IN ARRAY overviews_z LOOP
-    EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s, %s);', base_rel, base_z, overview_z, tolerance_px) INTO base_rel;
+    SELECT CASE WHEN count(*) > 0 THEN TRUE ELSE FALSE END from CDB_Overviews(reloid) WHERE z = overview_z INTO has_overviews_for_z;
+    EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s, %s, ''%s'');', base_rel, base_z, overview_z, tolerance_px, has_overviews_for_z) INTO base_rel;
     IF base_rel IS NULL THEN
       EXIT;
     END IF;
     base_z := overview_z;
-    PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
+    IF NOT has_overviews_for_z THEN
+      RAISE NOTICE 'Registering overview: %', base_rel;
+      PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
+    END IF;
     SELECT array_append(overview_tables, base_rel) INTO overview_tables;
   END LOOP;
 
@@ -1127,9 +1060,13 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
--- Here are some older signatures of these functions, no longar in use.
+-- Here are some older signatures of these functions, no longer in use.
 -- They must be droped here, after the (new) definition of the function `CDB_CreateOverviews`
 -- because that function used to contain references to them in the default argument values.
 DROP FUNCTION IF EXISTS _CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
 DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);
+DROP FUNCTION IF EXISTS _CDB_GridClusterCentroid_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
+DROP FUNCTION IF EXISTS _CDB_GridClusterSample_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
 DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);
