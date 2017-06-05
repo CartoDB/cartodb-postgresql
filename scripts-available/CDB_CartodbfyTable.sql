@@ -881,6 +881,20 @@ BEGIN
   -- No table re-write is required, BUT a rename is required to
   -- a destination schema, so do that now
   IF has_usable_primary_key AND has_usable_pk_sequence AND gc.has_usable_geoms THEN
+
+    -- TODO this block should eventually be removed
+    -- See https://github.com/CartoDB/gdal/issues/2
+    -- See https://github.com/CartoDB/cartodb-postgresql/issues/263
+    EXECUTE Format('SELECT 1 FROM %s WHERE the_geom IS NOT NULL limit 1', reloid::text) INTO rec;
+    IF rec is NOT NULL THEN
+        EXECUTE Format('SELECT 1 FROM %s WHERE the_geom_webmercator IS NOT NULL limit 1', reloid::text) INTO rec;
+        IF rec IS NULL THEN
+            RAISE NOTICE '[cartodbfy] there are values in the_geom but not in the_geom_webmercator';
+            PERFORM _CDB_SQL(Format('UPDATE %s SET the_geom_webmercator = cartodb.CDB_TransformToWebmercator(the_geom)', reloid::text), '_CDB_Rewrite_Table');
+        END IF;
+    END IF;
+
+
     IF  destschema != relschema THEN
 
       RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
