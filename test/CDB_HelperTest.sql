@@ -14,17 +14,17 @@ SELECT * FROM cartodb._CDB_Unique_Identifier(NULL, 'largolargolargolargolargolar
 SELECT * FROM cartodb._CDB_Unique_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL);
 
 -- Test new identifier is found when name is taken from previous case
-CREATE TABLE prefix_largolargolargolargolargolargolargolargolargolargolar (name text);
+CREATE TABLE prefix_largolargolargolargolargolargolargolargolargolargola (name text);
 SELECT * FROM cartodb._CDB_Unique_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL);
-DROP TABLE prefix_largolargolargolargolargolargolargolargolargolargolar;
+DROP TABLE prefix_largolargolargolargolargolargolargolargolargolargola;
 
 -- Test unique identifier creation with suffix with long length normal relname
 SELECT * FROM cartodb._CDB_Unique_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix');
 
 -- Test new identifier is found when name is taken from previous case
-CREATE TABLE largolargolargolargolargolargolargolargolargolargolar_suffix (name text);
+CREATE TABLE largolargolargolargolargolargolargolargolargolargola_suffix (name text);
 SELECT * FROM cartodb._CDB_Unique_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix');
-DROP TABLE largolargolargolargolargolargolargolargolargolargolar_suffix;
+DROP TABLE largolargolargolargolargolargolargolargolargolargola_suffix;
 
 -- Test unique identifier creation with normal length UTF8 relname
 SELECT * FROM cartodb._CDB_Unique_Identifier(NULL, 'piraña', NULL);
@@ -72,7 +72,7 @@ SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargol
 DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
-CREATE TABLE test (prefix_largolargolargolargolargolargolargolargolargolargolar text);
+CREATE TABLE test (prefix_largolargolargolargolargolargolargolargolargolargola text);
 SELECT * FROM cartodb._CDB_Unique_Column_Identifier('prefix_', 'largolargolargolargolargolargolargolargolargolargolargolargolar', NULL, 'test'::regclass);
 DROP TABLE test;
 
@@ -82,7 +82,7 @@ SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargol
 DROP TABLE test;
 
 -- Test new identifier is found when name is taken from previous case
-CREATE TABLE test (largolargolargolargolargolargolargolargolargolargolar_suffix text);
+CREATE TABLE test (largolargolargolargolargolargolargolargolargolargola_suffix text);
 SELECT * FROM cartodb._CDB_Unique_Column_Identifier(NULL, 'largolargolargolargolargolargolargolargolargolargolargolargolar', '_suffix', 'test'::regclass);
 DROP TABLE test;
 
