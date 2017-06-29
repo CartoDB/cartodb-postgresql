@@ -1,3 +1,7 @@
+-- Create a sequence that belongs to the schema of the extension.
+-- It will be used to generate unique identifiers within the
+
+
 -- UTF8 safe and length aware. Find a unique identifier with a given prefix
 -- and/or suffix and withing a schema. If a schema is not specified, the identifier
 -- is guaranteed to be unique for all schemas.
@@ -15,8 +19,8 @@ DECLARE
 
   i INTEGER;
 BEGIN
-  -- Accounts for the _XX incremental suffix in case the identifier is taken
-  usedspace := 3;
+  -- Accounts for the XXXX incremental suffix in case the identifier is taken
+  usedspace := 4;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
@@ -31,7 +35,7 @@ BEGIN
   i := 0;
   origident := ident;
 
-  WHILE i < 100 LOOP
+  WHILE i < 10000 LOOP
     IF schema IS NOT NULL THEN
       SELECT c.relname, n.nspname
       INTO rec
@@ -51,7 +55,7 @@ BEGIN
       RETURN ident;
     END IF;
 
-    ident := origident || '_' || i;
+    ident := origident || i;
     i := i + 1;
   END LOOP;
 
@@ -76,8 +80,8 @@ DECLARE
 
   i INTEGER;
 BEGIN
-  -- Accounts for the _XX incremental suffix in case the identifier is taken
-  usedspace := 3;
+  -- Accounts for the XXXX incremental suffix in case the identifier is taken
+  usedspace := 4;
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
@@ -92,7 +96,7 @@ BEGIN
   i := 0;
   origident := ident;
 
-  WHILE i < 100 LOOP
+  WHILE i < 10000 LOOP
     SELECT a.attname
     INTO rec
     FROM pg_class c
@@ -106,7 +110,7 @@ BEGIN
       RETURN ident;
     END IF;
 
-    ident := origident || '_' || i;
+    ident := origident || i;
     i := i + 1;
   END LOOP;
 
