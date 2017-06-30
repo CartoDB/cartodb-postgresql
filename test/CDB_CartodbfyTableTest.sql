@@ -372,6 +372,19 @@ SELECT column_name FROM information_schema.columns WHERE table_name = 'test' AND
 DROP TABLE test;
 SET client_min_messages TO error;
 
+-- Unique identifier generation can break CDB_CartodbfyTable #305
+BEGIN;
+    DO $$
+    BEGIN
+       FOR i IN 1..150 LOOP
+            EXECUTE 'CREATE TABLE untitled_table();';
+            EXECUTE $query$SELECT CDB_CartodbfyTable('untitled_table');$query$;
+            EXECUTE 'ALTER TABLE untitled_table RENAME TO my_renamed_table_' || i;
+       END LOOP;
+    END;
+    $$;
+ROLLBACK;
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);

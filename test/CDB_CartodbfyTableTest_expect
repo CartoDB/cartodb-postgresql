@@ -147,5 +147,8 @@ NOTICE:  Trying to recover data from _cartodb_id0 column
 
 DROP TABLE
 SET
+BEGIN
+DO
+ROLLBACK
 DROP FUNCTION
 DROP FUNCTION
