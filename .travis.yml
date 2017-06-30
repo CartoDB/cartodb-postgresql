@@ -26,9 +26,9 @@ before_install:
   - sudo apt-get -y remove --purge postgis-2.2
   - sudo apt-get -y autoremove
 
-  - sudo apt-get -y install postgresql-9.5=9.5.2-3cdb2
-  - sudo apt-get -y install postgresql-server-dev-9.5=9.5.2-3cdb2
-  - sudo apt-get -y install postgresql-plpython-9.5=9.5.2-3cdb2
+  - sudo apt-get -y install postgresql-9.5=9.5.2-3cdb3
+  - sudo apt-get -y install postgresql-server-dev-9.5=9.5.2-3cdb3
+  - sudo apt-get -y install postgresql-plpython-9.5=9.5.2-3cdb3
   - sudo apt-get -y install postgresql-9.5-postgis-scripts=2.2.2.0-cdb2
   - sudo apt-get -y install postgresql-9.5-postgis-2.2=2.2.2.0-cdb2
 
