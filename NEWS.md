@@ -1,3 +1,6 @@
+0.19.2 (2017-06-30)
+* Improved functions to generate unique identifiers #305
+
 0.19.1 (2017-06-05)
 
 * Fixed a deadlock problem when trying to regenarate overviews #302
