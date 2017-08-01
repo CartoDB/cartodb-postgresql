@@ -15,8 +15,8 @@ DECLARE
     i INT := 1; 
     reply numeric[]; 
 BEGIN 
-    -- sort our values
-    SELECT array_agg(e) INTO in_array FROM (SELECT unnest(in_array) e ORDER BY e ASC) x;
+    -- sort our values, remove null values
+    SELECT array_agg(e) INTO in_array FROM (SELECT unnest(in_array) e ORDER BY e ASC) AS x WHERE e IS NOT NULL;
     -- get the total size of our data
     element_count := array_length(in_array, 1); 
     break_size :=  element_count::numeric / breaks;
