@@ -16,21 +16,31 @@ DECLARE
     reply numeric[]; 
 BEGIN 
     -- sort our values, remove null values
-    SELECT array_agg(e) INTO in_array FROM (SELECT unnest(in_array) e ORDER BY e ASC) AS x WHERE e IS NOT NULL;
+    SELECT array_agg(e) INTO in_array
+      FROM (SELECT unnest(in_array) e
+            ORDER BY e ASC) AS x
+     WHERE e IS NOT NULL;
     -- get the total size of our data
     element_count := array_length(in_array, 1); 
-    break_size :=  element_count::numeric / breaks;
+    break_size :=  element_count::numeric / breaks::numeric;
     -- slice our bread
     LOOP  
         IF i < breaks THEN
             IF break_size * i % 1 > 0 THEN
-                SELECT e INTO tmp_val FROM ( SELECT unnest(in_array) e LIMIT 1 OFFSET ceil(break_size * i) - 1) x;
+                SELECT e INTO tmp_val
+                  FROM ( SELECT unnest(in_array) e
+                          LIMIT 1
+                         OFFSET ceil(break_size * i) - 1) x;
             ELSE
-                SELECT avg(e) INTO tmp_val FROM ( SELECT unnest(in_array) e LIMIT 2 OFFSET ceil(break_size * i) - 1 ) x;
+                SELECT avg(e) INTO tmp_val
+                  FROM ( SELECT unnest(in_array) e
+                          LIMIT 2
+                         OFFSET ceil(break_size * i) - 1 ) x;
             END IF;
         ELSIF i = breaks THEN
             -- select the last value
-            SELECT max(e) INTO tmp_val FROM ( SELECT unnest(in_array) e ) x;
+            SELECT max(e) INTO tmp_val
+              FROM ( SELECT unnest(in_array) e ) x;
         ELSE
             EXIT;
         END IF;
