@@ -19,7 +19,9 @@ BEGIN
     SELECT array_agg(e) INTO in_array
       FROM (SELECT unnest(in_array) e
             ORDER BY e ASC) AS x
-     WHERE e IS NOT NULL;
+     WHERE e IS NOT NULL and
+           e != 'NaN' and
+           e::float != 'Infinity';
     -- get the total size of our data
     element_count := array_length(in_array, 1); 
     break_size :=  element_count::numeric / breaks::numeric;
