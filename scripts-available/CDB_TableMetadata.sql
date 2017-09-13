@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS
 
 CREATE OR REPLACE VIEW public.CDB_TableMetadata_Text AS
        SELECT FORMAT('%I.%I', n.nspname::text, c.relname::text) tabname, updated_at
-       FROM public.CDB_TableMetadata, pg_catalog.pg_class c
+       FROM CDB_TableMetadata m JOIN pg_catalog.pg_class c ON m.tabname::oid = c.oid
        LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid;
 
 -- No one can see this
