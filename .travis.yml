@@ -1,4 +1,6 @@
 language: c
+dist: precise
+sudo: required
 
 addons:
   postgresql: 9.5
