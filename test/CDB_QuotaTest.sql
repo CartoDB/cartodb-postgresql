@@ -1,5 +1,5 @@
 set client_min_messages to error;
-\set VERBOSITY default
+\set VERBOSITY TERSE
 
 -- See the dice
 SELECT setseed(0.5);
