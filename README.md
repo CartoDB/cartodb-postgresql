@@ -4,6 +4,7 @@ cartodb-postgresql
 [![Build Status](http://api.travis-ci.org/CartoDB/cartodb-postgresql.svg?branch=master)](http://travis-ci.org/CartoDB/cartodb-postgresql)
 
 PostgreSQL extension for CartoDB
+Test
 
 See [the cartodb-postgresql wiki](https://github.com/CartoDB/cartodb-postgresql/wiki).
 
