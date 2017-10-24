@@ -18,7 +18,7 @@ BEGIN
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
     END LOOP;
 END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 
@@ -45,7 +45,7 @@ AS $$
       WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), table_name)
       ORDER BY z;
   END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL STABLE PARALLEL RESTRICTED;
 
 -- Return existing overviews (if any) for multiple dataset tables.
 -- Scope: public
@@ -69,7 +69,7 @@ AS $$
       schema_name = _cdb_schema_name(base_table)
       AND _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
     ORDER BY base_table, z;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- Calculate the estimated extent of a cartodbfy'ed table.
 -- Scope: private.
@@ -111,7 +111,7 @@ AS $$
 
     RETURN ext;
   END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Determine the max feature density of a given dataset.
 -- Scope: private.
@@ -187,7 +187,7 @@ AS $$
   INTO fd;
   RETURN fd;
   END
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Experimental default strategy to assign a reference base Z level
 -- to a cartodbfied table. The resulting Z level represents the
@@ -223,7 +223,7 @@ AS $$
     SELECT CDB_XYZ_Resolution(-8) INTO c;
     RETURN least(_CDB_MaxOverviewLevel()+1, ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
   END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Overview table name for a given Z level and base dataset or overview table
 -- Scope: private.
@@ -247,7 +247,7 @@ AS $$
     SELECT _CDB_OverviewBaseTableName(base) INTO base;
     RETURN _CDB_OverviewTableName(base, overview_z);
   END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Sampling reduction method.
 -- Valid for any kind of geometry.
@@ -310,7 +310,7 @@ AS $$
 
     RETURN Format('%s', overview_table_name)::regclass;
   END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Register new overview table (post-creation chores)
 -- Scope: private
@@ -365,7 +365,7 @@ AS $$
       -- it should be done here (CDB_Overviews would consume such metadata)
     END IF;
   END
-$$ LANGUAGE PLPGSQL SECURITY DEFINER;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 -- Dataset attributes (column names other than the
 -- CartoDB primary key and geometry columns) which should be aggregated
@@ -381,7 +381,7 @@ AS $$
     WHERE c NOT IN (
       cdb.pkey, cdb.geomcol, cdb.mercgeomcol
     )
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- List of dataset attributes to be aggregated in aggregated overview
 -- as a comma-separated SQL expression.
@@ -401,7 +401,7 @@ BEGIN
 
   RETURN attr_list;
 END
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL STABLE PARALLEL SAFE;
 
 -- Check if a column of a table is of an unlimited-length text type
 CREATE OR REPLACE FUNCTION _cdb_unlimited_text_column(reloid REGCLASS, col_name TEXT)
@@ -417,7 +417,7 @@ AS $$
       AND format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character')
       AND format_type(a.atttypid, NULL) = format_type(a.atttypid, a.atttypmod)
   );
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION _cdb_categorical_column(reloid REGCLASS, col_name TEXT)
 RETURNS BOOLEAN
@@ -446,7 +446,7 @@ BEGIN
     INTO categorical;
     RETURN categorical;
 END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 
 CREATE OR REPLACE FUNCTION _cdb_mode_of_array(anyarray)
   RETURNS anyelement AS
@@ -457,14 +457,15 @@ $$
     ORDER BY COUNT(1) DESC, 1
     LIMIT 1;
 $$
-LANGUAGE SQL IMMUTABLE;
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 DROP AGGREGATE IF EXISTS _cdb_mode(anyelement);
 CREATE AGGREGATE _cdb_mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
   FINALFUNC=_cdb_mode_of_array,
-  INITCOND='{}'
+  INITCOND='{}',
+  PARALLEL = SAFE
 );
 
 -- SQL Aggregation expression for a datase attribute
@@ -536,7 +537,7 @@ BEGIN
     RETURN 'CASE count(*) WHEN 1 THEN MIN(' || qualified_column || ') ELSE NULL END::' || column_type;
   END CASE;
 END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 
 -- List of dataset aggregated attributes as a comma-separated SQL expression.
 -- Scope: private.
@@ -557,7 +558,7 @@ BEGIN
 
   RETURN attr_list;
 END
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 
 -- Array of geometry types detected in a cartodbfied table
 -- For effciency only look at a limited number of rwos.
@@ -579,7 +580,7 @@ BEGIN
   INTO gtypes;
   RETURN gtypes;
 END
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL STABLE PARALLEL SAFE;
 
 -- Experimental Overview reduction method for point datasets.
 -- It clusters the points using a grid, then aggregates the point in each
@@ -715,7 +716,7 @@ AS $$
 
     RETURN Format('%s', overview_table_name)::regclass;
   END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- This strategy places the aggregation of each cluster at the centroid of the cluster members.
 CREATE OR REPLACE FUNCTION _CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
@@ -843,7 +844,7 @@ AS $$
 
     RETURN Format('%s', overview_table_name)::regclass;
   END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- This strategy places the aggregation of each cluster at the position of one of the cluster members.
 CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
@@ -969,7 +970,7 @@ AS $$
 
     RETURN Format('%s', overview_table_name)::regclass;
   END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Create overview tables for a dataset.
 -- Scope: public
@@ -992,7 +993,7 @@ BEGIN
   tolerance_px := 1.0;
   RETURN CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Create overviews with additional parameter to define the desired detail/tolerance in pixels
 CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
@@ -1058,7 +1059,7 @@ BEGIN
 
   RETURN overview_tables;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Here are some older signatures of these functions, no longer in use.
 -- They must be droped here, after the (new) definition of the function `CDB_CreateOverviews`

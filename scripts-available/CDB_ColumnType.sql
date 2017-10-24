@@ -9,7 +9,7 @@ AS $$
   WHERE c.oid = $1::oid
   AND a.attname = $2
   AND a.attstattarget < 0; -- exclude system columns
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- This is to migrate from pre-0.2.0 version
 -- See http://github.com/CartoDB/cartodb-postgresql/issues/36

@@ -53,7 +53,7 @@ BEGIN
       WHEN OTHERS THEN
         -- See http://github.com/Vizzuality/cartodb/issues/931
         RAISE WARNING 'Could not clean input geometry: %', SQLERRM;
-        RETURN NULL; 
+        RETURN NULL;
     END;
     latlon_input := ST_CollectionExtract(latlon_input, ST_Dimension(geom)+1);
   END IF;
@@ -75,4 +75,4 @@ BEGIN
 
   RETURN ret;
 END
-$$ LANGUAGE 'plpgsql' IMMUTABLE STRICT;
+$$ LANGUAGE 'plpgsql' IMMUTABLE STRICT PARALLEL UNSAFE;

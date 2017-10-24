@@ -20,7 +20,7 @@ AS $$
   AND pg_class.relname=pg_indexes.indexname
   ;
 
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- This is to migrate from pre-0.2.0 version
 -- See http://github.com/CartoDB/cartodb-postgresql/issues/36

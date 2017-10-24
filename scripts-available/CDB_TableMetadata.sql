@@ -56,7 +56,7 @@ BEGIN
   RETURN NULL;
 END;
 $$
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 --
 -- Trigger invalidating varnish whenever CDB_TableMetadata
@@ -117,7 +117,7 @@ BEGIN
   RETURN NULL;
 END;
 $$
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS table_modified ON public.CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table
@@ -143,4 +143,4 @@ CREATE OR REPLACE FUNCTION public.CDB_TableMetadataTouch(tablename regclass)
             WHERE NOT EXISTS (SELECT * FROM upsert);
     END;
     $$
-LANGUAGE 'plpgsql' VOLATILE STRICT;
+LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;

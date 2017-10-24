@@ -21,7 +21,7 @@ AND CASE WHEN perm = 'public' THEN has_table_privilege('publicuser', c.oid, 'SEL
          WHEN perm = 'all' THEN has_table_privilege(current_user, c.oid, 'SELECT') OR has_table_privilege('publicuser', c.oid, 'SELECT')
          ELSE false END;
 
-$$ LANGUAGE 'sql';
+$$ LANGUAGE 'sql' STABLE PARALLEL SAFE;
 
 -- This is to migrate from pre-0.2.0 version
 -- See http://github.com/CartoDB/cartodb-postgresql/issues/36

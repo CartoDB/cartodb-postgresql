@@ -13,7 +13,7 @@ $BODY$
     ORDER BY COUNT(1) DESC, 1
     LIMIT 1;
 $BODY$
-LANGUAGE 'sql' IMMUTABLE;
+LANGUAGE 'sql' IMMUTABLE PARALLEL SAFE;
 
 DROP AGGREGATE IF EXISTS cartodb.CDB_Math_Mode(anyelement);
 
@@ -21,6 +21,7 @@ CREATE AGGREGATE cartodb.CDB_Math_Mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
   FINALFUNC=_CDB_Math_final_mode,
-  INITCOND='{}'
+  INITCOND='{}',
+  PARALLEL = SAFE
 );
 

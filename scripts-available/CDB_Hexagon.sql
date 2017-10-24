@@ -8,7 +8,7 @@ AS $$
       SELECT (ST_DumpPoints(ST_ExteriorRing(ST_Buffer($1, $2, 3)))).*
     ) as points
     WHERE path[1] % 2 != 0
-$$ LANGUAGE 'sql' IMMUTABLE STRICT;
+$$ LANGUAGE 'sql' IMMUTABLE STRICT PARALLEL SAFE;
 
 --
 -- Fill given extent with an hexagonal coverage
@@ -132,4 +132,4 @@ BEGIN
 
   RETURN;
 END
-$$ LANGUAGE 'plpgsql' IMMUTABLE;
+$$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;

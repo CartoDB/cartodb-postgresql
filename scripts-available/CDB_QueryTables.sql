@@ -64,7 +64,7 @@ BEGIN
 
   return tables;
 END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;
 
 
 -- Keep CDB_QueryTables with same signature for backwards compatibility.
@@ -75,4 +75,4 @@ AS $$
 BEGIN
   RETURN CDB_QueryTablesText(query)::name[];
 END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT;
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;

@@ -69,7 +69,7 @@ BEGIN
 
 END
 $$
-LANGUAGE PLPGSQL;
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE FUNCTION cartodb._CDB_Setup_FDWS()
 RETURNS VOID AS 
@@ -82,7 +82,7 @@ BEGIN
     END LOOP;
   END
 $$
-LANGUAGE PLPGSQL;
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE FUNCTION cartodb._CDB_Setup_FDW(fdw_name text)
@@ -95,7 +95,7 @@ BEGIN
   EXECUTE 'SELECT cartodb._CDB_Setup_FDW($1, $2)' USING fdw_name, config;
 END
 $BODY$
-LANGUAGE plpgsql VOLATILE;
+LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE FUNCTION cartodb.CDB_Add_Remote_Table(source text, table_name text)
   RETURNS void AS
@@ -107,7 +107,7 @@ BEGIN
   EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO publicuser;', source, table_name);
 END
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE FUNCTION cartodb.CDB_Get_Foreign_Updated_At(foreign_table regclass)
   RETURNS timestamp with time zone AS
@@ -129,7 +129,7 @@ BEGIN
   RETURN time;
 END
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE FUNCTION cartodb._cdb_dbname_of_foreign_table(reloid oid)
@@ -142,7 +142,7 @@ RETURNS TEXT AS $$
         WHERE ft.ftrelid = reloid
 
     )) WHERE option_name='dbname';
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Return a set of (dbname, schema_name, table_name, updated_at)
@@ -176,7 +176,7 @@ AS $$
             ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Return the last updated time of a set of tables
@@ -196,4 +196,4 @@ RETURNS timestamptz AS $$
         FROM t_oid
         LEFT JOIN pg_catalog.pg_class c ON c.oid = reloid
     ) SELECT max(updated_at) FROM t_updated_at;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;

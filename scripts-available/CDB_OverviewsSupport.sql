@@ -15,7 +15,7 @@ AS $$
     -- (gridding), so we'll limit Z to a maximum of 31 - 8
     RETURN 23;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Maximum zoom level usable with integer coordinates
 CREATE OR REPLACE FUNCTION _CDB_MaxZoomLevel()
@@ -24,7 +24,7 @@ AS $$
   BEGIN
     RETURN 31;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Information about tables in a schema.
 -- If the schema name parameter is NULL, then tables from all schemas
@@ -46,7 +46,7 @@ AS $$
              THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
            ELSE n.nspname = schema_name
            END;
-$$ LANGUAGE 'sql';
+$$ LANGUAGE 'sql' STABLE PARALLEL SAFE;
 
 -- Pattern that can be used to detect overview tables and Extract
 -- the intended zoom level from the table name.
@@ -57,7 +57,7 @@ AS $$
   BEGIN
     RETURN '\A_vovw_(\d+)_';
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- substring(tablename from _CDB_OverviewTableDiscriminator())
 
 
@@ -69,7 +69,7 @@ AS $$
   BEGIN
     RETURN _CDB_OverviewTableDiscriminator() || base_table;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- tablename SIMILAR TO _CDB_OverviewTablePattern(base_table)
 
 -- Name of an overview table, given the base table name and the Z level
@@ -80,7 +80,7 @@ AS $$
   BEGIN
     RETURN '_vovw_' || z::text || '_' || base_table;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Condition to check if a tabla is an overview table of some base table
 -- Scope: private.
@@ -90,7 +90,7 @@ AS $$
   BEGIN
     RETURN otable SIMILAR TO _CDB_OverviewTablePattern(base_table);
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Extract the Z level from an overview table name
 -- Scope: private.
@@ -100,7 +100,7 @@ AS $$
   BEGIN
     RETURN substring(otable from _CDB_OverviewTableDiscriminator())::integer;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Name of the base table corresponding to an overview table
 -- Scope: private.
@@ -114,7 +114,7 @@ AS $$
       RETURN regexp_replace(overview_table, _CDB_OverviewTableDiscriminator(), '');
     END IF;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTable(overview_table REGCLASS)
 RETURNS REGCLASS
@@ -134,7 +134,7 @@ AS $$
     END IF;
     RETURN base_table;
   END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Schema and relation names of a table given its reloid
 -- Scope: private.
@@ -150,7 +150,7 @@ AS $$
     FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
     WHERE c.oid = reloid;
   END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Schema and relation names of a table given its reloid
 -- Scope: private.
@@ -170,4 +170,4 @@ AS $$
     WHERE c.oid = reloid;
     RETURN schema_name;
   END
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
