@@ -1,4 +1,3 @@
-
 -- {
 -- Return pixel resolution at the given zoom level
 -- }{
@@ -7,7 +6,7 @@ RETURNS FLOAT8
 AS $$
   -- circumference divided by 256 is z0 resolution, then divide by 2^z
   SELECT 6378137.0*2.0*pi() / 256.0 / power(2.0, z);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 -- }
 
 -- {
@@ -58,7 +57,6 @@ BEGIN
   --RAISE DEBUG 'ymax: %', ymax;
   
   RETURN ST_MakeEnvelope(xmin, ymin, xmax, ymax, 3857);
-
 END
-$$ LANGUAGE 'plpgsql' IMMUTABLE STRICT;
+$$ LANGUAGE 'plpgsql' IMMUTABLE STRICT PARALLEL SAFE;
 -- }

@@ -1,3 +1,6 @@
+Dev (In progress)
+* Added VOLATILITY and PARALLEL categories to all functions
+
 0.19.2 (2017-06-30)
 * Improved functions to generate unique identifiers #305
 

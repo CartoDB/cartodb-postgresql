@@ -7,7 +7,7 @@ BEGIN
   RETURN CDB_Conf_GetConf('analysis_quota_factor')::text::float8;
 END;
 $$
-LANGUAGE 'plpgsql' STABLE SECURITY DEFINER;
+LANGUAGE 'plpgsql' STABLE PARALLEL SAFE SECURITY DEFINER;
 
 
 -- Get the factor (fraction of the quota) for Camshaft cached analysis tables
@@ -26,7 +26,7 @@ BEGIN
   RETURN factor;
 END;
 $$
-LANGUAGE 'plpgsql' STABLE;
+LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 -- This checks the space used up by Camshaft cached analysis tables.
 -- An exception will be raised if the limits are exceeded.
@@ -59,4 +59,4 @@ BEGIN
     RAISE EXCEPTION 'Analysis cache space limits exceeded';
   END IF;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

@@ -6,7 +6,7 @@
 --            be emitted. The returned hexagons will have the same SRID
 --            as this extent.
 --
--- @param width With of each rectangle
+-- @param width Width of each rectangle
 --
 -- @param height Height of each rectangle
 --
@@ -93,4 +93,4 @@ BEGIN
 
   RETURN;
 END
-$$ LANGUAGE 'plpgsql' IMMUTABLE;
+$$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;

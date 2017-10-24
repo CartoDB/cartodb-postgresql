@@ -117,7 +117,7 @@ BEGIN
 
     RETURN (best_result)[2:array_upper(best_result, 1)];
 END;
-$$ language plpgsql IMMUTABLE;
+$$ language plpgsql IMMUTABLE PARALLEL RESTRICTED;
 
 
 
@@ -217,5 +217,5 @@ BEGIN
     RETURN array_prepend(gvf, reply); 
 
 END; 
-$$ language plpgsql IMMUTABLE;
+$$ language plpgsql IMMUTABLE PARALLEL SAFE;
 

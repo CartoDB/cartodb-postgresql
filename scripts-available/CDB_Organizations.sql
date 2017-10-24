@@ -4,7 +4,7 @@ FUNCTION cartodb.CDB_Organization_Member_Group_Role_Member_Name()
 AS $$
     SELECT 'cdb_org_member'::text || '_' || md5(current_database());
 $$
-LANGUAGE SQL IMMUTABLE;
+LANGUAGE SQL STABLE PARALLEL SAFE;
 
 DO LANGUAGE 'plpgsql' $$
 DECLARE
@@ -25,7 +25,7 @@ AS $$
 BEGIN
     EXECUTE 'GRANT "' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || '" TO "' || role_name || '"';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -------------------------------------------------------------------------------
 -- Administrator
@@ -36,7 +36,7 @@ FUNCTION cartodb._CDB_Organization_Admin_Role_Name()
 AS $$
     SELECT current_database() || '_a'::text;
 $$
-LANGUAGE SQL IMMUTABLE;
+LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- Administrator role creation on extension install
 DO LANGUAGE 'plpgsql' $$
@@ -65,7 +65,7 @@ BEGIN
     -- CREATEROLE is not inherited, and is needed for user creation
     EXECUTE format('ALTER ROLE %I CREATEROLE', cdb_user_role);
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_RemoveAdmin(username text)
@@ -80,7 +80,7 @@ BEGIN
     EXECUTE format('ALTER ROLE %I NOCREATEROLE', cdb_user_role);
     EXECUTE format('REVOKE %I FROM %I', cdb_admin_role, cdb_user_role);
 END
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -------------------------------------------------------------------------------
 -- Sharing tables
@@ -93,7 +93,7 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || from_schema || '" TO "' || to_role_name || '"';
     EXECUTE 'GRANT SELECT ON "' || from_schema || '"."' || table_name || '" TO "' || to_role_name || '"';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Add_Table_Organization_Read_Permission(from_schema text, table_name text)
@@ -102,7 +102,7 @@ AS $$
 BEGIN
     EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Add_Table_Read_Write_Permission(from_schema text, table_name text, to_role_name text)
@@ -112,7 +112,7 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || from_schema || '" TO "' || to_role_name || '"';
     EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON "' || from_schema || '"."' || table_name || '" TO "' || to_role_name || '"';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Add_Table_Organization_Read_Write_Permission(from_schema text, table_name text)
@@ -121,7 +121,7 @@ AS $$
 BEGIN
     EXECUTE 'SELECT cartodb.CDB_Organization_Add_Table_Read_Write_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE
@@ -134,7 +134,7 @@ BEGIN
     -- We need to revoke usage on schema only if we are revoking privileges from the last table where to_role_name has
     -- any permission granted within the schema from_schema
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Remove_Organization_Access_Permission(from_schema text, table_name text)
@@ -143,4 +143,4 @@ AS $$
 BEGIN
     EXECUTE 'SELECT cartodb.CDB_Organization_Remove_Access_Permission(''' || from_schema || ''', ''' || table_name || ''', ''' || cartodb.CDB_Organization_Member_Group_Role_Member_Name() || ''');';
 END
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

@@ -26,7 +26,7 @@ BEGIN
       RAISE EXCEPTION 'Please set user quota before cartodbfying tables.';
   END;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Drop cartodb triggers (might prevent changing columns)
 CREATE OR REPLACE FUNCTION _CDB_drop_triggers(reloid REGCLASS)
@@ -49,7 +49,7 @@ BEGIN
   sql := Format('DROP TRIGGER IF EXISTS test_quota_per_row ON %s', reloid::text);
   EXECUTE sql;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Cartodb_id creation & validation or renaming if invalid
@@ -195,7 +195,7 @@ BEGIN
   END;
 
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Create all triggers
@@ -235,7 +235,7 @@ BEGIN
          || ''')';
   EXECUTE sql;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- 8.b) Create all raster triggers
 -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
@@ -267,7 +267,7 @@ BEGIN
          || ''')';
   EXECUTE sql;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 
@@ -279,7 +279,7 @@ BEGIN
   NEW.the_geom_webmercator := public.CDB_TransformToWebmercator(NEW.the_geom);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 --- Trigger to update the updated_at column. No longer added by default
 --- but kept here for compatibility with old tables which still have this behavior
@@ -322,7 +322,7 @@ BEGIN
 
   RETURN is_raster;
 END;
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE PLPGSQL STABLE PARALLEL UNSAFE;
 
 
 
@@ -398,7 +398,7 @@ geomcol := 'the_geom';
 mercgeomcol := 'the_geom_webmercator';
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 
 
 CREATE OR REPLACE FUNCTION _CDB_Error(message TEXT, funcname TEXT DEFAULT '_CDB_Error')
@@ -409,7 +409,7 @@ BEGIN
   RAISE EXCEPTION 'CDB(%): %', funcname, message;
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
 CREATE OR REPLACE FUNCTION _CDB_SQL(sql TEXT, funcname TEXT DEFAULT '_CDB_SQL')
@@ -425,7 +425,7 @@ BEGIN
     RAISE EXCEPTION 'CDB(%:%:%): %', funcname, SQLSTATE, SQLERRM, sql;
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 -- DEPRECATED: Use _CDB_Unique_Identifier since it's UTF8 Safe and length
@@ -444,7 +444,7 @@ BEGIN
   RAISE EXCEPTION '_CDB_Unique_Relation_Name is DEPRECATED. Use _CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)';
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
 -- DEPRECATED: Use _CDB_Unique_Column_Identifier since it's UTF8 Safe and length
@@ -463,7 +463,7 @@ BEGIN
   RAISE EXCEPTION '_CDB_Unique_Column_Name is DEPRECATED. Use _CDB_Unique_Column_Identifier(prefix TEXT, relname TEXT, suffix TEXT, reloid REGCLASS DEFAULT NULL)';
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
 -- Find out if the table already has a usable primary key
@@ -583,7 +583,7 @@ BEGIN
   -- Didn't find re-usable key, so return FALSE
   RETURN false;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE FUNCTION _CDB_Has_Usable_PK_Sequence(reloid REGCLASS)
@@ -603,7 +603,7 @@ BEGIN
 
   RETURN has_sequence;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 -- Return a set of columns that can be candidates to be the_geom[webmercator]
 -- with some extra information to analyze them.
@@ -632,7 +632,7 @@ BEGIN
     AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
     ORDER BY t.oid ASC;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 DO $$
 BEGIN
@@ -776,7 +776,7 @@ BEGIN
   RETURN rv;
     
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 -- Create a copy of the table. Assumes that the "Has usable" functions
@@ -1127,7 +1127,7 @@ BEGIN
   RETURN true;
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 -- Assumes the table already has the right metadata columns
@@ -1229,7 +1229,7 @@ BEGIN
   RETURN true;
 
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 DROP FUNCTION IF EXISTS CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS);
 CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
@@ -1299,4 +1299,4 @@ BEGIN
 
   RETURN (destschema || '.' || destname)::regclass;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;

@@ -29,7 +29,7 @@ BEGIN
       RETURN k;
     END IF;
 END;
-$$ language plpgsql IMMUTABLE;
+$$ language plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Calculate skewness
 CREATE OR REPLACE FUNCTION CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
@@ -50,4 +50,4 @@ BEGIN
       RETURN sk;
     END IF;
 END;
-$$ language plpgsql IMMUTABLE;
+$$ language plpgsql IMMUTABLE STRICT PARALLEL SAFE;

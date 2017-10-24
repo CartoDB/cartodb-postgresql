@@ -61,7 +61,7 @@ BEGIN
 
   PERFORM _CDB_Error('looping too far', '_CDB_Unique_Identifier');
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 -- UTF8 safe and length aware. Find a unique identifier for a column with a given prefix
@@ -116,7 +116,7 @@ BEGIN
 
   PERFORM _CDB_Error('looping too far', '_CDB_Unique_Column_Identifier');
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
 -- Truncates a given string to a max_octets octets taking care
@@ -157,4 +157,4 @@ BEGIN
 
   RETURN left(string, (i - 1));
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
