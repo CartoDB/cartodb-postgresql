@@ -63,7 +63,7 @@ LANGUAGE 'plpgsql' VOLATILE;
 CREATE OR REPLACE FUNCTION CDB_UserDataSize()
 RETURNS bigint AS
 $$
-  SELECT public.CDB_UserDataSize('public');
+  SELECT CDB_UserDataSize('public');
 $$
 LANGUAGE 'sql' VOLATILE;
 
