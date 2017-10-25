@@ -464,8 +464,8 @@ CREATE AGGREGATE _cdb_mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
   FINALFUNC=_cdb_mode_of_array,
-  INITCOND='{}',
-  PARALLEL = SAFE
+  PARALLEL = SAFE,
+  INITCOND='{}'
 );
 
 -- SQL Aggregation expression for a datase attribute

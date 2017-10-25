@@ -21,7 +21,7 @@ CREATE AGGREGATE cartodb.CDB_Math_Mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
   FINALFUNC=_CDB_Math_final_mode,
-  INITCOND='{}',
-  PARALLEL = SAFE
+  PARALLEL = SAFE,
+  INITCOND='{}'
 );
 
