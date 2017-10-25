@@ -123,7 +123,7 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	cat cartodb_version.sql >> $@
 ifeq ($(PG_PARALLEL), 0)
 # Remove PARALLEL in aggregates and functions
-	$(SED) -e 's/PARALLEL \= [A-Z]*/''/g' \
+	$(SED) -e 's/PARALLEL \= [A-Z]*,/''/g' \
 		-e 's/PARALLEL [A-Z]*/''/g' -i $@
 endif
 
@@ -153,18 +153,18 @@ legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p expected/test/
 	mkdir -p results/test/
 	for f in $(REGRESS_OLD); do \
-    tn=`basename $${f} .sql`; \
-    of=sql/test/$${tn}.sql; \
-    echo '\set ECHO none' > $${of}; \
-    echo '\a' >> $${of}; \
-    echo '\t' >> $${of}; \
-    echo '\set QUIET off' >> $${of}; \
-    cat $${f} | \
-      $(SED) -e 's/public\./cartodb./g' >> $${of}; \
-    exp=expected/test/$${tn}.out; \
-    echo '\set ECHO none' > $${exp}; \
-    cat test/$${tn}_expect >> $${exp}; \
-  done
+		tn=`basename $${f} .sql`; \
+		of=sql/test/$${tn}.sql; \
+		echo '\set ECHO none' > $${of}; \
+		echo '\a' >> $${of}; \
+		echo '\t' >> $${of}; \
+		echo '\set QUIET off' >> $${of}; \
+		cat $${f} | \
+			$(SED) -e 's/public\./cartodb./g' >> $${of}; \
+		exp=expected/test/$${tn}.out; \
+		echo '\set ECHO none' > $${exp}; \
+		cat test/$${tn}_expect >> $${exp}; \
+	done
 
 test_organization:
 	bash test/organization/test.sh
