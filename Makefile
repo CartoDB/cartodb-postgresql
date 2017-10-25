@@ -4,6 +4,7 @@ EXTENSION = cartodb
 EXTVERSION = 0.19.2
 
 SED = sed
+AWK = awk
 
 CDBSCRIPTS = \
   scripts-enabled/*.sql \
@@ -109,16 +110,22 @@ REGRESS = test_setup $(REGRESS_LEGACY)
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+PG_PARALLEL := $(shell $(PG_CONFIG) --version | ($(AWK) '{$$2*=1000; if ($$2 >= 9600) print 1; else print 0;}' 2> /dev/null || echo 0))
 include $(PGXS)
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
-    $(SED) -e 's/public\./cartodb./g' \
-        -e 's/:DATABASE_USERNAME/cdb_org_admin/g' \
-        -e "s/''public''/''cartodb''/g" >> $@
+	$(SED) -e 's/public\./cartodb./g' \
+		-e 's/:DATABASE_USERNAME/cdb_org_admin/g' \
+		-e "s/''public''/''cartodb''/g" >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_version.sql >> $@
+ifeq ($(PG_PARALLEL), 0)
+# Remove PARALLEL in aggregates and functions
+	$(SED) -e 's/PARALLEL \= [A-Z]*/''/g' \
+		-e 's/PARALLEL [A-Z]*/''/g' -i $@
+endif
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
 	./util/create_from_unpackaged.sh $(EXTVERSION)
@@ -131,6 +138,9 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+ifeq ($(PG_PARALLEL), 0)
+	echo -e "\033[0;31mExtension created without PARALLEL support\033[0m"
+endif
 
 cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
