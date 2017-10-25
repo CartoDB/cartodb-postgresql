@@ -8,8 +8,9 @@
 #
 
 DATABASE=test_organizations
-CMD='echo psql'
 CMD=psql
+SED=sed
+PG_PARALLEL=$(pg_config --version | awk '{$2*=1000; if ($2 >= 9600) print 1; else print 0;}' 2> /dev/null || echo 0)
 
 OK=0
 PARTIALOK=0
@@ -22,6 +23,18 @@ function set_failed() {
 
 function clear_partial_result() {
     PARTIALOK=0
+}
+
+function load_sql_file() {
+    if [[ $PG_PARALLEL -eq 0 ]]
+    then
+        tmp_file=/tmp/$(basename $1)_no_parallel
+        ${SED} $1 -e 's/PARALLEL \= [A-Z]*/''/g' -e 's/PARALLEL [A-Z]*/''/g' > $tmp_file
+        ${CMD} -d ${DATABASE} -f $tmp_file
+        rm $tmp_file
+    else
+        ${CMD} -d ${DATABASE} -f $1
+    fi
 }
 
 
@@ -163,10 +176,10 @@ function setup() {
     sql "GRANT USAGE ON SCHEMA cartodb TO public;"
 
     log_info "########################### BOOTSTRAP ###########################"
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Groups_API.sql
+    load_sql_file scripts-available/CDB_Organizations.sql
+    load_sql_file scripts-available/CDB_Conf.sql
+    load_sql_file scripts-available/CDB_Groups.sql
+    load_sql_file scripts-available/CDB_Groups_API.sql
 
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_org_admin
@@ -380,20 +393,20 @@ function test_user_can_read_when_it_has_permission_after_organization_permission
 }
 
 function test_cdb_querytables_returns_schema_and_table_name() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
     sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
 }
 
 function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
 function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
@@ -419,7 +432,7 @@ function test_cdb_usertables_should_work_with_orgusers() {
 
 
     # test CDB_UserTables with publicuser
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_UserTables.sql
+    load_sql_file scripts-available/CDB_UserTables.sql
 
     sql publicuser "SELECT count(*) FROM CDB_UserTables('all')" should 1
     sql publicuser "SELECT count(*) FROM CDB_UserTables('public')" should 1

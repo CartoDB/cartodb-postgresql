@@ -12,6 +12,8 @@
 DATABASE=test_extension
 CMD='echo psql'
 CMD=psql
+SED=sed
+PG_PARALLEL=$(pg_config --version | awk '{$2*=1000; if ($2 >= 9600) print 1; else print 0;}' 2> /dev/null || echo 0)
 
 OK=0
 PARTIALOK=0
@@ -24,6 +26,30 @@ function set_failed() {
 
 function clear_partial_result() {
     PARTIALOK=0
+}
+
+function load_sql_file() {
+    if [[ $PG_PARALLEL -eq 0 ]]
+    then
+        tmp_file=/tmp/$(basename $1)_no_parallel
+        ${SED} $1 -e 's/PARALLEL \= [A-Z]*/''/g' -e 's/PARALLEL [A-Z]*/''/g' > $tmp_file
+        ${CMD} -d ${DATABASE} -f $tmp_file
+        rm $tmp_file
+    else
+        ${CMD} -d ${DATABASE} -f $1
+    fi
+}
+
+function load_sql_file_schema() {
+    if [[ $PG_PARALLEL -eq 0 ]]
+    then
+        tmp_file=/tmp/$(basename $1)_no_parallel
+        ${SED} $1 -e 's/PARALLEL \= [A-Z]*/''/g' -e 's/PARALLEL [A-Z]*/''/g' > $tmp_file
+        PGOPTIONS="$PGOPTIONS --search_path=\"$2\"" ${CMD} -d ${DATABASE} -f $tmp_file
+        rm $tmp_file
+    else
+        PGOPTIONS="$PGOPTIONS --search_path=\"$2\"" ${CMD} -d ${DATABASE} -f $1
+    fi
 }
 
 
@@ -180,11 +206,15 @@ function setup_database() {
     sql "CREATE EXTENSION plpythonu;"
 
     log_info "########################### BOOTSTRAP ###########################"
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Organizations.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_OverviewsSupport.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_AnalysisSupport.sql
-    # trick to allow forcing a schema when loading SQL files (see: http://bit.ly/1HeLnhL)
-    ${CMD} -d ${DATABASE} -f test/extension/run_at_cartodb_schema.sql
+    load_sql_file scripts-available/CDB_Organizations.sql
+    load_sql_file scripts-available/CDB_OverviewsSupport.sql
+    load_sql_file scripts-available/CDB_AnalysisSupport.sql
+
+    load_sql_file_schema scripts-available/CDB_Quota.sql cartodb
+    load_sql_file_schema scripts-available/CDB_TableMetadata.sql cartodb
+    load_sql_file_schema scripts-available/CDB_ColumnNames.sql cartodb
+    load_sql_file_schema scripts-available/CDB_ColumnType.sql cartodb
+    load_sql_file_schema scripts-available/CDB_AnalysisCatalog.sql cartodb
 }
 
 function setup() {
@@ -423,8 +453,8 @@ function test_cdb_column_type() {
 }
 
 function test_cdb_querytables_schema_and_table_names_with_dots() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
 
     sql postgres 'CREATE SCHEMA "foo.bar";'
     sql postgres 'CREATE TABLE "foo.bar"."c.a.r.t.o.d.b" (a int);'
@@ -439,8 +469,8 @@ function test_cdb_querytables_schema_and_table_names_with_dots() {
 }
 
 function test_cdb_querytables_table_name_with_dots() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
 
     sql postgres 'CREATE TABLE "w.a.d.u.s" (a int);';
 
@@ -451,8 +481,8 @@ function test_cdb_querytables_table_name_with_dots() {
 }
 
 function test_cdb_querytables_happy_cases() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
 
     sql postgres 'CREATE TABLE wadus (a int);';
     sql postgres 'CREATE TABLE "FOOBAR" (a int);';
@@ -475,17 +505,17 @@ function test_cdb_querytables_happy_cases() {
 }
 
 function test_foreign_tables() {
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_QueryTables.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_TableMetadata.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_Conf.sql
-    ${CMD} -d ${DATABASE} -f scripts-available/CDB_ForeignTable.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_TableMetadata.sql
+    load_sql_file scripts-available/CDB_Conf.sql
+    load_sql_file scripts-available/CDB_ForeignTable.sql
 
 
     DATABASE=fdw_target setup_database
-    ${CMD} -d fdw_target -f scripts-available/CDB_QueryStatements.sql
-    ${CMD} -d fdw_target -f scripts-available/CDB_QueryTables.sql
-    ${CMD} -d fdw_target -f scripts-available/CDB_TableMetadata.sql
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
+    load_sql_file scripts-available/CDB_TableMetadata.sql
 
     DATABASE=fdw_target sql postgres "DO
 \$\$
