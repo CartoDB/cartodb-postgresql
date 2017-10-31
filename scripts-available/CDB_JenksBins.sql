@@ -117,7 +117,7 @@ BEGIN
 
     RETURN (best_result)[2:array_upper(best_result, 1)];
 END;
-$$ language plpgsql IMMUTABLE PARALLEL RESTRICTED;
+$$ language plpgsql VOLATILE PARALLEL RESTRICTED;
 
 
 
