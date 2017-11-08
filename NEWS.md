@@ -1,4 +1,4 @@
-Dev (In progress)
+0.20.0 (2017-11-08)
 * Added VOLATILITY and PARALLEL categories to all functions
 
 0.19.2 (2017-06-30)
