@@ -22,13 +22,19 @@ and upgrade of the objects. This means using CREATE OR REPLACE for
 the functions, and whatever it takes to check existence of any previous
 version of objects in other cases.
 
+When adding a new function or modifying an exiting one make sure that the
+[VOLATILITY](https://www.postgresql.org/docs/current/static/xfunc-volatility.html) and [PARALLEL](https://www.postgresql.org/docs/9.6/static/parallel-safety.html) categories are updated accordingly.
+As PARALLEL labels need to be stripped for incompatible PostgreSQL versions
+please use _PARALLEL SAFE/RESTRICTED/UNSAFE_ in uppercase so it's handled
+automatically.
+
 When used as an extension (probably always from version 0.2.0 onwards)
 all the objects will be installed in a "cartodb" schema. Take this into
 account to fully-qualify internal calls to avoid (possibly dangerous)
 name clashes.
 
 Every new feature (as well as bugfixes) should come with a test case,
-see next section.
+see the 'Writing testcases' section.
 
 Writing testcases
 -----------------
