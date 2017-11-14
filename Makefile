@@ -124,8 +124,10 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	cat cartodb_version.sql >> $@
 ifeq ($(PG_PARALLEL), 0)
 # Remove PARALLEL in aggregates and functions
+	$(eval TMPFILE := $(shell mktemp /tmp/$(basename $0).XXXXXXXX))
 	$(SED) -e 's/PARALLEL \= [A-Z]*,/''/g' \
-		-e 's/PARALLEL [A-Z]*/''/g' -i $@
+		-e 's/PARALLEL [A-Z]*/''/g' $@ > $(TMPFILE)
+	mv $(TMPFILE) $@
 endif
 
 $(EXTENSION)--unpackaged--$(EXTVERSION).sql: $(EXTENSION)--$(EXTVERSION).sql util/create_from_unpackaged.sh Makefile
