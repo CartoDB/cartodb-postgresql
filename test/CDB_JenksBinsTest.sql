@@ -5,6 +5,8 @@ WITH data AS (
                  15.01, 14.99,
                  20.1, 19.9]::numeric[] AS s
 )
+-- expectation is: 1, 5, 10, 15, 20
+-- TODO: fix cdb_jenksbins to match ^^
 SELECT round(unnest(CDB_JenksBins(s, 5))) FROM data;
 
 WITH data_nulls AS (
@@ -16,4 +18,6 @@ WITH data_nulls AS (
                  null, null,
                  20.1, 19.9]::numeric[] AS s
 )
+-- expectation is: 1, 5, 10, 15, 20
+-- TODO: fix cdb_jenksbins to match ^^
 SELECT round(unnest(CDB_JenksBins(s, 5))) FROM data_nulls;
