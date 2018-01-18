@@ -792,7 +792,6 @@ DECLARE
   relname TEXT;
   relschema TEXT;
   relseq TEXT;
-  relseqtmp TEXT;
 
   destoid REGCLASS;
   destname TEXT;
@@ -915,7 +914,7 @@ BEGIN
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := cartodb._CDB_Unique_Identifier(NULL, destseq, destschema);
+  destseq := cartodb._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
