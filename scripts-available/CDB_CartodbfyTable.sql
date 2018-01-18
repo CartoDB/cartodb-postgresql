@@ -900,15 +900,19 @@ BEGIN
   -- We must rewrite, so here we go...
   
   -- Our desired PK sequence name
-  destseq := Format('%s_%s_seq', relname, const.pkey);
 
   -- We are going to drop the source table when we're done anyways
   -- but it's possible the source PK sequence is living in a name we would like to use
   -- so we check to see if that's the case, and rename it out of the way
-  SELECT pg_catalog.pg_get_serial_sequence(Format('%I.%I', relschema, relname), const.pkey)
-  INTO relseq;
-  IF relseq IS NOT NULL AND relseq = Format('%I.%I', destschema, destseq) THEN
-    PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %s_tmp', relseq, destseq), '_CDB_Rewrite_Table');
+  IF has_usable_primary_key AND has_usable_pk_sequence THEN
+    -- See if the existing sequence is squatting on our preferred name
+    destseq := Format('%s_%s_seq', relname, const.pkey);
+    SELECT pg_catalog.pg_get_serial_sequence(Format('%I.%I', relschema, relname), const.pkey)
+      INTO relseq;
+    -- If it's the name we want, then rename it
+    IF relseq IS NOT NULL AND relseq = Format('%I.%I', destschema, destseq) THEN
+      PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %s_tmp', relseq, destseq), '_CDB_Rewrite_Table');
+    END IF;
   END IF;
 
   -- Put the primary key sequence in the right schema
