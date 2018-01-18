@@ -791,6 +791,8 @@ DECLARE
 
   relname TEXT;
   relschema TEXT;
+  relseq TEXT;
+  relseqtmp TEXT;
 
   destoid REGCLASS;
   destname TEXT;
@@ -897,12 +899,23 @@ BEGIN
   END IF;
 
   -- We must rewrite, so here we go...
+  
+  -- Our desired PK sequence name
+  destseq := Format('%s_%s_seq', relname, const.pkey);
 
+  -- We are going to drop the source table when we're done anyways
+  -- but it's possible the source PK sequence is living in a name we would like to use
+  -- so we check to see if that's the case, and rename it out of the way
+  SELECT pg_catalog.pg_get_serial_sequence(Format('%I.%I', relschema, relname), const.pkey)
+  INTO relseq;
+  IF relseq IS NOT NULL AND relseq = Format('%I.%I', destschema, destseq) THEN
+    PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %s_tmp', relseq, destseq), '_CDB_Rewrite_Table');
+  END IF;
 
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := cartodb._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
+  destseq := cartodb._CDB_Unique_Identifier(NULL, destseq, destschema);
   destseq := Format('%I.%I', destschema, destseq);
   PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
