@@ -513,7 +513,12 @@ END
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
 
-    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
+    # Add PGPORT to conf if it is set
+    PORT_SPEC=""
+    if [[ "$PGPORT" != "" ]] ; then
+        PORT_SPEC=", \"port\": \"$PGPORT\""
+    fi
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\" $PORT_SPEC },
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
     sql postgres "SELECT cartodb._CDB_Setup_FDW('test_fdw')"
