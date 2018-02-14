@@ -1,3 +1,6 @@
+-- In older versions of the extension, CDB_RectangleGrid had a different signature
+DROP FUNCTION IF EXISTS cartodb.CDB_RectangleGrid(GEOMETRY, FLOAT8, FLOAT8, GEOMETRY);
+
 --
 -- Fill given extent with a rectangular coverage
 --
@@ -14,9 +17,12 @@
 --               If omitted the origin will be 0,0.
 --               The parameter is checked for having the same SRID
 --               as the extent.
---  
 --
-CREATE OR REPLACE FUNCTION CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL)
+-- @param maxcells Optional maximum number of grid cells to generate;
+--                 if the grid requires more cells to cover the extent
+--                 and exception will occur.
+--
+CREATE OR REPLACE FUNCTION CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -78,6 +84,12 @@ BEGIN
 
   --RAISE DEBUG 'hend: %', hend;
   --RAISE DEBUG 'vend: %', vend;
+
+  If maxcells IS NOT NULL AND maxcells > 0 THEN
+    IF ((hend - hstart)/hstep * (vend - vstart)/vstep)::integer > maxcells THEN
+        RAISE EXCEPTION 'The requested grid is too big to be rendered';
+    END IF;
+  END IF;
 
   x := hstart;
   WHILE x < hend LOOP -- over X

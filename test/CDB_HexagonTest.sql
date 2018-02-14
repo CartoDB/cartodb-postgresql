@@ -45,3 +45,9 @@ WITH
  0.002 as radius ),
  grid AS ( SELECT CDB_HexagonGrid(env, radius) AS cell from params)
 SELECT '#160', count(cell) > 23000 from grid;
+
+-- Check small grids are generated...
+SELECT COUNT(*) FROM cartodb.CDB_HexagonGrid(ST_MakeEnvelope(0,0,1000,1000,3857), 10);
+
+-- But large grids produce an error
+SELECT COUNT(*) FROM cartodb.CDB_HexagonGrid(ST_MakeEnvelope(0,0,1000,1000,3857), 1);

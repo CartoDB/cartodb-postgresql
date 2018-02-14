@@ -10,6 +10,10 @@ AS $$
     WHERE path[1] % 2 != 0
 $$ LANGUAGE 'sql' IMMUTABLE STRICT PARALLEL SAFE;
 
+
+-- In older versions of the extension, CDB_HexagonGrid had a different signature
+DROP FUNCTION IF EXISTS cartodb.CDB_HexagonGrid(GEOMETRY, FLOAT8, GEOMETRY);
+
 --
 -- Fill given extent with an hexagonal coverage
 --
@@ -25,10 +29,13 @@ $$ LANGUAGE 'sql' IMMUTABLE STRICT PARALLEL SAFE;
 --               If omitted the origin will be 0,0.
 --               The parameter is checked for having the same SRID
 --               as the extent.
---  
 --
+-- @param maxcells Optional maximum number of grid cells to generate;
+--                 if the grid requires more cells to cover the extent
+--                 and exception will occur.
+----
 -- DROP FUNCTION IF EXISTS CDB_HexagonGrid(ext GEOMETRY, side FLOAT8);
-CREATE OR REPLACE FUNCTION CDB_HexagonGrid(ext GEOMETRY, side FLOAT8, origin GEOMETRY DEFAULT NULL)
+CREATE OR REPLACE FUNCTION CDB_HexagonGrid(ext GEOMETRY, side FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -105,6 +112,12 @@ BEGIN
     vstartary := ARRAY[ vstart + (vstep/2.0), vstart ];
   ELSE
     vstartary := ARRAY[ vstart - (vstep/2.0), vstart ];
+  END IF;
+
+  If maxcells IS NOT NULL AND maxcells > 0 THEN
+    IF CEIL((CEIL((vend-vstart)/(vstep/2.0)) * CEIL((hend-hstart)/(hstep*2.0/3.0)))/3.0)::integer > maxcells THEN
+      RAISE EXCEPTION 'The requested grid is too big to be rendered';
+    END IF;
   END IF;
 
   vstartidx := abs(hskip)%2;
