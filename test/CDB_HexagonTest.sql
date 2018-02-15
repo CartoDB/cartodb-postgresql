@@ -1,3 +1,6 @@
+set client_min_messages to error;
+\set VERBOSITY TERSE
+
 -- Check correctness of an hexagons grid
 --
 -- Cells must have no overlaps and have a number of

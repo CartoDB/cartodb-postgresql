@@ -1,3 +1,3 @@
+SET
 10000
 ERROR:  The requested grid is too big to be rendered
-CONTEXT:  PL/pgSQL function cdb_rectanglegrid(geometry,double precision,double precision,geometry,integer) line 64 at RAISE

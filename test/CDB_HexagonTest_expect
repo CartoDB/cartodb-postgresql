@@ -1,5 +1,5 @@
+SET
 9|63|count / npoints
 #160|t
 3886
 ERROR:  The requested grid is too big to be rendered
-CONTEXT:  PL/pgSQL function cdb_hexagongrid(geometry,double precision,geometry,integer) line 80 at RAISE
