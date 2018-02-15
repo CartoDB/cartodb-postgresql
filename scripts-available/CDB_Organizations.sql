@@ -111,6 +111,7 @@ AS $$
 BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || from_schema || '" TO "' || to_role_name || '"';
     EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON "' || from_schema || '"."' || table_name || '" TO "' || to_role_name || '"';
+    EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE ' || pg_catalog.pg_get_serial_sequence(Format('%I.%I', from_schema, table_name), 'cartodb_id') || ' TO "' || to_role_name || '"';
 END
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
