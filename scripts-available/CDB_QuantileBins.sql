@@ -10,10 +10,9 @@
 CREATE OR REPLACE FUNCTION CDB_QuantileBins(in_array numeric[], breaks int)
 RETURNS numeric[]
 AS $$
-  SELECT array_agg(p) FROM (
-      SELECT percentile_disc(idx::numeric / breaks::numeric)
-        WITHIN GROUP (ORDER BY x ASC) AS p
-      FROM generate_series(1, breaks) AS idx, unnest(in_array) AS x
-      GROUP BY idx
-  ) AS quantiles;
+  SELECT
+    percentile_disc(Array(generate_series(1, breaks) / breaks::numeric))
+    WITHIN GROUP (ORDER BY x ASC) AS p
+  FROM
+    unnest(in_array) AS x;
 $$ language sql;
