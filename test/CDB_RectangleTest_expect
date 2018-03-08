@@ -1,5 +1,3 @@
 SET
-9|63|count / npoints
-#160|t
-3886
+10000
 ERROR:  The requested grid is too big to be rendered
