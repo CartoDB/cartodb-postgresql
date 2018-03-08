@@ -1,3 +1,6 @@
+0.21.1 (2018-03-08)
+* Refactors CDB_QuantileBins to rely on PostgreSQL function `percentile_disc` #316
+
 0.21.0 (2018-02-15)
 * Add optional parameter to limit the number of cells in grid-generation functions #322
 * Fix: grant usage on cartodb_id sequence when sharing read write #323
