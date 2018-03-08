@@ -11,8 +11,8 @@ CREATE OR REPLACE FUNCTION CDB_QuantileBins(in_array numeric[], breaks int)
 RETURNS numeric[]
 AS $$
   SELECT
-    percentile_disc(Array(generate_series(1, breaks) / breaks::numeric))
+    percentile_disc(SELECT Array(generate_series(1, breaks) / breaks::numeric))
     WITHIN GROUP (ORDER BY x ASC) AS p
   FROM
     unnest(in_array) AS x;
-$$ language sql;
+$$ language SQL IMMUTABLE STRICT PARALLEL SAFE;
