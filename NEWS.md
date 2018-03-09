@@ -1,3 +1,6 @@
+0.22.0 (yyyy-mm-dd)
+* Fix: allow older ogr2ogr to work in -append mode (#319)
+
 0.21.0 (2018-02-15)
 * Add optional parameter to limit the number of cells in grid-generation functions #322
 * Fix: grant usage on cartodb_id sequence when sharing read write #323
