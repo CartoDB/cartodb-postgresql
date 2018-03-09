@@ -1,3 +1,8 @@
+0.21.0 (2018-02-15)
+* Add optional parameter to limit the number of cells in grid-generation functions #322
+* Fix: grant usage on cartodb_id sequence when sharing read write #323
+* Fix: Change sed in-place for tmpfiles 524319
+
 0.20.0 (2017-11-08)
 * Added VOLATILITY and PARALLEL categories to all functions
 
