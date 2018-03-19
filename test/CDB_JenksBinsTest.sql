@@ -1,11 +1,23 @@
 WITH data AS (
-    SELECT array_agg(x::numeric) s FROM generate_series(1,300) x
-        WHERE x % 5 != 0 AND x % 7 != 0
-    ) 
-SELECT unnest(CDB_JenksBins(s, 7)) FROM data;
+    SELECT Array[0.99, 1.0, 1.01,
+                 4.99, 5.01,
+                 10.01, 10.01,
+                 15.01, 14.99,
+                 20.1, 19.9]::numeric[] AS s
+)
+-- expectation is: 1, 5, 10, 15, 20
+-- TODO: fix cdb_jenksbins to match ^^
+SELECT round(unnest(CDB_JenksBins(s, 5))) FROM data;
 
 WITH data_nulls AS (
-    SELECT array_agg(CASE WHEN x % 2 != 0 THEN x ELSE NULL END::numeric) s FROM generate_series(1,300) x
-        WHERE x % 5 != 0 AND x % 7 != 0
-    )
-SELECT unnest(CDB_JenksBins(s, 7)) FROM data_nulls;
+    SELECT Array[0.99, 1.0, 1.01,
+                 4.99, 5.01,
+                 null, null,
+                 10.01, 10.01,
+                 15.01, 14.99,
+                 null, null,
+                 20.1, 19.9]::numeric[] AS s
+)
+-- expectation is: 1, 5, 10, 15, 20
+-- TODO: fix cdb_jenksbins to match ^^
+SELECT round(unnest(CDB_JenksBins(s, 5))) FROM data_nulls;

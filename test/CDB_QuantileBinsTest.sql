@@ -1,11 +1,17 @@
 WITH data AS (
-    SELECT array_agg(x::numeric) s FROM generate_series(1,100) x
-        WHERE x % 5 != 0 AND x % 7 != 0
+    SELECT array_agg(x::numeric) AS s
+    FROM generate_series(0, 99) AS x
     ) 
-SELECT unnest(CDB_QuantileBins(s, 7)) FROM data;
+SELECT unnest(CDB_QuantileBins(s, 10))
+  FROM data;
 
 WITH data_nulls AS (
-    SELECT array_agg(CASE WHEN x % 2 != 0 THEN x ELSE NULL END::numeric) s FROM generate_series(1,100) x
-        WHERE x % 5 != 0 AND x % 7 != 0
+    SELECT array_agg(x::numeric) AS s
+      FROM (
+        SELECT x FROM generate_series(0, 99) AS x
+        UNION ALL
+        SELECT null AS x FROM generate_series(1, 10) AS x
+        ) _wrap
     )
-SELECT unnest(CDB_QuantileBins(s, 7)) FROM data_nulls;
+SELECT unnest(CDB_QuantileBins(s, 10))
+  FROM data_nulls;
