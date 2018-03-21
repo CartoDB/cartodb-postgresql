@@ -911,7 +911,7 @@ BEGIN
       INTO relseq;
     -- If it's the name we want, then rename it
     IF relseq IS NOT NULL AND relseq = Format('%I.%I', destschema, destseq) THEN
-      PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO tmp_%s', relseq, destseq), '_CDB_Rewrite_Table');
+      PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %I', relseq, Format('tmp_%s', destseq)), '_CDB_Rewrite_Table');
     END IF;
   END IF;
 
