@@ -1,5 +1,5 @@
-0.22.0 (yyyy-mm-dd)
-* Fix: allow older ogr2ogr to work in -append mode (#319)
+0.22.0 (2018-03-22)
+* Fix: allow older ogr2ogr to work in -append mode (#319,#325)
 * Refactors CDB_QuantileBins to rely on PostgreSQL function `percentile_disc` #316
 
 0.21.0 (2018-02-15)
