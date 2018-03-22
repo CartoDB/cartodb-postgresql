@@ -385,6 +385,11 @@ BEGIN;
     $$;
 ROLLBACK;
 
+-- Long table name could cause possible sequence rename collision #325
+CREATE TABLE "wadus_table_9473e8f6-2da1-11e8-8bca-0204e4dfe4d8" ( cartodb_id serial primary key );
+SELECT CDB_CartodbfyTableCheck('wadus_table_9473e8f6-2da1-11e8-8bca-0204e4dfe4d8'::REGCLASS, 'Long table name could cause sequence collision while renaming #325');
+DROP TABLE "wadus_table_9473e8f6-2da1-11e8-8bca-0204e4dfe4d8";
+
 -- TODO: table with existing custom-triggered the_geom
 
 DROP FUNCTION CDB_CartodbfyTableCheck(regclass, text);

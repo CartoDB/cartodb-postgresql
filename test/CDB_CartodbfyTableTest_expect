@@ -150,5 +150,8 @@ SET
 BEGIN
 DO
 ROLLBACK
+CREATE TABLE
+Long table name could cause sequence collision while renaming #325 cartodbfied fine
+DROP TABLE
 DROP FUNCTION
 DROP FUNCTION
