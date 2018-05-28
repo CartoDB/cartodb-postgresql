@@ -105,6 +105,25 @@ END
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE
+FUNCTION cartodb._CDB_Organization_Get_Table_Sequences(from_schema text, table_name text)
+    RETURNS SETOF TEXT
+AS $$
+BEGIN
+    RETURN QUERY EXECUTE 'SELECT
+        n.nspname || ''.'' || c.relname
+    FROM
+        pg_depend d
+        JOIN pg_class c ON d.objid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE
+        d.refobjsubid > 0 AND
+        d.classid = ''pg_class''::regclass AND
+        c.relkind = ''S''::"char" AND
+        d.refobjid = (''' || from_schema || '.' || table_name ||''')::regclass';
+END
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+CREATE OR REPLACE
 FUNCTION cartodb.CDB_Organization_Add_Table_Read_Write_Permission(from_schema text, table_name text, to_role_name text)
     RETURNS void
 AS $$
@@ -115,24 +134,9 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || from_schema || '" TO "' || to_role_name || '"';
     EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON "' || from_schema || '"."' || table_name || '" TO "' || to_role_name || '"';
 
-    EXECUTE 'SELECT
-        array_agg(n.nspname || ''.'' || c.relname)
-    FROM
-        pg_depend d
-        JOIN pg_class c ON d.objid = c.oid
-        JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE
-        d.refobjsubid > 0 AND
-        d.classid = ''pg_class''::regclass AND
-        c.relkind = ''S''::"char" AND
-        d.refobjid = (''' || from_schema || '.' || table_name ||''')::regclass'
-    INTO sequence_names;
-
-    IF sequence_names IS NOT NULL THEN
-        FOREACH sequence_name IN ARRAY sequence_names LOOP
-            EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE ' || sequence_name || ' TO "' || to_role_name || '"';
-        END LOOP;
-    END IF;
+    FOR sequence_name IN SELECT * FROM cartodb._CDB_Organization_Get_Table_Sequences(from_schema, table_name) LOOP
+        EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE ' || sequence_name || ' TO "' || to_role_name || '"';
+    END LOOP;
 END
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
