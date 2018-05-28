@@ -128,7 +128,6 @@ FUNCTION cartodb.CDB_Organization_Add_Table_Read_Write_Permission(from_schema te
     RETURNS void
 AS $$
 DECLARE
-    sequence_names TEXT[];
     sequence_name TEXT;
 BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA "' || from_schema || '" TO "' || to_role_name || '"';
