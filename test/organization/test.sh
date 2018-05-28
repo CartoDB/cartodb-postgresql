@@ -338,6 +338,20 @@ function test_member_2_can_write_to_member_1_table_and_sequence_after_write_perm
     sql cdb_testmember_1 "ALTER TABLE cdb_testmember_1.foo DROP cartodb_id;"
 }
 
+function test_member_2_can_write_to_member_1_table_with_non_sequence_cartodb_id_after_write_permission_is_added() {
+    sql cdb_testmember_1 "ALTER TABLE cdb_testmember_1.foo ADD cartodb_id INTEGER;"
+
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_2 'DELETE FROM cdb_testmember_1.foo where a = 9;'
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+
+    sql cdb_testmember_1 "ALTER TABLE cdb_testmember_1.foo DROP cartodb_id;"
+}
+
 function test_member_1_removes_access_and_member_2_can_no_longer_query_the_table() {
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
