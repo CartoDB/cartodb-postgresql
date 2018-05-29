@@ -119,7 +119,7 @@ BEGIN
         d.refobjsubid > 0 AND
         d.classid = ''pg_class''::regclass AND
         c.relkind = ''S''::"char" AND
-        d.refobjid = (''' || from_schema || '.' || table_name ||''')::regclass';
+        d.refobjid = (''' || quote_ident(from_schema) || '.' || quote_ident(table_name) ||''')::regclass';
 END
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
