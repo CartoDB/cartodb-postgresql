@@ -1,3 +1,6 @@
+0.22.1 (2018-05-29)
+* Fix: Correctly grant permission to all sequences related with table (#330)
+
 0.22.0 (2018-03-22)
 * Fix: allow older ogr2ogr to work in -append mode (#319,#325)
 * Refactors CDB_QuantileBins to rely on PostgreSQL function `percentile_disc` #316
