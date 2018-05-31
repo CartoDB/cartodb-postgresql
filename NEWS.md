@@ -1,3 +1,6 @@
+0.22.2 (2018-05-29)
+* Fix: Fix hyphenates usernames in 0.22.1 fix (#331)
+
 0.22.1 (2018-05-29)
 * Fix: Correctly grant permission to all sequences related with table (#330)
 

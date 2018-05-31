@@ -110,7 +110,7 @@ FUNCTION cartodb._CDB_Organization_Get_Table_Sequences(from_schema text, table_n
 AS $$
 BEGIN
     RETURN QUERY EXECUTE 'SELECT
-        n.nspname || ''.'' || c.relname
+        quote_ident(n.nspname) || ''.'' || quote_ident(c.relname)
     FROM
         pg_depend d
         JOIN pg_class c ON d.objid = c.oid
