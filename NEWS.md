@@ -1,3 +1,6 @@
+0.23.0 (2018-07-03)
+* Add a new helper function `_CDB_Table_Exists(table_name_with_optional_schema TEXT)` #332
+
 0.22.2 (2018-05-29)
 * Fix: Fix hyphenates usernames in 0.22.1 fix (#331)
 

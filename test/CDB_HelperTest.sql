@@ -126,3 +126,13 @@ SELECT * FROM cartodb._CDB_Octet_Truncate('piraña', 6);
 
 -- Test _CDB_Octet_Truncate UTF8 case
 SELECT * FROM cartodb._CDB_Octet_Truncate('piraña', 7);
+
+-- Test _CDB_Table_Exists
+CREATE TABLE public.this_table_exists();
+SELECT cartodb._CDB_Table_Exists('this_table_does_not_exist');
+SELECT cartodb._CDB_Table_Exists('this_schema_does_not_exist.this_table_does_not_exist');
+SELECT cartodb._CDB_Table_Exists('this_table_exists');
+SELECT cartodb._CDB_Table_Exists('public.this_table_exists');
+SELECT cartodb._CDB_Table_Exists('raster_overviews'); -- view created by postgis
+SELECT cartodb._CDB_Table_Exists('public.raster_overviews');
+DROP TABLE public.this_table_exists
