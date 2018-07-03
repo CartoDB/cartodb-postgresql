@@ -165,12 +165,11 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 CREATE OR REPLACE FUNCTION cartodb._CDB_Table_Exists(table_name_with_optional_schema TEXT)
 RETURNS bool
 AS $$
+DECLARE
+    table_exists bool := false;
 BEGIN
-    IF EXISTS(SELECT * FROM pg_class WHERE table_name_with_optional_schema::regclass::oid = oid AND relkind = 'r') THEN
-       RETURN true;
-    ELSE
-       RETURN false;
-    END IF;
+    table_exists := EXISTS(SELECT * FROM pg_class WHERE table_name_with_optional_schema::regclass::oid = oid AND relkind = 'r');
+    RETURN table_exists;
 EXCEPTION
     WHEN invalid_schema_name OR undefined_table THEN
         RETURN false;
