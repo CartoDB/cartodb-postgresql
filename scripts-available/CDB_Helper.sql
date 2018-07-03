@@ -162,7 +162,7 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 
 -- Checks if a given text representing a qualified or unqualified table name (relation)
 -- actually exists in the database. It is meant to be used as a guard for other function/queries.
-CREATE FUNCTION cartodb._CDB_Table_Exists(table_name_with_optional_schema TEXT)
+CREATE OR REPLACE FUNCTION cartodb._CDB_Table_Exists(table_name_with_optional_schema TEXT)
 RETURNS bool
 AS $$
 BEGIN
