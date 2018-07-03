@@ -158,3 +158,21 @@ BEGIN
   RETURN left(string, (i - 1));
 END;
 $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
+
+
+-- Checks if a given text representing a qualified or unqualified table name (relation)
+-- actually exists in the database. It is meant to be used as a guard for other function/queries.
+CREATE FUNCTION cartodb._CDB_Table_Exists(table_name_with_optional_schema TEXT)
+RETURNS bool
+AS $$
+BEGIN
+    IF EXISTS(SELECT * FROM pg_class WHERE table_name_with_optional_schema::regclass::oid = oid AND relkind = 'r') THEN
+       RETURN true;
+    ELSE
+       RETURN false;
+    END IF;
+EXCEPTION
+    WHEN invalid_schema_name OR undefined_table THEN
+        RETURN false;
+END;
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL SAFE;
