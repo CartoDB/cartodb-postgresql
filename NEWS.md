@@ -1,3 +1,6 @@
+0.23.1 (yyyy-mm-dd)
+* Fix `CDB_EstimateRowCount` parallelizability #333
+
 0.23.0 (2018-07-03)
 * Add a new helper function `_CDB_Table_Exists(table_name_with_optional_schema TEXT)` #332
 
