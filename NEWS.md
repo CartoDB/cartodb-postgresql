@@ -1,4 +1,4 @@
-0.23.1 (yyyy-mm-dd)
+0.23.1 (2018-07-19)
 * Fix `CDB_EstimateRowCount` parallelizability #333
 
 0.23.0 (2018-07-03)
