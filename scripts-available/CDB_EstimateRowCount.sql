@@ -12,7 +12,7 @@ BEGIN
     EXECUTE Format('ANALYZE %s;', reloid);
   END IF;
 END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL RESTRICTED SECURITY DEFINER;
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE SECURITY DEFINER;
 
 -- Return a row count estimate of the result of a query using statistics
 CREATE OR REPLACE FUNCTION CDB_EstimateRowCount(query text)
@@ -28,4 +28,4 @@ BEGIN
   EXECUTE 'EXPLAIN (FORMAT JSON) ' || query INTO STRICT plan;
   RETURN plan->0->'Plan'->'Plan Rows';
 END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL RESTRICTED;
+$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;
