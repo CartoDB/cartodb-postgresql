@@ -426,6 +426,12 @@ function test_cdb_querytables_returns_schema_and_table_name() {
     sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
 }
 
+function test_cdb_querytables_works_with_parentheses() {
+    load_sql_file scripts-available/CDB_QueryStatements.sql
+    load_sql_file scripts-available/CDB_QueryTables.sql
+    sql cdb_testmember_1 "select * from CDB_QueryTables('(select * from foo)');" should "{cdb_testmember_1.foo}"
+}
+
 function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
     load_sql_file scripts-available/CDB_QueryStatements.sql
     load_sql_file scripts-available/CDB_QueryTables.sql
