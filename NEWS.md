@@ -1,3 +1,6 @@
+0.23.2 (2018-07-19)
+* Fix `CDB_QueryTablesText` with parenthesized queries (#335)
+
 0.23.1 (2018-07-19)
 * Fix `CDB_EstimateRowCount` parallelizability #333
 
