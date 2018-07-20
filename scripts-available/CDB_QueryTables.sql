@@ -11,19 +11,16 @@ DECLARE
   rec RECORD;
   rec2 RECORD;
 BEGIN
-  
+
   tables := '{}';
 
   FOR rec IN SELECT CDB_QueryStatements(query) q LOOP
-
-    IF NOT ( rec.q ilike 'select%' or rec.q ilike 'with%' ) THEN
-        --RAISE WARNING 'Skipping %', rec.q;
-        CONTINUE;
-    END IF;
-
     BEGIN
       EXECUTE 'EXPLAIN (FORMAT XML, VERBOSE) ' || rec.q INTO STRICT exp;
-    EXCEPTION WHEN others THEN
+    EXCEPTION WHEN syntax_error THEN
+      -- We can get a syntax error if the user tries to EXPLAIN a DDL
+      CONTINUE;
+    WHEN others THEN
       -- TODO: if error is 'relation "xxxxxx" does not exist', take xxxxxx as
       --       the affected table ?
       RAISE WARNING 'CDB_QueryTables cannot explain query: % (%: %)', rec.q, SQLSTATE, SQLERRM;
