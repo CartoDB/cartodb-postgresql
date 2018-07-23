@@ -418,6 +418,36 @@ function test_cdb_tablemetadatatouch_fully_qualifies_names() {
     sql postgres 'DROP TABLE touch_invalidations'
 }
 
+function test_cdb_tablemetadata_text() {
+
+    #create and touch tables
+    sql "CREATE TABLE touch_ex_a (id int);"
+    sql "CREATE TABLE touch_ex_b (id int);"
+    sql "CREATE TABLE touch_ex_c (id int);"
+    sql postgres "SELECT CDB_TableMetadataTouch('touch_ex_a');"
+    sql postgres "SELECT CDB_TableMetadataTouch('touch_ex_b');"
+    sql postgres "SELECT CDB_TableMetadataTouch('touch_ex_c');"
+
+    #ensure there is 1 record per table
+    QUERY="SELECT COUNT(1) FROM (SELECT 1 FROM cdb_tablemetadata_text "
+    QUERY+="GROUP BY tabname HAVING COUNT(1) > 1) s;"
+    sql postgres "$QUERY" should "0"
+
+    #ensure timestamps are distinct and properly ordered
+    QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_a')"
+    QUERY+="    < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b');"
+    sql postgres "$QUERY" should "t"
+    QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b')"
+    QUERY+="    < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_c');"
+    sql postgres "$QUERY" should "t"
+
+    #cleanup
+    sql "DROP TABLE touch_ex_a;"
+    sql "DROP TABLE touch_ex_b;"
+    sql "DROP TABLE touch_ex_c;"
+
+}
+
 function test_cdb_column_names() {
     sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_cnames(c int, a int, r int, t int, o int);'
     sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_cnames(d int, b int);'
@@ -543,7 +573,12 @@ END
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
 
-    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\"},
+    # Add PGPORT to conf if it is set
+    PORT_SPEC=""
+    if [[ "$PGPORT" != "" ]] ; then
+        PORT_SPEC=", \"port\": \"$PGPORT\""
+    fi
+    sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\" $PORT_SPEC },
                                            \"users\": {\"public\": {\"user\": \"fdw_user\", \"password\": \"foobarino\"}}}}')"
 
     sql postgres "SELECT cartodb._CDB_Setup_FDW('test_fdw')"
