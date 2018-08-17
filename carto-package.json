@@ -1,5 +1,5 @@
 {
-    "name": "cartodb-extension",
+    "name": "carto_postgresql_ext",
     "current_version": {
         "requires": {
             "postgresql": ">=9.5.0",
