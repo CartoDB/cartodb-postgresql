@@ -1,5 +1,6 @@
 0.24.0 (2018-XX-XX)
 * Travis: Test with PostgreSQL 9.5 and 10.
+* _cdb_estimated_extent: Fix bug with ST_EstimatedExtent interaction.
 
 0.23.2 (2018-07-19)
 * Fix `CDB_QueryTablesText` with parenthesized queries (#335)

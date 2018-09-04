@@ -93,11 +93,8 @@ AS $$
       table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
     );
 
-    BEGIN
-      EXECUTE ext_query INTO ext;
-    EXCEPTION
-        -- This is the typical ERROR: stats for "mytable" do not exist
-        WHEN internal_error THEN
+    EXECUTE ext_query INTO ext;
+    IF ext IS NULL THEN
           -- Get stats and execute again
           EXECUTE format('ANALYZE %1$s', reloid);
 
@@ -107,7 +104,7 @@ AS $$
           END IF;
 
           EXECUTE ext_query INTO ext;
-    END;
+    END IF;
 
     RETURN ext;
   END;
