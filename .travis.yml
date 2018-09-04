@@ -1,43 +1,23 @@
 language: c
-dist: precise
+dist: trusty
 sudo: required
 
-addons:
-  postgresql: 9.5
+env:
+  - PGUSER=postgres PGDATABASE=postgres
+
+env:
+    - POSTGRESQL_VERSION="9.5", POSTGIS_VERSION="2.4"
+    - POSTGRESQL_VERSION="10", POSTGIS_VERSION="2.4"
 
 before_install:
-  # Add custom PPAs from cartodb
-  - sudo add-apt-repository -y ppa:cartodb/postgresql-9.5
-  - sudo add-apt-repository -y ppa:cartodb/gis
-  - sudo add-apt-repository -y ppa:cartodb/gis-testing
-  - sudo apt-get update
-
-  # Force instalation of libgeos-3.5.0 (presumably needed because of existing version of postgis)
-  - sudo apt-get -y install libgeos-3.5.0=3.5.0-1cdb2
-
-  # Install postgres db and build deps
-  - sudo /etc/init.d/postgresql stop # stop travis default instance
-  - sudo apt-get -y remove --purge postgresql-9.1
-  - sudo apt-get -y remove --purge postgresql-9.2
-  - sudo apt-get -y remove --purge postgresql-9.3
-  - sudo apt-get -y remove --purge postgresql-9.4
-  - sudo apt-get -y remove --purge postgresql-9.5
-  - sudo rm -rf /var/lib/postgresql/
-  - sudo rm -rf /var/log/postgresql/
-  - sudo rm -rf /etc/postgresql/
-  - sudo apt-get -y remove --purge postgis-2.2
-  - sudo apt-get -y autoremove
-
-  - sudo apt-get -y install postgresql-9.5=9.5.2-3cdb3
-  - sudo apt-get -y install postgresql-server-dev-9.5=9.5.2-3cdb3
-  - sudo apt-get -y install postgresql-plpython-9.5=9.5.2-3cdb3
-  - sudo apt-get -y install postgresql-9.5-postgis-scripts=2.2.2.0-cdb2
-  - sudo apt-get -y install postgresql-9.5-postgis-2.2=2.2.2.0-cdb2
-
-  # configure it to accept local connections from postgres
-  - echo -e "# TYPE  DATABASE        USER            ADDRESS                 METHOD \nlocal   all             postgres                                trust\nlocal   all             all                                     trust\nhost    all             all             127.0.0.1/32            trust" \
-    | sudo tee /etc/postgresql/9.5/main/pg_hba.conf
-  - sudo /etc/init.d/postgresql restart 9.5
+  - export POSTGIS_PACKAGE_VERSION=$(apt list postgis -a 2>/dev/null | grep $POSTGIS_VERSION | awk '{ print $2 }')
+  - sudo service postgresql stop;
+  - sudo apt-get install -y --allow-unauthenticated --no-install-recommends --no-install-suggests postgresql-$POSTGRESQL_VERSION postgresql-client-$POSTGRESQL_VERSION postgresql-server-dev-$POSTGRESQL_VERSION postgis=$POSTGIS_PACKAGE_VERSION postgresql-$POSTGRESQL_VERSION-postgis-scripts postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION postgresql-plpython-$POSTGRESQL_VERSION
+  - echo -e "# TYPE  DATABASE        USER            ADDRESS                 METHOD \nlocal   all             postgres                                trust\nlocal   all             all                                     trust\nhost    all             all             127.0.0.1/32            trust"  | sudo tee /etc/postgresql/$POSTGRESQL_VERSION/main/pg_hba.conf
+  - export PGPORT=`grep ^port /etc/postgresql/$POSTGRESQL_VERSION/main/postgresql.conf | awk '{print $3}'`
+  - export PGUSER=postgres
+  - export PGDATABASE=postgres
+  - sudo service postgresql restart $POSTGRESQL_VERSION;
 
 script:
   - make
