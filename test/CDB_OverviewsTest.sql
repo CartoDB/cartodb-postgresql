@@ -2,6 +2,7 @@ SET client_min_messages TO error;
 \set VERBOSITY default
 
 \i test/overviews/fixtures.sql
+vacuum ANALYZE; -- Make sure there are metrics for ST_EstimatedExtent
 
 SELECT _CDB_Aggregable_Attributes_Expression('base_bare_t'::regclass);
 SELECT _CDB_Aggregated_Attributes_Expression('base_bare_t'::regclass);
