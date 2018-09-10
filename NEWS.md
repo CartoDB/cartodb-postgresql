@@ -1,6 +1,13 @@
 0.24.0 (2018-XX-XX)
 * Travis: Test with PostgreSQL 9.5 and 10.
 * _cdb_estimated_extent: Fix bug with ST_EstimatedExtent interaction.
+* Improvements in `CDB_JenksBins`.
+  * Now it ignores NULLs.
+  * No longer puts the same value in multiple categories.
+  * Removes all limits related to size.
+  * If not set, the number of iterations done is based now on the size of the array.
+  * Fixed multiple bugs.
+  * The internal function `CDB_JenksBinsIteration` has changed its signature.
 
 0.23.2 (2018-07-19)
 * Fix `CDB_QueryTablesText` with parenthesized queries (#335)
