@@ -50,7 +50,6 @@ BEGIN
 
     -- Get the number of unique values
     in_unique_count := array_length(in_matrix[1:1], 2);
-    RAISE INFO 'Unique %', in_unique_count;
 
     IF in_unique_count IS NULL THEN
         RETURN NULL;
@@ -66,22 +65,18 @@ BEGIN
         -- This is based on a 'looks fine' heuristic
         iterations := log(in_unique_count)::integer + 1;
     END IF;
-    RAISE INFO 'Iterations: %', iterations;
 
     -- We set the number of shuffles per iteration as the number of unique values but
     -- this is just another 'looks fine' heuristic
     shuffles := in_unique_count;
-    RAISE INFO 'Suffles %', shuffles;
 
     -- Get the mean value of the whole vector (already ignores NULLs)
     SELECT avg(v) INTO arr_mean FROM ( SELECT unnest(in_array) as v ) x;
-    RAISE INFO 'Mean %', arr_mean;
 
     -- Calculate the sum of squared deviations from the array mean (SDAM).
     SELECT sum(((arr_mean - v)^2) * w) INTO sdam FROM (
         SELECT unnest(in_matrix[1:1]) as v, unnest(in_matrix[2:2]) as w
         ) x;
-    RAISE INFO 'Deviation %', sdam;
 
     -- To start, we create ranges with approximately the same amount of different values
     top := 0;
@@ -99,8 +94,6 @@ BEGIN
         i := i + 1;
         IF i > breaks THEN EXIT; END IF;
     END LOOP;
-    RAISE INFO 'Initial classes %', classes;
-
 
     best_result = CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
 
@@ -118,7 +111,6 @@ BEGIN
                 ) x;
             i = array_length(tops, 1);
         END LOOP;
-        RAISE INFO 'Tops %', tops;
         top := 0;
         i = 1;
         LOOP
@@ -134,7 +126,6 @@ BEGIN
             IF i > breaks THEN EXIT; END IF;
         END LOOP;
 
-        RAISE INFO 'Classes %', classes;
         curr_result = CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
 
         IF curr_result[1] > best_result[1] THEN
@@ -187,7 +178,6 @@ BEGIN
     LOOP
         IF i = breaks THEN EXIT; END IF;
         i = i + 1;
-        RAISE INFO 'Loop %', i;
 
         -- Get class mean
         SELECT (sum(v * w) / sum(w)) INTO class_avg FROM (
@@ -249,8 +239,6 @@ BEGIN
         -- Save best values for comparison and output
         gvf = new_gvf;
         best_classes = classes;
-        RAISE INFO 'Deviations %', arr_gvf;
-        RAISE INFO 'Min %. Max %', class_min_i, class_max_i;
 
         -- Iterate by moving an element from class_max_i to class_min_i
         IF class_min_i < class_max_i THEN
@@ -282,7 +270,6 @@ BEGIN
                 i := i + 1;
             END LOOP;
         END IF;
-        RAISE INFO 'Classes %', classes;
 
         -- Recalculate avg and deviation for the affected classes
         i = LEAST(class_min_i, class_max_i);
@@ -320,7 +307,6 @@ BEGIN
     END LOOP;
 
     reply = array_prepend(gvf, reply);
-    RAISE INFO 'Reply: %', reply;
     RETURN reply;
 
 END;
