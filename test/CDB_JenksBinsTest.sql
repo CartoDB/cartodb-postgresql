@@ -28,3 +28,9 @@ WITH data_inverse AS (
                  20.1, 19.9]::numeric[] AS s
 )
 SELECT unnest(CDB_JenksBins(s, 5, 0, true)) FROM data_inverse;
+
+
+WITH data_small AS (
+    SELECT Array[0.99, 1.0, 10.01, 10.01, 10.01, 10.01]::numeric[] AS s
+)
+SELECT unnest(CDB_JenksBins(s, 4)) FROM data_small;
