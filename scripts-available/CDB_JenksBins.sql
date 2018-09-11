@@ -130,7 +130,6 @@ BEGIN
 
         IF curr_result[1] > best_result[1] THEN
             best_result = curr_result;
-            j = j-1; -- if we found a better result, add one more search
         END IF;
 
         j = j+1;
@@ -163,11 +162,15 @@ DECLARE
     class_avg numeric;
     class_dev numeric;
 
-    class_max_i INT;
-    class_min_i INT;
+    class_max_i INT = 0;
+    class_min_i INT = 0;
     dev_max numeric;
     dev_min numeric;
+
     best_classes INT[] = classes;
+    best_gvf numeric[];
+    best_avg numeric[];
+    move_elements INT = 1;
 
     reply numeric[];
 
@@ -201,7 +204,9 @@ BEGIN
         END IF;
     END LOOP;
 
-
+    -- We copy the values to avoid recalculation when a failure happens
+    best_avg = arr_avg;
+    best_gvf = arr_gvf;
 
     iterations = 0;
     LOOP
@@ -211,10 +216,30 @@ BEGIN
         -- calculate our new GVF
         SELECT sdam - sum(e) INTO new_gvf FROM ( SELECT unnest(arr_gvf) as e ) x;
 
-        -- if no improvement was made, exit
-        IF new_gvf <= gvf OR class_max_i = class_min_i THEN EXIT; END IF;
+        -- Check if any improvement was made
+        IF new_gvf <= gvf THEN
+            -- If we were moving too many elements, go back and move less
+            IF move_elements <= 2 OR class_max_i = class_min_i THEN
+                EXIT;
+            END IF;
 
-        -- We search for classes with the min and max deviation
+            move_elements = GREATEST(move_elements / 8, 1);
+
+            -- Rollback from saved statuses
+            classes = best_classes;
+            new_gvf = gvf;
+
+            i = class_min_i;
+            LOOP
+                arr_avg[i] = best_avg[i];
+                arr_gvf[i] = best_gvf[i];
+
+                IF i = class_max_i THEN EXIT; END IF;
+                i = i + 1;
+            END LOOP;
+        END IF;
+
+        -- We search for the classes with the min and max deviation
         i = 1;
         class_min_i = 1;
         class_max_i = 1;
@@ -240,59 +265,67 @@ BEGIN
         gvf = new_gvf;
         best_classes = classes;
 
-        -- Iterate by moving an element from class_max_i to class_min_i
+        -- Limit the moved elements as to not remove everything from class_max_i
+        move_elements = LEAST(move_elements, classes[class_max_i][2] - classes[class_max_i][1]);
+
+        -- Move `move_elements` from class_max_i to class_min_i
         IF class_min_i < class_max_i THEN
             i := class_min_i;
             LOOP
                 IF i = class_max_i THEN EXIT; END IF;
-                classes[i][2] = classes[i][2] + 1;
+                classes[i][2] = classes[i][2] + move_elements;
                 i := i + 1;
             END LOOP;
 
             i := class_max_i;
             LOOP
                 IF i = class_min_i THEN EXIT; END IF;
-                classes[i][1] = classes[i][1] + 1;
+                classes[i][1] = classes[i][1] + move_elements;
                 i := i - 1;
             END LOOP;
         ELSE
             i := class_min_i;
             LOOP
                 IF i = class_max_i THEN EXIT; END IF;
-                classes[i][1] = classes[i][1] - 1;
+                classes[i][1] = classes[i][1] - move_elements;
                 i := i - 1;
             END LOOP;
 
             i := class_max_i;
             LOOP
                 IF i = class_min_i THEN EXIT; END IF;
-                classes[i][2] = classes[i][2] - 1;
+                classes[i][2] = classes[i][2] - move_elements;
                 i := i + 1;
             END LOOP;
         END IF;
 
-        -- Recalculate avg and deviation for the affected classes
+        -- Recalculate avg and deviation ONLY for the affected classes
         i = LEAST(class_min_i, class_max_i);
         class_max_i = GREATEST(class_min_i, class_max_i);
+        class_min_i = i;
         LOOP
-            -- Get class mean
             SELECT (sum(v * w) / sum(w)) INTO class_avg FROM (
                 SELECT unnest(in_matrix[1:1][classes[i][1]:classes[i][2]]) as v,
                         unnest(in_matrix[2:2][classes[i][1]:classes[i][2]]) as w
                 ) x;
 
-            -- Get class deviation
             SELECT sum((class_avg - v)^2 * w) INTO class_dev FROM (
                 SELECT unnest(in_matrix[1:1][classes[i][1]:classes[i][2]]) as v,
                         unnest(in_matrix[2:2][classes[i][1]:classes[i][2]]) as w
                 ) x;
 
+            -- Save status (in case it's needed for rollback) and store the new one
+            best_avg[i] = arr_avg[i];
             arr_avg[i] = class_avg;
+
+            best_gvf[i] = arr_gvf[i];
             arr_gvf[i] = class_dev;
 
             IF i = class_max_i THEN EXIT; END IF;
             i = i + 1;
         END LOOP;
+
+        move_elements = move_elements * 2;
 
     END LOOP;
 
@@ -311,4 +344,3 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
-
