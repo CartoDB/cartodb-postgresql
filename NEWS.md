@@ -1,4 +1,4 @@
-0.24.0 (2018-XX-XX)
+0.24.0 (2018-09-13)
 * Travis: Test with PostgreSQL 9.5 and 10.
 * _cdb_estimated_extent: Fix bug with ST_EstimatedExtent interaction.
 * Improvements in `CDB_JenksBins`.
