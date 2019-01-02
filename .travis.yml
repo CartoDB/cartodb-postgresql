@@ -1,26 +1,38 @@
+dist: xenial
 language: c
-dist: trusty
 sudo: required
 
 env:
-  - PGUSER=postgres PGDATABASE=postgres
+  global:
+    - PGUSER=postgres
+    - PGDATABASE=postgres
+    - PGOPTIONS='-c client_min_messages=NOTICE'
+    - PGPORT=5432
+    - POSTGIS_VERSION="2.5"
 
-env:
-    - POSTGRESQL_VERSION="9.5", POSTGIS_VERSION="2.4"
-    - POSTGRESQL_VERSION="10", POSTGIS_VERSION="2.4"
+  matrix:
+    - POSTGRESQL_VERSION="9.5"
+    - POSTGRESQL_VERSION="10"
+    - POSTGRESQL_VERSION="11"
+
 
 before_install:
-  - export POSTGIS_PACKAGE_VERSION=$(apt list postgis -a 2>/dev/null | grep $POSTGIS_VERSION | awk '{ print $2 }')
   - sudo service postgresql stop;
-  - sudo apt-get install -y --allow-unauthenticated --no-install-recommends --no-install-suggests postgresql-$POSTGRESQL_VERSION postgresql-client-$POSTGRESQL_VERSION postgresql-server-dev-$POSTGRESQL_VERSION postgis=$POSTGIS_PACKAGE_VERSION postgresql-$POSTGRESQL_VERSION-postgis-scripts postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION postgresql-plpython-$POSTGRESQL_VERSION
-  - echo -e "# TYPE  DATABASE        USER            ADDRESS                 METHOD \nlocal   all             postgres                                trust\nlocal   all             all                                     trust\nhost    all             all             127.0.0.1/32            trust"  | sudo tee /etc/postgresql/$POSTGRESQL_VERSION/main/pg_hba.conf
-  - export PGPORT=`grep ^port /etc/postgresql/$POSTGRESQL_VERSION/main/postgresql.conf | awk '{print $3}'`
-  - export PGUSER=postgres
-  - export PGDATABASE=postgres
-  - sudo service postgresql restart $POSTGRESQL_VERSION;
+  - sudo apt-get remove postgresql* -y
+  - sudo apt-get install -y --allow-unauthenticated --no-install-recommends --no-install-suggests postgresql-$POSTGRESQL_VERSION postgresql-client-$POSTGRESQL_VERSION postgresql-server-dev-$POSTGRESQL_VERSION postgresql-common
+  - if [[ $POSTGRESQL_VERSION == '9.5' ]]; then sudo apt-get install -y postgresql-contrib-9.5; fi;
+  - sudo apt-get install -y --allow-unauthenticated postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION-scripts postgis postgresql-plpython-$POSTGRESQL_VERSION
+  - sudo pg_dropcluster --stop $POSTGRESQL_VERSION main
+  - sudo rm -rf /etc/postgresql/$POSTGRESQL_VERSION /var/lib/postgresql/$POSTGRESQL_VERSION
+  - sudo pg_createcluster -u postgres $POSTGRESQL_VERSION main -- -A trust
+  - sudo /etc/init.d/postgresql start $POSTGRESQL_VERSION || sudo journalctl -xe
 
 script:
   - make
   - sudo make install
-  - PGOPTIONS='-c client_min_messages=NOTICE' PGUSER=postgres make installcheck ||
-    { cat regression.diffs; false; }
+  - make installcheck
+
+after_failure:
+  - pg_lsclusters
+  - cat regression.out
+  - cat regression.diffs
