@@ -31,13 +31,17 @@ BEGIN
 
   -- Then we transform to WGS84 latlon, which is
   -- where we have known coordinates for the clipping
-  -- 
+  --
   latlon_input := ST_Transform(geom, 4326);
 
   -- Don't bother clipping if the geometry boundary doesn't
   -- go outside the valid extent.
   IF latlon_input @ valid_extent THEN
-    RETURN ST_Transform(latlon_input, 3857);
+    BEGIN
+      RETURN ST_Transform(latlon_input, 3857);
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
   END IF;
 
   -- Since we're going to use ST_Intersection on input
@@ -65,7 +69,7 @@ BEGIN
   -- We transform to web mercator
   to_webmercator := ST_Transform(clipped_input, 3857);
 
-  -- Finally we convert EMPTY to NULL 
+  -- Finally we convert EMPTY to NULL
   -- See https://github.com/Vizzuality/cartodb/issues/706
   -- And retain "multi" status
   ret := CASE WHEN ST_IsEmpty(to_webmercator) THEN NULL::geometry

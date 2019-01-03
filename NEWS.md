@@ -1,3 +1,7 @@
+0.24.1 (2019-01-02)
+* Drop functions removed in 0.12 (#341)
+* Travis: Test with PostgreSQL 9.5, 10 and 11.
+
 0.24.0 (2018-09-13)
 * Travis: Test with PostgreSQL 9.5 and 10.
 * _cdb_estimated_extent: Fix bug with ST_EstimatedExtent interaction.
