@@ -61,35 +61,30 @@ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION cartodb.CDB_UserTablesData(schema_name TEXT)
 RETURNS TABLE(schema_name text, table_name text, size bigint, row_count bigint, table_type text) AS
 $$
-  WITH tables AS (
-      SELECT array_agg(table_name) as tables, 'regular' as table_type
-      FROM _CDB_NonAnalysisTablesInSchema(schema_name)
-      WHERE (table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*') = FALSE
+  SELECT    schema_name as schema_name,
+            pc.relname::text as table_name,
+            CASE
+                WHEN table_type = 'regular' THEN pg_total_relation_size('"' || schema_name || '"."' || pc.relname::text || '"')/2
+                WHEN table_type = 'raster'  THEN pg_total_relation_size('"' || schema_name || '"."' || pc.relname::text || '"')
+            END as size,
+            COALESCE(pc.reltuples::bigint, 0) as row_count,
+            table_type
+    FROM
+    (
+      SELECT table_name, 'regular' as table_type
+        FROM _CDB_NonAnalysisTablesInSchema(schema_name)
+        WHERE (table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*') = FALSE
       UNION ALL
-      SELECT array_agg(o_table_name) as tables, 'raster' as table_type
-      FROM raster_overviews
-      WHERE o_table_schema = schema_name
-      AND o_table_catalog = current_database()
-  ),
-  table_size AS (
-    SELECT unnest(tables) as table_name, pg_total_relation_size(schema_name || '.' || unnest(tables)) size, table_type
-    FROM tables
-  ),
-  table_data AS (
-    SELECT schema_name as schema_name, table_name,
-           CASE
-            WHEN table_type = 'regular' THEN size/2
-            WHEN table_type = 'raster' THEN size
-           END as size,
-           COALESCE(reltuples::bigint, 0) as row_count, table_type
-    FROM table_size ts
-    INNER JOIN pg_class pc ON (pc.relname = table_name)
-    INNER JOIN pg_namespace pn ON (pc.relnamespace = pn.oid AND pn.nspname = schema_name)
-    WHERE relname = table_name
-  )
-  SELECT * FROM table_data;
+      SELECT o_table_name as table_name, 'raster' as table_type
+        FROM raster_overviews
+        WHERE o_table_schema = schema_name
+        AND o_table_catalog = current_database()
+    ) _tables
+    INNER JOIN pg_class pc ON (pc.relname = _tables.table_name)
+    INNER JOIN pg_namespace pn ON (pc.relnamespace = pn.oid AND pn.nspname = schema_name);
+
 $$
-LANGUAGE SQL VOLATILE PARALLEL RESTRICTED;
+LANGUAGE SQL STRICT STABLE PARALLEL SAFE;
 
 -- Return the estimated size of user data. Used for quota checking.
 -- Implicit schema version for backwards compatibility
