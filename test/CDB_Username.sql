@@ -1,17 +1,24 @@
 SELECT current_user; -- postgres
 SELECT CDB_Username(); -- (NULL)
 
--- Connect with admin
+-- Add the role fulano with an api_key and connect with it
 \set QUIET on
-\o log/test.log
-SELECT current_database() AS current_database;
-\gset
-SELECT SUBSTRING (:'current_database', 19, 36) AS user_id;
-\gset
-SELECT rolname AS admin_user FROM pg_roles where rolname LIKE ('%' || :'user_id');
-\gset
-\c :current_database :admin_user
-\o
+CREATE ROLE fulano LOGIN;
+GRANT USAGE ON SCHEMA cartodb TO fulano;
+GRANT EXECUTE ON FUNCTION CDB_Username() TO fulano;
+GRANT EXECUTE ON FUNCTION _CDB_Username(text) TO fulano;
+INSERT INTO cdb_conf (key, value) VALUES ('api_keys_fulano', '{"username": "fulanito", "permissions":[]}');
+SET ROLE fulano;
 \set QUIET off
 
-SELECT CDB_Username(); -- admin
+SELECT current_user; -- fulano
+SELECT CDB_Username(); -- fulanito
+
+-- Remove fulano
+\set QUIET on
+SET ROLE postgres;
+REVOKE USAGE ON SCHEMA cartodb FROM fulano;
+REVOKE EXECUTE ON FUNCTION CDB_Username() FROM fulano;
+REVOKE EXECUTE ON FUNCTION _CDB_Username(text) FROM fulano;
+DROP ROLE fulano;
+\set QUIET off
