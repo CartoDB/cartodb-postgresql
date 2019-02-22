@@ -1,4 +1,4 @@
-0.25.0 (XXXX-XX-XX)
+0.25.0 (2019-02-22)
 * Add `CDB_Username` to get the cartodb username from the current PostgreSQL user
 
 0.24.1 (2019-01-02)
