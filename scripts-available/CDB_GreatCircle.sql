@@ -16,7 +16,7 @@ BEGIN
 
   IF ST_XMax(line) - ST_XMin(line) > 180 THEN
     line = ST_Difference(
-      ST_Shift_Longitude(line),
+      ST_ShiftLongitude(line),
 			ST_Buffer(ST_GeomFromText('LINESTRING(180 90, 180 -90)', 4326), 0.00001)
 		);
   END IF;
