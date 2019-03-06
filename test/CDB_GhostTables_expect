@@ -1,0 +1,15 @@
+
+NOTICE:  _CDB_LinkGhostTables(b621f453-75ee-438f-acc9-8c5303f3d658) called
+
+BEGIN
+0
+CREATE TABLE
+1
+NOTICE:  _CDB_LinkGhostTables(b621f453-75ee-438f-acc9-8c5303f3d658) called
+COMMIT
+
+BEGIN
+0
+CREATE TABLE
+0
+COMMIT
