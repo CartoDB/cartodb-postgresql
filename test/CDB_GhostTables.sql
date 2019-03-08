@@ -8,6 +8,7 @@ GRANT EXECUTE ON FUNCTION CDB_Username() TO "fulano";
 GRANT EXECUTE ON FUNCTION CDB_LinkGhostTables() TO "fulano";
 SELECT CDB_EnableGhostTablesTrigger();
 INSERT INTO cdb_conf (key, value) VALUES ('api_keys_fulano', '{"username": "fulanito", "permissions":[]}');
+INSERT INTO cdb_conf (key, value) VALUES ('invalidation_service', '{"host": "fake-tis-host"}');
 SET SESSION AUTHORIZATION "fulano";
 SET client_min_messages TO notice;
 \set QUIET off
@@ -41,4 +42,5 @@ REVOKE EXECUTE ON FUNCTION CDB_Username() FROM "fulano";
 REVOKE SELECT ON cartodb.cdb_ddl_execution FROM "fulano";
 REVOKE ALL ON SCHEMA cartodb FROM "fulano";
 DROP ROLE "fulano";
+DELETE FROM cdb_conf WHERE key = 'api_keys_fulano' OR key = 'invalidation_service';
 \set QUIET off

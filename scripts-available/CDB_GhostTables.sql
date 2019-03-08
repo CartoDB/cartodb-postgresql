@@ -8,37 +8,44 @@ AS $$
   if not username:
     return
 
-  client = GD.get('redis', None)
+  if 'json' not in GD:
+    import json
+    GD['json'] = json
+  else:
+    json = GD['json']    
 
-  retry = 3
   error = ''
-  # TODO: read TIS config from cdb_conf
-  tis_host = '127.0.0.1' 
-  tis_port = 6379
-  tis_timeout = 5
+  tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
+  tis_config_dict = json.loads(tis_config) if tis_config else {}
+  tis_host = tis_config_dict.get('host', '127.0.0.1')
+  tis_port = tis_config_dict.get('port', 3142)
+  tis_timeout = tis_config_dict.get('timeout', 5)
+  tis_retry = tis_config_dict.get('retry', 5)
+      
+  client = GD.get('invalidation', None)
 
   while True:
 
     if not client:
         try:
           import redis
-          client = GD['redis'] = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
+          client = GD['invalidation'] = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
         except Exception as err:
           error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
-          plpy.error('Ghost tables connection error: ' +  str(err))
+          plpy.warning('Invalidation Service connection error: ' +  str(err))
           break
 
     try:
-      # client.execute_command('DBSCH', db_name, username, ddl_tag)
+      client.execute_command('DBSCH', db_name, username, ddl_tag)
       break
     except Exception as err:
       error = "request_error - %s" % str(err)
-      client = GD['redis'] = None # force reconnect
-      if not retry:
-        plpy.error('Ghost tables error: ' +  str(err))
+      client = GD['invalidation'] = None # force reconnect
+      if not tis_retry:
+        plpy.warning('Invalidation Service error: ' +  str(err))
         break
-      retry -= 1 # try reconnecting
+      tis_retry -= 1 # try reconnecting
 $$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
 
 -- Enqueues a job to run Ghost tables linking process for the current user

@@ -1,10 +1,12 @@
 
+WARNING:  Invalidation Service error: Error -2 connecting fake-tis-host:3142. Name or service not known.
 NOTICE:  _CDB_LinkGhostTables() called with username=fulanito, ddl_tag=<NULL>
 
 BEGIN
 0
 CREATE TABLE
 1
+WARNING:  Invalidation Service error: Error -2 connecting fake-tis-host:3142. Name or service not known.
 NOTICE:  _CDB_LinkGhostTables() called with username=fulanito, ddl_tag=CREATE TABLE
 COMMIT
 
