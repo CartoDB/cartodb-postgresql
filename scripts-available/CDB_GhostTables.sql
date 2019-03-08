@@ -1,27 +1,28 @@
 -- Table to store the transaction id from DDL events to avoid multiple executions
-CREATE TABLE IF NOT EXISTS cartodb.cdb_ddl_execution(txid integer PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS cartodb.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
 
 -- Enqueues a job to run Ghost tables linking process for the provided user_id
-CREATE OR REPLACE FUNCTION _CDB_LinkGhostTables(user_id text) 
+CREATE OR REPLACE FUNCTION _CDB_LinkGhostTables(username text, db_name text, ddl_tag text) 
 RETURNS void
 AS $$
-  if not user_id:
+  if not username:
     return
 
   client = GD.get('redis', None)
 
   retry = 3
   error = ''
-  redis_host = '127.0.0.1'
-  redis_port = 6379
-  redis_timeout = 5
+  # TODO: read TIS config from cdb_conf
+  tis_host = '127.0.0.1' 
+  tis_port = 6379
+  tis_timeout = 5
 
   while True:
 
     if not client:
         try:
           import redis
-          client = GD['redis'] = redis.Redis(host=redis_host, port=redis_port, socket_timeout=redis_timeout)
+          client = GD['redis'] = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
         except Exception as err:
           error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
@@ -29,8 +30,7 @@ AS $$
           break
 
     try:
-      job = '{{"class":"Resque::UserDBJobs::UserDBMaintenance::LinkGhostTables","args":["{}"]}}'.format(user_id)
-      client.rpush("resque:queue:user_dbs", job)
+      # client.execute_command('DBSCH', db_name, username, ddl_tag)
       break
     except Exception as err:
       error = "request_error - %s" % str(err)
@@ -46,12 +46,16 @@ CREATE OR REPLACE FUNCTION CDB_LinkGhostTables()
 RETURNS void
 AS $$
   DECLARE
-    user_id TEXT;
+    username TEXT;
+    db_name TEXT;
+    ddl_tag TEXT;
   BEGIN
-    EXECUTE 'SELECT (regexp_match(session_user, ''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''))[1];' INTO user_id;
-    PERFORM _CDB_LinkGhostTables(user_id);
+    EXECUTE 'SELECT CDB_Username();' INTO username;
+    EXECUTE 'SELECT current_database();' INTO db_name;
+    EXECUTE 'SELECT tag FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();' INTO ddl_tag;
+    PERFORM _CDB_LinkGhostTables(username, db_name, ddl_tag);
     DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();
-    RAISE NOTICE '_CDB_LinkGhostTables(%) called', user_id;
+    RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, ddl_tag=%', username, ddl_tag;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
@@ -78,7 +82,7 @@ CREATE OR REPLACE FUNCTION CDB_SaveDDLTransaction()
 RETURNS event_trigger
 AS $$
   BEGIN
-    INSERT INTO cartodb.cdb_ddl_execution VALUES (txid_current()) ON CONFLICT (txid) DO NOTHING;
+    INSERT INTO cartodb.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT (txid) DO NOTHING;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 

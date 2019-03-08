@@ -1,15 +1,15 @@
 
-NOTICE:  _CDB_LinkGhostTables(b621f453-75ee-438f-acc9-8c5303f3d658) called
+NOTICE:  _CDB_LinkGhostTables() called with username=fulanito, ddl_tag=<NULL>
 
 BEGIN
 0
 CREATE TABLE
 1
-NOTICE:  _CDB_LinkGhostTables(b621f453-75ee-438f-acc9-8c5303f3d658) called
+NOTICE:  _CDB_LinkGhostTables() called with username=fulanito, ddl_tag=CREATE TABLE
 COMMIT
 
 BEGIN
 0
-CREATE TABLE
+DROP TABLE
 0
 COMMIT
