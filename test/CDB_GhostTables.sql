@@ -1,5 +1,6 @@
 -- Create user and enable Ghost tables trigger
 \set QUIET on
+SET client_min_messages TO error;
 CREATE ROLE "fulano" LOGIN;
 GRANT ALL ON SCHEMA cartodb TO "fulano";
 GRANT SELECT ON cartodb.cdb_ddl_execution TO "fulano";
@@ -8,6 +9,7 @@ GRANT EXECUTE ON FUNCTION CDB_LinkGhostTables() TO "fulano";
 SELECT CDB_EnableGhostTablesTrigger();
 INSERT INTO cdb_conf (key, value) VALUES ('api_keys_fulano', '{"username": "fulanito", "permissions":[]}');
 SET SESSION AUTHORIZATION "fulano";
+SET client_min_messages TO notice;
 \set QUIET off
 
 SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called
