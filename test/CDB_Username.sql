@@ -19,4 +19,5 @@ SET SESSION AUTHORIZATION postgres;
 REVOKE USAGE ON SCHEMA cartodb FROM fulano;
 REVOKE EXECUTE ON FUNCTION CDB_Username() FROM fulano;
 DROP ROLE fulano;
+DELETE FROM cdb_conf WHERE key = 'api_keys_fulano';
 \set QUIET off
