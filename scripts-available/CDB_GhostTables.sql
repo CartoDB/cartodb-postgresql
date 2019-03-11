@@ -1,8 +1,5 @@
--- Table to store the transaction id from DDL events to avoid multiple executions
-CREATE TABLE IF NOT EXISTS cartodb.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
-
--- Enqueues a job to run Ghost tables linking process for the provided user_id
-CREATE OR REPLACE FUNCTION _CDB_LinkGhostTables(username text, db_name text, ddl_tag text) 
+-- Enqueues a job to run Ghost tables linking process for the provided username
+CREATE OR REPLACE FUNCTION _CDB_LinkGhostTables(username text, db_name text, event_name text) 
 RETURNS void
 AS $$
   if not username:
@@ -37,7 +34,7 @@ AS $$
           break
 
     try:
-      client.execute_command('DBSCH', db_name, username, ddl_tag)
+      client.execute_command('DBSCH', db_name, username, event_name)
       break
     except Exception as err:
       error = "request_error - %s" % str(err)
@@ -49,20 +46,18 @@ AS $$
 $$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
 
 -- Enqueues a job to run Ghost tables linking process for the current user
-CREATE OR REPLACE FUNCTION CDB_LinkGhostTables()
+CREATE OR REPLACE FUNCTION CDB_LinkGhostTables(event_name text DEFAULT 'USER')
 RETURNS void
 AS $$
   DECLARE
     username TEXT;
     db_name TEXT;
-    ddl_tag TEXT;
   BEGIN
     EXECUTE 'SELECT CDB_Username();' INTO username;
     EXECUTE 'SELECT current_database();' INTO db_name;
-    EXECUTE 'SELECT tag FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();' INTO ddl_tag;
-    PERFORM _CDB_LinkGhostTables(username, db_name, ddl_tag);
-    DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();
-    RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, ddl_tag=%', username, ddl_tag;
+
+    PERFORM _CDB_LinkGhostTables(username, db_name, event_name);
+    RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, event_name=%', username, event_name;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
@@ -70,8 +65,12 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION _CDB_LinkGhostTablesTrigger()
 RETURNS trigger
 AS $$
+  DECLARE
+    ddl_tag TEXT;
   BEGIN
-    PERFORM CDB_LinkGhostTables();
+    EXECUTE 'SELECT tag FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();' INTO ddl_tag;
+    DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();
+    PERFORM CDB_LinkGhostTables(ddl_tag);
     RETURN NULL;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
@@ -93,6 +92,9 @@ AS $$
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
     DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
 
+    -- Table to store the transaction id from DDL events to avoid multiple executions
+    CREATE TABLE IF NOT EXISTS cartodb.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
+
     CREATE CONSTRAINT TRIGGER check_ddl_update
     AFTER INSERT ON cartodb.cdb_ddl_execution
     INITIALLY DEFERRED
@@ -113,5 +115,6 @@ AS $$
   BEGIN
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
     DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
+    DROP TABLE IF EXISTS cartodb.cdb_ddl_execution;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
