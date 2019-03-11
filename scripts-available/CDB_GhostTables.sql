@@ -14,7 +14,6 @@ AS $$
   else:
     json = GD['json']    
 
-  error = ''
   tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
   tis_config_dict = json.loads(tis_config) if tis_config else {}
   tis_host = tis_config_dict.get('host', '127.0.0.1')
@@ -77,14 +76,6 @@ AS $$
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
--- Trigger to call CDB_LinkGhostTables() when adding a row in cartodb.cdb_ddl_execution
-DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
-CREATE CONSTRAINT TRIGGER check_ddl_update
-AFTER INSERT ON cartodb.cdb_ddl_execution
-INITIALLY DEFERRED
-FOR EACH ROW
-EXECUTE PROCEDURE _CDB_LinkGhostTablesTrigger();
-
 -- Event trigger to save the current transaction in cartodb.cdb_ddl_execution
 CREATE OR REPLACE FUNCTION CDB_SaveDDLTransaction()
 RETURNS event_trigger
@@ -100,6 +91,14 @@ RETURNS void
 AS $$
   BEGIN
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
+    DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
+
+    CREATE CONSTRAINT TRIGGER check_ddl_update
+    AFTER INSERT ON cartodb.cdb_ddl_execution
+    INITIALLY DEFERRED
+    FOR EACH ROW
+    EXECUTE PROCEDURE _CDB_LinkGhostTablesTrigger();
+
     CREATE EVENT TRIGGER link_ghost_tables
     ON ddl_command_end
     WHEN TAG IN ('CREATE TABLE', 'SELECT INTO', 'DROP TABLE', 'ALTER TABLE', 'CREATE TRIGGER', 'DROP TRIGGER', 'CREATE VIEW', 'DROP VIEW', 'ALTER VIEW')
@@ -113,5 +112,6 @@ RETURNS void
 AS $$
   BEGIN
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
+    DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
