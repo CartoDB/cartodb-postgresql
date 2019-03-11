@@ -1,4 +1,4 @@
-0.26.0 (2019-XX-XX)
+0.26.0 (2019-03-11)
 * Use `ST_ShiftLongitude` instead of `ST_Shift_Longitude`.
 * Add Ghost tables functions to install triggers and enqueue the linking process
 
