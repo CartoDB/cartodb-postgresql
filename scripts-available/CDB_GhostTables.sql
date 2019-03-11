@@ -29,7 +29,8 @@ AS $$
     if not client:
         try:
           import redis
-          client = GD['invalidation'] = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
+          client = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
+          GD['invalidation'] = client
         except Exception as err:
           error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
