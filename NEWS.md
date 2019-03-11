@@ -1,5 +1,6 @@
 0.26.0 (2019-XX-XX)
 * Use `ST_ShiftLongitude` instead of `ST_Shift_Longitude`.
+* Add Ghost tables functions to install triggers and enqueue the linking process
 
 0.25.0 (2019-02-22)
 * Add `CDB_Username` to get the cartodb username from the current PostgreSQL user
