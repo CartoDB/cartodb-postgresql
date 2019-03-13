@@ -33,7 +33,7 @@ AS $$
         except Exception as err:
           error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
-          plpy.warning('Invalidation Service connection error: ' +  str(err))
+          plpy.warning('Error trying to connect to Invalidation Service to link Ghost Tables: ' +  str(err))
           break
 
     try:
@@ -43,7 +43,7 @@ AS $$
       error = "request_error - %s" % str(err)
       client = GD['invalidation'] = None # force reconnect
       if not tis_retry:
-        plpy.warning('Invalidation Service error: ' +  str(err))
+        plpy.warning('Error calling Invalidation Service to link Ghost Tables: ' +  str(err))
         break
       tis_retry -= 1 # try reconnecting
 $$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
