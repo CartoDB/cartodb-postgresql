@@ -12,9 +12,12 @@ AS $$
     json = GD['json']    
 
   tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
-  tis_config_dict = json.loads(tis_config) if tis_config else {}
-  tis_host = tis_config_dict.get('host', '127.0.0.1')
-  tis_port = tis_config_dict.get('port', 3142)
+  if not tis_config:
+    return
+
+  tis_config_dict = json.loads(tis_config)
+  tis_host = tis_config_dict.get('host')
+  tis_port = tis_config_dict.get('port')
   tis_timeout = tis_config_dict.get('timeout', 5)
   tis_retry = tis_config_dict.get('retry', 5)
       
