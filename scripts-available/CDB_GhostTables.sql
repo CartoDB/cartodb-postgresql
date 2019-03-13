@@ -53,7 +53,7 @@ AS $$
     username TEXT;
     db_name TEXT;
   BEGIN
-    EXECUTE 'SELECT CDB_Username();' INTO username;
+    EXECUTE 'SELECT cartodb.CDB_Username();' INTO username;
     EXECUTE 'SELECT current_database();' INTO db_name;
 
     PERFORM cartodb._CDB_LinkGhostTables(username, db_name, event_name);
