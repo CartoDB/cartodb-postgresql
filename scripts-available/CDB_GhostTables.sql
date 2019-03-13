@@ -68,8 +68,7 @@ AS $$
   DECLARE
     ddl_tag TEXT;
   BEGIN
-    EXECUTE 'SELECT tag FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();' INTO ddl_tag;
-    DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current();
+    EXECUTE 'DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current() RETURNING tag;' INTO ddl_tag;
     PERFORM cartodb.CDB_LinkGhostTables(ddl_tag);
     RETURN NULL;
   END;
