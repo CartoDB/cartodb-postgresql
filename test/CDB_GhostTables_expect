@@ -1,4 +1,5 @@
 
+
 WARNING:  Invalidation service configuration not found. Skipping Ghost Tables linking.
 NOTICE:  _CDB_LinkGhostTables() called with username=fulanito, event_name=USER
 
