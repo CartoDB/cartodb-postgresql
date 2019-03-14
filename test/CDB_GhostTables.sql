@@ -7,10 +7,19 @@ GRANT ALL ON SCHEMA cartodb TO "fulano";
 GRANT SELECT ON cartodb.cdb_ddl_execution TO "fulano";
 GRANT EXECUTE ON FUNCTION CDB_Username() TO "fulano";
 GRANT EXECUTE ON FUNCTION CDB_LinkGhostTables(text) TO "fulano";
-INSERT INTO cdb_conf (key, value) VALUES ('api_keys_fulano', '{"username": "fulanito", "permissions":[]}');
-INSERT INTO cdb_conf (key, value) VALUES ('invalidation_service', '{"host": "fake-tis-host"}');
+SELECT cartodb.CDB_Conf_SetConf('api_keys_fulano', '{"username": "fulanito", "permissions":[]}');
+DELETE FROM cdb_conf WHERE key = 'invalidation_service';
 SET SESSION AUTHORIZATION "fulano";
 SET client_min_messages TO notice;
+\set QUIET off
+
+SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called (configuration not found)
+
+-- Add TIS configuration
+\set QUIET on
+SET SESSION AUTHORIZATION postgres;
+SELECT cartodb.CDB_Conf_SetConf('invalidation_service', '{"host": "fake-tis-host", "port": 3142}');
+SET SESSION AUTHORIZATION "fulano";
 \set QUIET off
 
 SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called

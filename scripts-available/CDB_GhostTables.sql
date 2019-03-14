@@ -12,9 +12,13 @@ AS $$
     json = GD['json']    
 
   tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
-  tis_config_dict = json.loads(tis_config) if tis_config else {}
-  tis_host = tis_config_dict.get('host', '127.0.0.1')
-  tis_port = tis_config_dict.get('port', 3142)
+  if not tis_config:
+    plpy.warning('Invalidation service configuration not found. Skipping Ghost Tables linking.')
+    return
+
+  tis_config_dict = json.loads(tis_config)
+  tis_host = tis_config_dict.get('host')
+  tis_port = tis_config_dict.get('port')
   tis_timeout = tis_config_dict.get('timeout', 5)
   tis_retry = tis_config_dict.get('retry', 5)
       
@@ -30,7 +34,7 @@ AS $$
         except Exception as err:
           error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
-          plpy.warning('Invalidation Service connection error: ' +  str(err))
+          plpy.warning('Error trying to connect to Invalidation Service to link Ghost Tables: ' +  str(err))
           break
 
     try:
@@ -40,7 +44,7 @@ AS $$
       error = "request_error - %s" % str(err)
       client = GD['invalidation'] = None # force reconnect
       if not tis_retry:
-        plpy.warning('Invalidation Service error: ' +  str(err))
+        plpy.warning('Error calling Invalidation Service to link Ghost Tables: ' +  str(err))
         break
       tis_retry -= 1 # try reconnecting
 $$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
