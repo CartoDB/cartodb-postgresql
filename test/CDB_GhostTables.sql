@@ -15,7 +15,7 @@ SET client_min_messages TO notice;
 
 SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called, TIS connection not tried
 
--- Disable Ghost tables trigger
+-- Add TIS configuration
 \set QUIET on
 SET SESSION AUTHORIZATION postgres;
 SELECT cartodb.CDB_Conf_SetConf('invalidation_service', '{"host": "fake-tis-host", "port": 3142}');
