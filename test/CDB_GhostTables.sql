@@ -13,7 +13,7 @@ SET SESSION AUTHORIZATION "fulano";
 SET client_min_messages TO notice;
 \set QUIET off
 
-SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called, TIS connection not tried
+SELECT CDB_LinkGhostTables(); -- _CDB_LinkGhostTables called (configuration not found)
 
 -- Add TIS configuration
 \set QUIET on
