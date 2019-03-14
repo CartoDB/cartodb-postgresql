@@ -13,6 +13,7 @@ AS $$
 
   tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
   if not tis_config:
+    plpy.warning('Invalidation service configuration not found. Skipping Ghost Tables linking.')
     return
 
   tis_config_dict = json.loads(tis_config)
