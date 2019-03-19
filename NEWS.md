@@ -1,3 +1,6 @@
+0.26.1 (2019-03-19)
+* Remove default TIS values from Ghost tables functions
+
 0.26.0 (2019-03-11)
 * Use `ST_ShiftLongitude` instead of `ST_Shift_Longitude`.
 * Add Ghost tables functions to install triggers and enqueue the linking process
