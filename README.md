@@ -11,7 +11,8 @@ Dependencies
 ------------
 
  * PostgreSQL 9.4+ (with plpythonu extension and xml support)
- * [PostGIS extension](http://postgis.net) 
+ * [PostGIS extension](http://postgis.net)
+ * Python with [Redis module](https://pypi.org/project/redis/)
 
 Install
 -------
