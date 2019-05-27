@@ -113,17 +113,20 @@ BEGIN
   EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', dst_hash_table_name);
 
   -- Deal with deleted rows: ids in dest but not in source
-  EXECUTE format('DELETE FROM %s WHERE cartodb_id in (SELECT cartodb_id FROM %I WHERE cartodb_id NOT IN (SELECT cartodb_id FROM %I))', fq_dest_table, dst_hash_table_name, src_hash_table_name);
+  EXECUTE format(
+    'DELETE FROM %s WHERE cartodb_id IN (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I)',
+    fq_dest_table,
+    dst_hash_table_name,
+    src_hash_table_name);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'DELETED % row(s)', num_rows;
 
   -- Deal with inserted rows: ids in source but not in dest
   EXECUTE format('
       INSERT INTO %s (cartodb_id,%s)
-      SELECT h.cartodb_id,%s FROM %I h
-      LEFT JOIN %I s ON s.cartodb_id = h.cartodb_id
-      WHERE h.cartodb_id NOT IN (SELECT cartodb_id FROM %I);
-  ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, src_table, dst_hash_table_name);
+      SELECT h.cartodb_id,%s FROM (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I) h
+      LEFT JOIN %I s ON s.cartodb_id = h.cartodb_id;
+  ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, dst_hash_table_name, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
 
