@@ -98,67 +98,48 @@ BEGIN
   src_hash_table_name := format('src_sync_%s', txid_current());
   dst_hash_table_name := format('dst_sync_%s', txid_current());
 
-  BEGIN
-    -- TODO: use ON COMMIT DROP instead of Cleanup
-    EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT)', src_hash_table_name);
-    EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT)', dst_hash_table_name);
+  EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', src_hash_table_name);
+  EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', dst_hash_table_name);
 
-    -- Compute hash for src_table h[cartodb_id] = hash(row)
-    -- It'll take the form of a temp table with an index (easy to run set operations)
-    EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %I', src_hash_table_name, quoted_colnames, src_table);
+  -- Compute hash for src_table h[cartodb_id] = hash(row)
+  -- It'll take the form of a temp table with an index (easy to run set operations)
+  EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %I', src_hash_table_name, quoted_colnames, src_table);
 
-    -- Compute hash for dst_table, only for columns present in src_table
-    EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
+  -- Compute hash for dst_table, only for columns present in src_table
+  EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
 
-    -- TODO create indexes
+  -- TODO create indexes
 
-    -- Deal with deleted rows: ids in dest but not in source
-    EXECUTE format('DELETE FROM %s WHERE cartodb_id in (SELECT cartodb_id FROM %I WHERE cartodb_id NOT IN (SELECT cartodb_id FROM %I))', fq_dest_table, dst_hash_table_name, src_hash_table_name);
-    GET DIAGNOSTICS num_rows = ROW_COUNT;
-    RAISE NOTICE 'DELETED % row(s)', num_rows;
+  -- Deal with deleted rows: ids in dest but not in source
+  EXECUTE format('DELETE FROM %s WHERE cartodb_id in (SELECT cartodb_id FROM %I WHERE cartodb_id NOT IN (SELECT cartodb_id FROM %I))', fq_dest_table, dst_hash_table_name, src_hash_table_name);
+  GET DIAGNOSTICS num_rows = ROW_COUNT;
+  RAISE NOTICE 'DELETED % row(s)', num_rows;
 
-    -- Deal with inserted rows: ids in source but not in dest
-    EXECUTE format('
-        INSERT INTO %s (cartodb_id,%s)
-        SELECT h.cartodb_id,%s FROM %I h
-        LEFT JOIN %I s ON s.cartodb_id = h.cartodb_id
-        WHERE h.cartodb_id NOT IN (SELECT cartodb_id FROM %I);
-    ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, src_table, dst_hash_table_name);
-    GET DIAGNOSTICS num_rows = ROW_COUNT;
-    RAISE NOTICE 'INSERTED % row(s)', num_rows;
+  -- Deal with inserted rows: ids in source but not in dest
+  EXECUTE format('
+      INSERT INTO %s (cartodb_id,%s)
+      SELECT h.cartodb_id,%s FROM %I h
+      LEFT JOIN %I s ON s.cartodb_id = h.cartodb_id
+      WHERE h.cartodb_id NOT IN (SELECT cartodb_id FROM %I);
+  ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, src_table, dst_hash_table_name);
+  GET DIAGNOSTICS num_rows = ROW_COUNT;
+  RAISE NOTICE 'INSERTED % row(s)', num_rows;
 
-    -- Deal with modified rows: ids in source and dest but different hashes
-    update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
-    EXECUTE format('
-      UPDATE %1$s dst SET %2$s
-      FROM (
-        SELECT *
-        FROM %3$s src
-        WHERE cartodb_id IN
-          (SELECT sh.cartodb_id FROM %4$I sh
-           LEFT JOIN %5$I dh ON sh.cartodb_id = dh.cartodb_id
-           WHERE sh.hash <> dh.hash)
-      ) changed
-      WHERE dst.cartodb_id = changed.cartodb_id;
-    ', fq_dest_table, update_set_clause, src_table, src_hash_table_name, dst_hash_table_name);
-    GET DIAGNOSTICS num_rows = ROW_COUNT;
-    RAISE NOTICE 'MODIFIED % row(s)', num_rows;
-
-    -- Cleanup
-    --EXECUTE format('DROP TABLE IF EXISTS %I', src_hash_table_name);
-    --EXECUTE format('DROP TABLE IF EXISTS %I', dst_hash_table_name);
-  EXCEPTION
-    WHEN others THEN
-      -- Cleanup
-      EXECUTE format('DROP TABLE IF EXISTS %I', src_hash_table_name);
-      EXECUTE format('DROP TABLE IF EXISTS %I', dst_hash_table_name);
-
-      -- Exception reporting
-      GET STACKED DIAGNOSTICS err_context = PG_EXCEPTION_CONTEXT;
-      RAISE INFO 'Error Name:%',SQLERRM;
-      RAISE INFO 'Error State:%', SQLSTATE;
-      RAISE INFO 'Error Context:%', err_context;
-  END;
-
+  -- Deal with modified rows: ids in source and dest but different hashes
+  update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
+  EXECUTE format('
+    UPDATE %1$s dst SET %2$s
+    FROM (
+      SELECT *
+      FROM %3$s src
+      WHERE cartodb_id IN
+        (SELECT sh.cartodb_id FROM %4$I sh
+         LEFT JOIN %5$I dh ON sh.cartodb_id = dh.cartodb_id
+         WHERE sh.hash <> dh.hash)
+    ) changed
+    WHERE dst.cartodb_id = changed.cartodb_id;
+  ', fq_dest_table, update_set_clause, src_table, src_hash_table_name, dst_hash_table_name);
+  GET DIAGNOSTICS num_rows = ROW_COUNT;
+  RAISE NOTICE 'MODIFIED % row(s)', num_rows;
 END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
