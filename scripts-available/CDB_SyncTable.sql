@@ -93,7 +93,6 @@ BEGIN
   -- Get the list of columns from the source table, excluding cartodb_id
   SELECT ARRAY(SELECT quote_ident(c) FROM _CDB_GetColumns(src_table) as c WHERE c <> 'cartodb_id') INTO colnames;
   quoted_colnames := array_to_string(colnames, ',');
-  RAISE NOTICE 'quoted_colnames = %', quoted_colnames;
 
   src_hash_table_name := format('src_sync_%s', txid_current());
   dst_hash_table_name := format('dst_sync_%s', txid_current());
@@ -108,7 +107,10 @@ BEGIN
   -- Compute hash for dst_table, only for columns present in src_table
   EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
 
-  -- TODO create indexes
+  -- Create indexes
+  -- We use hash indexes as they are fit for id comparison.
+  EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', src_hash_table_name);
+  EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', dst_hash_table_name);
 
   -- Deal with deleted rows: ids in dest but not in source
   EXECUTE format('DELETE FROM %s WHERE cartodb_id in (SELECT cartodb_id FROM %I WHERE cartodb_id NOT IN (SELECT cartodb_id FROM %I))', fq_dest_table, dst_hash_table_name, src_hash_table_name);
