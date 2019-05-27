@@ -1,4 +1,6 @@
 /*
+   Gets the column names of a given table.
+
    Sample usage:
 
      SELECT _CDB_GetColumns('public.films');
@@ -22,6 +24,33 @@ AS $$
       );
 $$ LANGUAGE sql STABLE PARALLEL UNSAFE;
 
+
+/*
+    Given an array of quoted column names, it generates an UPDATE SET
+    clause with the following form:
+
+        the_geom = changed.the_geom,
+        id = changed.id,
+        elevation = changed.elevation
+
+    Example of usage:
+
+       SELECT __CDB_GetUpdateSetClause('{the_geom, id, elevation}', 'changed');
+*/
+CREATE OR REPLACE FUNCTION __CDB_GetUpdateSetClause(colnames TEXT[], update_source TEXT)
+RETURNS TEXT
+AS $$
+DECLARE
+  set_clause_list TEXT[];
+  col TEXT;
+BEGIN
+  FOREACH col IN ARRAY colnames
+  LOOP
+    set_clause_list := array_append(set_clause_list, format('%1$s = %2$s.%1$s', col, update_source));
+  END lOOP;
+  RETURN array_to_string(set_clause_list, ', ');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 /*
    A Table Syncer
@@ -78,6 +107,8 @@ BEGIN
 
     -- Compute hash for dst_table, only for columns present in src_table
     EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
+
+    -- TODO create indexes
 
     -- Deal with deleted rows: ids in dest but not in source
     EXECUTE format('DELETE FROM %s WHERE cartodb_id in (SELECT cartodb_id FROM %I WHERE cartodb_id NOT IN (SELECT cartodb_id FROM %I))', fq_dest_table, dst_hash_table_name, src_hash_table_name);
