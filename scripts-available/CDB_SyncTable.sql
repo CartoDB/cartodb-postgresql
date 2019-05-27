@@ -132,15 +132,15 @@ BEGIN
     EXECUTE format('
       UPDATE %1$s dst SET %2$s
       FROM (
-        SELECT cartodb_id,%3$s
-        FROM %4$s src
+        SELECT *
+        FROM %3$s src
         WHERE cartodb_id IN
-          (SELECT sh.cartodb_id FROM %5$I sh
-           LEFT JOIN %6$I dh ON sh.cartodb_id = dh.cartodb_id
+          (SELECT sh.cartodb_id FROM %4$I sh
+           LEFT JOIN %5$I dh ON sh.cartodb_id = dh.cartodb_id
            WHERE sh.hash <> dh.hash)
       ) changed
       WHERE dst.cartodb_id = changed.cartodb_id;
-    ', fq_dest_table, update_set_clause, quoted_colnames, src_table, src_hash_table_name, dst_hash_table_name);
+    ', fq_dest_table, update_set_clause, src_table, src_hash_table_name, dst_hash_table_name);
     GET DIAGNOSTICS num_rows = ROW_COUNT;
     RAISE NOTICE 'MODIFIED % row(s)', num_rows;
 
