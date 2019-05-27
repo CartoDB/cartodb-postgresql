@@ -1,0 +1,39 @@
+First table sync: it should be simply just copied to the destination
+NOTICE:  INSERTED 4 row(s)
+
+Next table sync: there shall be no changes
+NOTICE:  relation "test_sync_dest" already exists, skipping
+NOTICE:  DELETED 0 row(s)
+NOTICE:  INSERTED 0 row(s)
+NOTICE:  MODIFIED 0 row(s)
+
+Remove a row from the source and check it is deleted from the dest table
+DELETE 1
+NOTICE:  relation "test_sync_dest" already exists, skipping
+NOTICE:  DELETED 1 row(s)
+NOTICE:  INSERTED 0 row(s)
+NOTICE:  MODIFIED 0 row(s)
+
+Insert a new row and check that it is inserted in the dest table
+INSERT 0 1
+NOTICE:  relation "test_sync_dest" already exists, skipping
+NOTICE:  DELETED 0 row(s)
+NOTICE:  INSERTED 1 row(s)
+NOTICE:  MODIFIED 0 row(s)
+
+Modify row and check that it is modified in the dest table
+UPDATE 1
+NOTICE:  relation "test_sync_dest" already exists, skipping
+NOTICE:  DELETED 0 row(s)
+NOTICE:  INSERTED 0 row(s)
+NOTICE:  MODIFIED 1 row(s)
+
+Sanity check: the end result is the same source table
+1|1|1|foo
+2|2|2|bar
+4|4|4|cantaloupe
+5|5|5|sandia
+1|1|1|foo
+2|2|2|bar
+4|4|4|cantaloupe
+5|5|5|sandia
