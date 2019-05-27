@@ -76,6 +76,8 @@ DECLARE
   src_hash_table_name NAME;
   dst_hash_table_name NAME;
 
+  update_set_clause TEXT;
+
   num_rows BIGINT;
   err_context text;
 BEGIN
@@ -126,27 +128,21 @@ BEGIN
     RAISE NOTICE 'INSERTED % row(s)', num_rows;
 
     -- Deal with modified rows: ids in source and dest but different hashes
-    /*
-      UPDATE syncdes dst SET
-        the_geom = changed.the_geom,
-        the_geom_webmercator = changed.the_geom_webmercator,
-        id = changed.id,
-        elevation = changed.elevation,
-        latitude = changed.latitude,
-        longitude = changed.longitude,
-        name = changed.name
+    update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
+    EXECUTE format('
+      UPDATE %1$s dst SET %2$s
       FROM (
-        SELECT cartodb_id,the_geom,the_geom_webmercator,id,elevation,latitude,longitude,name
-        FROM radar_stations src
+        SELECT cartodb_id,%3$s
+        FROM %4$s src
         WHERE cartodb_id IN
-          (SELECT sh.cartodb_id FROM src_sync_615543 sh
-           LEFT JOIN dst_sync_615543 dh ON sh.cartodb_id = dh.cartodb_id
+          (SELECT sh.cartodb_id FROM %5$I sh
+           LEFT JOIN %6$I dh ON sh.cartodb_id = dh.cartodb_id
            WHERE sh.hash <> dh.hash)
       ) changed
       WHERE dst.cartodb_id = changed.cartodb_id;
-    */
-    --GET DIAGNOSTICS num_rows = ROW_COUNT;
-    --RAISE NOTICE 'MODIFIED % row(s)', num_rows;
+    ', fq_dest_table, update_set_clause, quoted_colnames, src_table, src_hash_table_name, dst_hash_table_name);
+    GET DIAGNOSTICS num_rows = ROW_COUNT;
+    RAISE NOTICE 'MODIFIED % row(s)', num_rows;
 
     -- Cleanup
     --EXECUTE format('DROP TABLE IF EXISTS %I', src_hash_table_name);
