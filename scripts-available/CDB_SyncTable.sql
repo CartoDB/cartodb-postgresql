@@ -73,11 +73,12 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 
    Assumptions:
      - Both tables contain a consistent cartodb_id column
-     - Destination table has all columns of the source
+     - Destination table has all columns of the source or does not exist
 
    Sample usage:
 
      SELECT CDB_SyncTable('radar_stations', 'public', 'syncdest');
+     SELECT CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
 
 */
 CREATE OR REPLACE FUNCTION CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME, skip_cols NAME[] = '{}')
@@ -96,6 +97,8 @@ DECLARE
 
   num_rows BIGINT;
   err_context text;
+
+  t timestamptz;
 BEGIN
   -- If the destination table does not exist, just copy the source table
   fq_dest_table := format('%I.%I', dst_schema, dst_table);
@@ -118,19 +121,22 @@ BEGIN
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', src_hash_table_name);
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', dst_hash_table_name);
 
-  -- Compute hash for src_table h[cartodb_id] = hash(row)
+  -- Compute hash tables for src_table and dst_table h[cartodb_id] = hash(row)
   -- It'll take the form of a temp table with an index (easy to run set operations)
+  t := clock_timestamp();
   EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %I', src_hash_table_name, quoted_colnames, src_table);
-
-  -- Compute hash for dst_table, only for columns present in src_table
   EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
+  RAISE DEBUG 'Populate hash tables time (s): %', clock_timestamp() - t;
 
   -- Create indexes
   -- We use hash indexes as they are fit for id comparison.
+  t := clock_timestamp();
   EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', src_hash_table_name);
   EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', dst_hash_table_name);
+  RAISE DEBUG 'Index creation on hash tables time (s): %', clock_timestamp() - t;
 
   -- Deal with deleted rows: ids in dest but not in source
+  t := clock_timestamp();
   EXECUTE format(
     'DELETE FROM %s WHERE cartodb_id IN (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I)',
     fq_dest_table,
@@ -138,8 +144,10 @@ BEGIN
     src_hash_table_name);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'DELETED % row(s)', num_rows;
+  RAISE DEBUG 'DELETE time (s): %', clock_timestamp() - t;
 
   -- Deal with inserted rows: ids in source but not in dest
+  t := clock_timestamp();
   EXECUTE format('
       INSERT INTO %s (cartodb_id,%s)
       SELECT h.cartodb_id,%s FROM (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I) h
@@ -147,8 +155,10 @@ BEGIN
   ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, dst_hash_table_name, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
+  RAISE DEBUG 'INSERT time (s): %', clock_timestamp() - t;
 
   -- Deal with modified rows: ids in source and dest but different hashes
+  t := clock_timestamp();
   update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
   EXECUTE format('
     UPDATE %1$s dst SET %2$s
@@ -164,5 +174,6 @@ BEGIN
   ', fq_dest_table, update_set_clause, src_table, src_hash_table_name, dst_hash_table_name);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'MODIFIED % row(s)', num_rows;
+  RAISE DEBUG 'UPDATE time (s): %', clock_timestamp() - t;
 END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
