@@ -52,6 +52,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
+
+/*
+    Given a prefix, generate a safe unique NAME for a temp table.
+
+    Example of usage:
+
+       SELECT __CDB_GenerateUniqueName('src_sync'); --> src_sync_718794_120106
+
+*/
+CREATE OR REPLACE FUNCTION __CDB_GenerateUniqueName(prefix TEXT)
+RETURNS NAME
+AS $$
+  SELECT format('%s_%s_%s', prefix, txid_current(), (random()*1000000)::int)::NAME;
+$$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
+
+
 /*
    A Table Syncer
 
@@ -94,8 +110,8 @@ BEGIN
   SELECT ARRAY(SELECT quote_ident(c) FROM _CDB_GetColumns(src_table) as c WHERE c <> 'cartodb_id') INTO colnames;
   quoted_colnames := array_to_string(colnames, ',');
 
-  src_hash_table_name := format('src_sync_%s', txid_current());
-  dst_hash_table_name := format('dst_sync_%s', txid_current());
+  src_hash_table_name := __CDB_GenerateUniqueName('src_sync');
+  dst_hash_table_name := __CDB_GenerateUniqueName('dst_sync');
 
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', src_hash_table_name);
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', dst_hash_table_name);
