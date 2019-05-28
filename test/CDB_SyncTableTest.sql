@@ -40,5 +40,19 @@ SELECT * FROM test_sync_source ORDER BY cartodb_id;
 SELECT * FROM test_sync_dest ORDER BY cartodb_id;
 
 
+\echo 'It shall exclude geom columns if instructed to do so'
+\set QUIET on
+SET client_min_messages TO error;
+SELECT cartodb.CDB_SetUserQuotaInBytes(0); -- Set user quota to infinite
+SELECT cartodb.CDB_CartodbfyTable('test_sync_source');
+SELECT cartodb.CDB_CartodbfyTable('test_sync_dest');
+UPDATE test_sync_dest SET the_geom = cartodb.CDB_LatLng(lat, lon); -- A "gecoding"
+\set QUIET off
+SET client_min_messages TO notice;
+SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
+SELECT * FROM test_sync_source;
+SELECT * FROM test_sync_dest;
+
+
 -- Cleanup
 ROLLBACK;

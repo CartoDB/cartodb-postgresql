@@ -80,7 +80,7 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
      SELECT CDB_SyncTable('radar_stations', 'public', 'syncdest');
 
 */
-CREATE OR REPLACE FUNCTION CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME)
+CREATE OR REPLACE FUNCTION CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME, skip_cols NAME[] = '{}')
 RETURNS void
 AS $$
 DECLARE
@@ -106,8 +106,10 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Get the list of columns from the source table, excluding cartodb_id
-  SELECT ARRAY(SELECT quote_ident(c) FROM _CDB_GetColumns(src_table) as c WHERE c <> 'cartodb_id') INTO colnames;
+  skip_cols := skip_cols || '{cartodb_id}';
+
+  -- Get the list of columns from the source table, excluding skip_cols
+  SELECT ARRAY(SELECT quote_ident(c) FROM _CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
   quoted_colnames := array_to_string(colnames, ',');
 
   src_hash_table_name := __CDB_GenerateUniqueName('src_sync');
