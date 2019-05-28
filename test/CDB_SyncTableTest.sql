@@ -1,5 +1,6 @@
 -- Setup: create and populate a table to test the syncs
 \set QUIET on
+BEGIN;
 SET client_min_messages TO error;
 CREATE TABLE test_sync_source (
   cartodb_id bigint,
@@ -14,6 +15,7 @@ INSERT INTO test_sync_source VALUES
   (4, 4.0, 4.0, 'melon');
 SET client_min_messages TO notice;
 \set QUIET off
+
 
 \echo 'First table sync: it should be simply just copied to the destination'
 SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest');
@@ -37,8 +39,6 @@ SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest');
 SELECT * FROM test_sync_source ORDER BY cartodb_id;
 SELECT * FROM test_sync_dest ORDER BY cartodb_id;
 
+
 -- Cleanup
-\set QUIET on
-DROP TABLE IF EXISTS test_sync_source;
-DROP TABLE IF EXISTS test_sync_dest;
-\set QUIET off
+ROLLBACK;

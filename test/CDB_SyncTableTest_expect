@@ -37,3 +37,4 @@ Sanity check: the end result is the same source table
 2|2|2|bar
 4|4|4|cantaloupe
 5|5|5|sandia
+ROLLBACK
