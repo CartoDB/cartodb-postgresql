@@ -149,10 +149,10 @@ BEGIN
   -- Deal with inserted rows: ids in source but not in dest
   t := clock_timestamp();
   EXECUTE format('
-      INSERT INTO %s (cartodb_id,%s)
-      SELECT h.cartodb_id,%s FROM (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I) h
-      LEFT JOIN %I s ON s.cartodb_id = h.cartodb_id;
-  ', fq_dest_table, quoted_colnames, quoted_colnames, src_hash_table_name, dst_hash_table_name, src_table);
+      INSERT INTO %1$s (cartodb_id,%2$s)
+      SELECT h.cartodb_id,%2$s FROM (SELECT cartodb_id FROM %3$I EXCEPT SELECT cartodb_id FROM %4$I) h
+      LEFT JOIN %5$I s ON s.cartodb_id = h.cartodb_id;
+  ', fq_dest_table, quoted_colnames, src_hash_table_name, dst_hash_table_name, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
   RAISE DEBUG 'INSERT time (s): %', clock_timestamp() - t;
