@@ -46,7 +46,7 @@ DECLARE
 BEGIN
   FOREACH col IN ARRAY colnames
   LOOP
-    set_clause_list := array_append(set_clause_list, format('%1$s = %2$s.%1$s', col, update_source));
+    set_clause_list := array_append(set_clause_list, format('%1$s = COALESCE(%2$s.%1$s, %1$s)', col, update_source));
   END lOOP;
   RETURN array_to_string(set_clause_list, ', ');
 END;
