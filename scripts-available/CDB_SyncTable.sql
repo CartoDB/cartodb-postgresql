@@ -29,15 +29,15 @@ $$ LANGUAGE sql STABLE PARALLEL UNSAFE;
     Given an array of quoted column names, it generates an UPDATE SET
     clause with the following form:
 
-        the_geom = changed.the_geom,
-        id = changed.id,
-        elevation = changed.elevation
+        the_geom = COALESCE(changed.the_geom, dst.the_geom),
+        id = COALESCE(changed.id, dst.id),
+        elevation = COALESCE(changed.elevation, dst.elevation)
 
     Example of usage:
 
-       SELECT __CDB_GetUpdateSetClause('{the_geom, id, elevation}', 'changed');
+       SELECT __CDB_GetUpdateSetClause('{the_geom, id, elevation}', 'changed', 'dst');
 */
-CREATE OR REPLACE FUNCTION __CDB_GetUpdateSetClause(colnames TEXT[], update_source TEXT)
+CREATE OR REPLACE FUNCTION __CDB_GetUpdateSetClause(colnames TEXT[], update_source NAME, update_target NAME)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -46,7 +46,7 @@ DECLARE
 BEGIN
   FOREACH col IN ARRAY colnames
   LOOP
-    set_clause_list := array_append(set_clause_list, format('%1$s = COALESCE(%2$s.%1$s, %1$s)', col, update_source));
+    set_clause_list := array_append(set_clause_list, format('%1$s = COALESCE(%2$s.%1$s, %3$s.%1$s)', col, update_source, update_target));
   END lOOP;
   RETURN array_to_string(set_clause_list, ', ');
 END;
@@ -159,7 +159,7 @@ BEGIN
 
   -- Deal with modified rows: ids in source and dest but different hashes
   t := clock_timestamp();
-  update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
+  update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed', 'dst');
   EXECUTE format('
     UPDATE %1$s dst SET %2$s
     FROM (
