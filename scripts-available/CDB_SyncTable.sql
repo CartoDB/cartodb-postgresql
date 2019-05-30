@@ -3,9 +3,9 @@
 
    Sample usage:
 
-     SELECT _CDB_GetColumns('public.films');
+     SELECT cartodb._CDB_GetColumns('public.films');
 */
-CREATE OR REPLACE FUNCTION _CDB_GetColumns(src_table REGCLASS)
+CREATE OR REPLACE FUNCTION cartodb._CDB_GetColumns(src_table REGCLASS)
 RETURNS SETOF NAME
 AS $$
   SELECT
@@ -35,9 +35,9 @@ $$ LANGUAGE sql STABLE PARALLEL UNSAFE;
 
     Example of usage:
 
-       SELECT __CDB_GetUpdateSetClause('{the_geom, id, elevation}', 'changed');
+       SELECT cartodb.__CDB_GetUpdateSetClause('{the_geom, id, elevation}', 'changed');
 */
-CREATE OR REPLACE FUNCTION __CDB_GetUpdateSetClause(colnames TEXT[], update_source TEXT)
+CREATE OR REPLACE FUNCTION cartodb.__CDB_GetUpdateSetClause(colnames TEXT[], update_source TEXT)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -58,10 +58,10 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
     Example of usage:
 
-       SELECT __CDB_GenerateUniqueName('src_sync'); --> src_sync_718794_120106
+       SELECT cartodb.__CDB_GenerateUniqueName('src_sync'); --> src_sync_718794_120106
 
 */
-CREATE OR REPLACE FUNCTION __CDB_GenerateUniqueName(prefix TEXT)
+CREATE OR REPLACE FUNCTION cartodb.__CDB_GenerateUniqueName(prefix TEXT)
 RETURNS NAME
 AS $$
   SELECT format('%s_%s_%s', prefix, txid_current(), (random()*1000000)::int)::NAME;
@@ -77,11 +77,11 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 
    Sample usage:
 
-     SELECT CDB_SyncTable('radar_stations', 'public', 'syncdest');
-     SELECT CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
+     SELECT cartodb.CDB_SyncTable('radar_stations', 'public', 'syncdest');
+     SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
 
 */
-CREATE OR REPLACE FUNCTION CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME, skip_cols NAME[] = '{}')
+CREATE OR REPLACE FUNCTION cartodb.CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME, skip_cols NAME[] = '{}')
 RETURNS void
 AS $$
 DECLARE
@@ -112,11 +112,11 @@ BEGIN
   skip_cols := skip_cols || '{cartodb_id}';
 
   -- Get the list of columns from the source table, excluding skip_cols
-  SELECT ARRAY(SELECT quote_ident(c) FROM _CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
+  SELECT ARRAY(SELECT quote_ident(c) FROM cartodb._CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
   quoted_colnames := array_to_string(colnames, ',');
 
-  src_hash_table_name := __CDB_GenerateUniqueName('src_sync');
-  dst_hash_table_name := __CDB_GenerateUniqueName('dst_sync');
+  src_hash_table_name := cartodb.__CDB_GenerateUniqueName('src_sync');
+  dst_hash_table_name := cartodb.__CDB_GenerateUniqueName('dst_sync');
 
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', src_hash_table_name);
   EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', dst_hash_table_name);
@@ -159,7 +159,7 @@ BEGIN
 
   -- Deal with modified rows: ids in source and dest but different hashes
   t := clock_timestamp();
-  update_set_clause := __CDB_GetUpdateSetClause(colnames, 'changed');
+  update_set_clause := cartodb.__CDB_GetUpdateSetClause(colnames, 'changed');
   EXECUTE format('
     UPDATE %1$s dst SET %2$s
     FROM (
