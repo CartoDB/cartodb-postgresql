@@ -253,9 +253,6 @@ function run_tests() {
     setup
     for t in ${TESTS}
     do
-#         if [[ ${t} != "test_cdb_usertables_should_work_with_orgusers" ]]; then
-#             continue;
-#         fi
         echo "####################################################################"
         echo "#"
         echo "# Running: ${t}"
