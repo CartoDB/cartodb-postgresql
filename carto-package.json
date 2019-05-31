@@ -2,8 +2,8 @@
     "name": "carto_postgresql_ext",
     "current_version": {
         "requires": {
-            "postgresql": ">=9.5.0",
-            "postgis": ">=2.2.0.0"
+            "postgresql": ">=10.0",
+            "postgis": ">=2.4.0.0"
         },
         "works_with": {
         }
