@@ -7,7 +7,7 @@
 -- @param breaks The number of bins you want to find.
 --
 --
-CREATE OR REPLACE FUNCTION CDB_QuantileBins(in_array numeric[], breaks int)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_QuantileBins(in_array numeric[], breaks int)
 RETURNS numeric[]
 AS $$
   SELECT

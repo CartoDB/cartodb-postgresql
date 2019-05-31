@@ -9,13 +9,13 @@
 
 -- 1) Required checks before running cartodbfication
 -- Either will pass silenty or raise an exception
-CREATE OR REPLACE FUNCTION _CDB_check_prerequisites(schema_name TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_check_prerequisites(schema_name TEXT, reloid REGCLASS)
 RETURNS void
 AS $$
 DECLARE
   sql TEXT;
 BEGIN
-  IF cartodb.schema_exists(schema_name) = false THEN
+  IF @extschema@.schema_exists(schema_name) = false THEN
     RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
   END IF;
 
@@ -29,7 +29,7 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Drop cartodb triggers (might prevent changing columns)
-CREATE OR REPLACE FUNCTION _CDB_drop_triggers(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_drop_triggers(reloid REGCLASS)
   RETURNS void
 AS $$
 DECLARE
@@ -53,7 +53,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Cartodb_id creation & validation or renaming if invalid
-CREATE OR REPLACE FUNCTION _CDB_create_cartodb_id_column(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_create_cartodb_id_column(reloid REGCLASS)
   RETURNS void
 AS $$
 DECLARE
@@ -200,7 +200,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Create all triggers
 -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
-CREATE OR REPLACE FUNCTION _CDB_create_triggers(schema_name TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_create_triggers(schema_name TEXT, reloid REGCLASS)
 RETURNS void
 AS $$
 DECLARE
@@ -209,28 +209,28 @@ BEGIN
 -- "track_updates"
   sql := 'CREATE trigger track_updates AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON '
          || reloid::text
-         || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
+         || ' FOR EACH STATEMENT EXECUTE PROCEDURE @extschema@.cdb_tablemetadata_trigger()';
   EXECUTE sql;
 
 -- "update_the_geom_webmercator"
 -- TODO: why _before_ and not after ?
   sql := 'CREATE trigger update_the_geom_webmercator_trigger BEFORE INSERT OR UPDATE OF the_geom ON '
          || reloid::text
-         || ' FOR EACH ROW EXECUTE PROCEDURE public._CDB_update_the_geom_webmercator()';
+         || ' FOR EACH ROW EXECUTE PROCEDURE @extschema@._CDB_update_the_geom_webmercator()';
   EXECUTE sql;
 
 -- "test_quota" and "test_quota_per_row"
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
          || reloid::text
-         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(0.1, ''-1'', '''
+         || ' EXECUTE PROCEDURE @extschema@.CDB_CheckQuota(0.1, ''-1'', '''
          || schema_name::text
          || ''')';
   EXECUTE sql;
 
   sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
          || reloid::text
-         || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
+         || ' FOR EACH ROW EXECUTE PROCEDURE @extschema@.CDB_CheckQuota(0.001, ''-1'', '''
          || schema_name::text
          || ''')';
   EXECUTE sql;
@@ -239,7 +239,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- 8.b) Create all raster triggers
 -- NOTE: drop/create has the side-effect of re-enabling disabled triggers
-CREATE OR REPLACE FUNCTION _CDB_create_raster_triggers(schema_name TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_create_raster_triggers(schema_name TEXT, reloid REGCLASS)
   RETURNS void
 AS $$
 DECLARE
@@ -248,21 +248,21 @@ BEGIN
 -- "track_updates"
   sql := 'CREATE trigger track_updates AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON '
          || reloid::text
-         || ' FOR EACH STATEMENT EXECUTE PROCEDURE public.cdb_tablemetadata_trigger()';
+         || ' FOR EACH STATEMENT EXECUTE PROCEDURE @extschema@.cdb_tablemetadata_trigger()';
   EXECUTE sql;
 
 -- "test_quota" and "test_quota_per_row"
 
   sql := 'CREATE TRIGGER test_quota BEFORE UPDATE OR INSERT ON '
          || reloid::text
-         || ' EXECUTE PROCEDURE public.CDB_CheckQuota(1, ''-1'', '''
+         || ' EXECUTE PROCEDURE @extschema@.CDB_CheckQuota(1, ''-1'', '''
          || schema_name::text
          || ''')';
   EXECUTE sql;
 
   sql := 'CREATE TRIGGER test_quota_per_row BEFORE UPDATE OR INSERT ON '
          || reloid::text
-         || ' FOR EACH ROW EXECUTE PROCEDURE public.CDB_CheckQuota(0.001, ''-1'', '''
+         || ' FOR EACH ROW EXECUTE PROCEDURE @extschema@.CDB_CheckQuota(0.001, ''-1'', '''
          || schema_name::text
          || ''')';
   EXECUTE sql;
@@ -272,11 +272,11 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 -- Update the_geom_webmercator
-CREATE OR REPLACE FUNCTION _CDB_update_the_geom_webmercator()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_update_the_geom_webmercator()
   RETURNS trigger
 AS $$
 BEGIN
-  NEW.the_geom_webmercator := public.CDB_TransformToWebmercator(NEW.the_geom);
+  NEW.the_geom_webmercator := @extschema@.CDB_TransformToWebmercator(NEW.the_geom);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
@@ -284,7 +284,7 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --- Trigger to update the updated_at column. No longer added by default
 --- but kept here for compatibility with old tables which still have this behavior
 --- and have it added
-CREATE OR REPLACE FUNCTION _CDB_update_updated_at()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_update_updated_at()
   RETURNS TRIGGER AS $$
 BEGIN
    NEW.updated_at := now();
@@ -293,7 +293,7 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 -- Auxiliary function
-CREATE OR REPLACE FUNCTION cartodb._CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_is_raster_table(schema_name TEXT, reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -301,7 +301,7 @@ DECLARE
   is_raster BOOLEAN;
   rel_name TEXT;
 BEGIN
-  IF cartodb.schema_exists(schema_name) = FALSE THEN
+  IF @extschema@.schema_exists(schema_name) = FALSE THEN
     RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
   END IF;
 
@@ -331,11 +331,11 @@ $$ LANGUAGE PLPGSQL STABLE PARALLEL UNSAFE;
 -- Ensure a table is a "cartodb" table (See https://github.com/CartoDB/cartodb/wiki/CartoDB-user-table)
 
 DROP FUNCTION IF EXISTS CDB_CartodbfyTable(reloid REGCLASS);
-CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CartodbfyTable(reloid REGCLASS)
 RETURNS REGCLASS
 AS $$
 BEGIN
-  RETURN cartodb.CDB_CartodbfyTable('public', reloid);
+  RETURN @extschema@.CDB_CartodbfyTable('public', reloid);
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -388,7 +388,7 @@ $$ LANGUAGE PLPGSQL;
 -- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 
-CREATE OR REPLACE FUNCTION _CDB_Columns(OUT pkey TEXT, OUT geomcol TEXT, OUT mercgeomcol TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Columns(OUT pkey TEXT, OUT geomcol TEXT, OUT mercgeomcol TEXT)
 RETURNS record
 AS $$
 BEGIN
@@ -401,7 +401,7 @@ END;
 $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION _CDB_Error(message TEXT, funcname TEXT DEFAULT '_CDB_Error')
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Error(message TEXT, funcname TEXT DEFAULT '_CDB_Error')
 RETURNS void
 AS $$
 BEGIN
@@ -412,7 +412,7 @@ END;
 $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION _CDB_SQL(sql TEXT, funcname TEXT DEFAULT '_CDB_SQL')
+CREATE OR REPLACE FUNCTION @extschema@._CDB_SQL(sql TEXT, funcname TEXT DEFAULT '_CDB_SQL')
 RETURNS void
 AS $$
 BEGIN
@@ -432,7 +432,7 @@ $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 -- aware. Find a unique relation name in the given schema, starting from the
 -- template given. If the template is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
-CREATE OR REPLACE FUNCTION _CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Unique_Relation_Name(schemaname TEXT, relationname TEXT)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -451,7 +451,7 @@ $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 -- aware. Find a unique column name in the given relation, starting from the
 -- column name given. If the column name is already unique, just return it;
 -- otherwise, append an increasing integer until you find a unique variant.
-CREATE OR REPLACE FUNCTION _CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Unique_Column_Name(reloid REGCLASS, columnname TEXT)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -471,7 +471,7 @@ $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 -- we can no-op on the table copy and just ensure that the
 -- indexes and triggers are in place
 DROP FUNCTION IF EXISTS _CDB_Has_Usable_Primary_ID(reloid REGCLASS);
-CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Primary_ID(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Has_Usable_Primary_ID(reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -485,7 +485,7 @@ BEGIN
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %', 'entered function';
 
   -- Read in the names of the CartoDB columns
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   -- Do we already have a properly named column?
   SELECT a.attname, i.indisprimary, i.indisunique, a.attnotnull, a.atttypid
@@ -537,8 +537,8 @@ BEGIN
 
       -- Clean up test constraint
       IF useable_key THEN
-        PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
-        PERFORM _CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_integer', reloid::text, const.pkey));
+        PERFORM @extschema@._CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_pk', reloid::text, const.pkey));
+        PERFORM @extschema@._CDB_SQL(Format('ALTER TABLE %s DROP CONSTRAINT %s_integer', reloid::text, const.pkey));
 
       -- Move non-valid column out of the way
       ELSE
@@ -546,7 +546,7 @@ BEGIN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
           Format('found non-valid ''%s''', const.pkey);
 
-        PERFORM _CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, %s', const.pkey));
+        PERFORM @extschema@._CDB_Error(sql, Format('_CDB_Has_Usable_Primary_ID: Error: invalid cartodb_id, %s', const.pkey));
 
       END IF;
 
@@ -569,7 +569,7 @@ BEGIN
 
     -- Yes! Ok, rename it.
     IF FOUND THEN
-      PERFORM _CDB_SQL(Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, const.pkey),'_CDB_Has_Usable_Primary_ID');
+      PERFORM @extschema@._CDB_SQL(Format('ALTER TABLE %s RENAME COLUMN %s TO %s', reloid::text, rec.attname, const.pkey),'_CDB_Has_Usable_Primary_ID');
       RETURN true;
     ELSE
       RAISE DEBUG 'CDB(_CDB_Has_Usable_Primary_ID): %',
@@ -586,7 +586,7 @@ END;
 $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION _CDB_Has_Usable_PK_Sequence(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Has_Usable_PK_Sequence(reloid REGCLASS)
 RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -595,7 +595,7 @@ DECLARE
   has_sequence BOOLEAN = false;
 BEGIN
 
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   SELECT pg_get_serial_sequence(reloid::text, const.pkey)
   INTO STRICT seq;
@@ -607,19 +607,19 @@ $$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 -- Return a set of columns that can be candidates to be the_geom[webmercator]
 -- with some extra information to analyze them.
-CREATE OR REPLACE FUNCTION _cdb_geom_candidate_columns(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_geom_candidate_columns(reloid REGCLASS)
 RETURNS TABLE (attname name, srid integer, typname name, desired_attname text, desired_srid integer)
 AS $$
 DECLARE
   const RECORD;
 BEGIN
 
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   RETURN QUERY
     SELECT
     a.attname,
-    CASE WHEN t.typname = 'geometry' THEN postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
+    CASE WHEN t.typname = 'geometry' THEN @postgisschema@.postgis_typmod_srid(a.atttypmod) ELSE NULL END AS srid,
     t.typname,
     f.desired_attname, f.desired_srid
     FROM pg_class c
@@ -629,15 +629,16 @@ BEGIN
     WHERE c.oid = reloid
     AND a.attnum > 0
     AND NOT a.attisdropped
-    AND postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
+    AND @postgisschema@.postgis_typmod_srid(a.atttypmod) IN (4326, 3857, 0)
     ORDER BY t.oid ASC;
 END;
 $$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 DO $$
 BEGIN
+  SET search_path TO @extschema@;
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record') THEN
-    CREATE TYPE _cdb_has_usable_geom_record
+    CREATE TYPE @extschema@._cdb_has_usable_geom_record
       AS (has_usable_geoms boolean,
         text_geom_column boolean,
         text_geom_column_name text,
@@ -650,8 +651,8 @@ BEGIN
 END$$;
 
 DROP FUNCTION IF EXISTS _CDB_Has_Usable_Geom(REGCLASS);
-CREATE OR REPLACE FUNCTION _CDB_Has_Usable_Geom(reloid REGCLASS)
-RETURNS _cdb_has_usable_geom_record
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Has_Usable_Geom(reloid REGCLASS)
+RETURNS @extschema@._cdb_has_usable_geom_record
 AS $$
 DECLARE
   r1 RECORD;
@@ -679,11 +680,11 @@ BEGIN
   RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', 'entered function';
 
   -- Read in the names of the CartoDB columns
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   -- Do we have a column we can use?
   FOR r1 IN
-    SELECT * FROM _cdb_geom_candidate_columns(reloid)
+    SELECT * FROM @extschema@._cdb_geom_candidate_columns(reloid)
   LOOP
 
     RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('checking column ''%s''', r1.attname);
@@ -697,7 +698,7 @@ BEGIN
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %', Format('column ''%s'' is a text column', r1.attname);
 
         BEGIN
-          sql := Format('SELECT Max(ST_SRID(%I::geometry)) AS srid FROM %I', r1.attname, reloid::text);
+          sql := Format('SELECT Max(@postgisschema@.ST_SRID(%I::@postgisschema@.geometry)) AS srid FROM %I', r1.attname, reloid::text);
           EXECUTE sql INTO srid;
           -- This gets skipped if EXCEPTION happens
           -- Let the table writer know we need to convert from text
@@ -714,9 +715,9 @@ BEGIN
           WHEN others THEN
             IF SQLERRM = 'parse error - invalid geometry' THEN
               text_geom_column := false;
-              str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
+              str := @extschema@._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
               sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
-              PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
+              PERFORM @extschema@._CDB_SQL(sql,'_CDB_Has_Usable_Geom');
               RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %',
                 Format('Text column %s is not convertible to geometry, renamed to %s', r1.attname, str);
             ELSE
@@ -726,9 +727,9 @@ BEGIN
 
       -- Just change its name so we can write a new column into that name.
       ELSE
-        str := cartodb._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
+        str := @extschema@._CDB_Unique_Column_Identifier(NULL, r1.attname, NULL, reloid);
         sql := Format('ALTER TABLE %s RENAME COLUMN %s TO %I', reloid::text, r1.attname, str);
-        PERFORM _CDB_SQL(sql,'_CDB_Has_Usable_Geom');
+        PERFORM @extschema@._CDB_SQL(sql,'_CDB_Has_Usable_Geom');
         RAISE DEBUG 'CDB(_CDB_Has_Usable_Geom): %',
           Format('%s is the wrong type, renamed to %s', r1.attname, str);
       END IF;
@@ -784,7 +785,7 @@ $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 -- a "good" one, and the same for the geometry columns. If all the required
 -- columns are in place already, it no-ops and just renames the table to
 -- the destination if necessary.
-CREATE OR REPLACE FUNCTION _CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Rewrite_Table(reloid REGCLASS, destschema TEXT DEFAULT NULL)
 RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -820,7 +821,7 @@ BEGIN
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): %', 'entered function';
 
   -- Read CartoDB standard column names in
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   -- Save the raw schema/table names for later
   SELECT n.nspname, c.relname, c.relname
@@ -836,7 +837,7 @@ BEGIN
   -- See if there is a primary key column we need to carry along to the
   -- new table. If this is true, it implies there is an indexed
   -- primary key of integer type named (by default) cartodb_id
-  SELECT _CDB_Has_Usable_Primary_ID(reloid)
+  SELECT @extschema@._CDB_Has_Usable_Primary_ID(reloid)
   INTO STRICT has_usable_primary_key;
 
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): has_usable_primary_key %', has_usable_primary_key;
@@ -854,23 +855,23 @@ BEGIN
   -- transformation of the table, we can just ensure proper
   -- indexes are in place and apply a rename
   SELECT *
-  FROM _CDB_Has_Usable_Geom(reloid)
+  FROM @extschema@._CDB_Has_Usable_Geom(reloid)
   INTO STRICT gc;
 
   -- If geom is the wrong name, just rename it.
   IF gc.has_geom AND gc.has_geom_name != const.geomcol THEN
     sql := Format('ALTER TABLE %s DROP COLUMN IF EXISTS %I', reloid::text, const.geomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql,'_CDB_Rewrite_Table');
     sql := Format('ALTER TABLE %s RENAME COLUMN %I TO %I', reloid::text, gc.has_geom_name, const.geomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql,'_CDB_Rewrite_Table');
   END IF;
 
   -- If mercgeom is the wrong name, just rename it.
   IF gc.has_mercgeom AND gc.has_mercgeom_name != const.mercgeomcol THEN
     sql := Format('ALTER TABLE %s DROP COLUMN IF EXISTS %I', reloid::text, const.mercgeomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql,'_CDB_Rewrite_Table');
     sql := Format('ALTER TABLE %s RENAME COLUMN %I TO %I', reloid::text, gc.has_mercgeom_name, const.mercgeomcol);
-    PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql,'_CDB_Rewrite_Table');
   END IF;
 
 
@@ -885,7 +886,7 @@ BEGIN
     IF  destschema != relschema THEN
 
       RAISE DEBUG 'CDB(_CDB_Rewrite_Table): perfect table needs to be moved to schema (%)', destschema;
-      PERFORM _CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
+      PERFORM @extschema@._CDB_SQL(Format('ALTER TABLE %s SET SCHEMA %I', reloid::text, destschema), '_CDB_Rewrite_Table');
 
     ELSE
 
@@ -911,21 +912,21 @@ BEGIN
       INTO relseq;
     -- If it's the name we want, then rename it
     IF relseq IS NOT NULL AND relseq = Format('%I.%I', destschema, destseq) THEN
-      PERFORM _CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %I', relseq, Format('tmp_%s', destseq)), '_CDB_Rewrite_Table');
+      PERFORM @extschema@._CDB_SQL(Format('ALTER SEQUENCE %s RENAME TO %I', relseq, Format('tmp_%s', destseq)), '_CDB_Rewrite_Table');
     END IF;
   END IF;
 
   -- Put the primary key sequence in the right schema
   -- If the new table is not moving, better ensure the sequence name
   -- is unique
-  destseq := cartodb._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
+  destseq := @extschema@._CDB_Unique_Identifier(NULL, relname, '_' || const.pkey || '_seq', destschema);
   destseq := Format('%I.%I', destschema, destseq);
-  PERFORM _CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
+  PERFORM @extschema@._CDB_SQL(Format('CREATE SEQUENCE %s', destseq), '_CDB_Rewrite_Table');
 
   -- Temporary table name if we are re-writing in place
   -- Note copyname is already escaped and safe to use as identifier
   IF destschema = relschema THEN
-    copyname := Format('%I.%I', destschema, cartodb._CDB_Unique_Identifier(NULL, destname, NULL), destschema);
+    copyname := Format('%I.%I', destschema, @extschema@._CDB_Unique_Identifier(NULL, destname, NULL), destschema);
   ELSE
     copyname := Format('%I.%I', destschema, destname);
   END IF;
@@ -966,11 +967,11 @@ BEGIN
         ORDER BY a.attnum
         LIMIT 1
       )
-      SELECT ', ST_Transform('
+      SELECT ', @postgisschema@.ST_Transform('
             || t.missing_srid_start || t.attname || '::geometry' || t.missing_srid_end
             || ',4326)::Geometry(GEOMETRY,4326) AS '
             || const.geomcol
-            || ', cartodb.CDB_TransformToWebmercator('
+            || ', @extschema@.CDB_TransformToWebmercator('
             || t.missing_srid_start || t.attname || '::geometry' || t.missing_srid_end
             || ')::Geometry(GEOMETRY,3857) AS '
             || const.mercgeomcol,
@@ -1009,7 +1010,7 @@ BEGIN
       -- column and read the first SRID off it it, if there is a row
       -- to read.
       IF FOUND THEN
-        EXECUTE Format('SELECT ST_SRID(%s) AS srid FROM %s LIMIT 1', rec.attname, reloid::text)
+        EXECUTE Format('SELECT @postgisschema@.ST_SRID(%s) AS srid FROM %s LIMIT 1', rec.attname, reloid::text)
         INTO geom_srid;
       ELSE
         geom_srid := 0;
@@ -1025,7 +1026,7 @@ BEGIN
         SELECT
           a.attname,
           postgis_typmod_type(a.atttypmod) AS geomtype,
-          CASE WHEN postgis_typmod_srid(a.atttypmod) = 0 AND srid.srid = 0 THEN 'ST_SetSRID(' ELSE '' END AS missing_srid_start,
+          CASE WHEN postgis_typmod_srid(a.atttypmod) = 0 AND srid.srid = 0 THEN '@postgisschema@.ST_SetSRID(' ELSE '' END AS missing_srid_start,
           CASE WHEN postgis_typmod_srid(a.atttypmod) = 0 AND srid.srid = 0 THEN ',4326)' ELSE '' END AS missing_srid_end
         FROM pg_class c
         JOIN pg_attribute a ON a.attrelid = c.oid
@@ -1038,11 +1039,11 @@ BEGIN
         ORDER BY a.attnum
         LIMIT 1
       )
-      SELECT ', ST_Transform('
+      SELECT ', @postgisschema@.ST_Transform('
             || t.missing_srid_start || t.attname || t.missing_srid_end
             || ',4326)::Geometry(GEOMETRY,4326) AS '
             || const.geomcol
-            || ', cartodb.CDB_TransformToWebmercator('
+            || ', @extschema@.CDB_TransformToWebmercator('
             || t.missing_srid_start || t.attname || t.missing_srid_end
             || ')::Geometry(GEOMETRY,3857) AS '
             || const.mercgeomcol,
@@ -1096,7 +1097,7 @@ BEGIN
   RAISE DEBUG 'CDB(_CDB_Rewrite_Table): %', sql;
 
   -- Run it!
-  PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+  PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
 
   -- Set up the primary key sequence
   -- If we copied the primary key from the original data, we need
@@ -1106,38 +1107,38 @@ BEGIN
      INTO destseqmax;
 
   IF destseqmax IS NOT NULL THEN
-    PERFORM _CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(Format('SELECT setval(''%s'', %s)', destseq, destseqmax), '_CDB_Rewrite_Table');
   END IF;
 
    -- Make the primary key use the sequence as its default value
   sql := Format('ALTER TABLE %s ALTER COLUMN %s SET DEFAULT nextval(''%s'')',
           copyname, const.pkey, destseq);
-  PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+  PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
 
   -- Make the sequence owned by the table, so when the table drops,
   -- the sequence does too
   sql := Format('ALTER SEQUENCE %s OWNED BY %s.%s', destseq, copyname, const.pkey);
-  PERFORM _CDB_SQL(sql,'_CDB_Rewrite_Table');
+  PERFORM @extschema@._CDB_SQL(sql,'_CDB_Rewrite_Table');
 
 
   -- We just made a copy, so we can drop the original now
   sql := Format('DROP TABLE %s', reloid::text);
-  PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+  PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
 
   -- If the table is being created by a SECURITY DEFINER function
   -- make sure the user is set back to the user who is connected
   IF current_user != session_user THEN
     sql := Format('ALTER TABLE IF EXISTS %s OWNER TO %s', copyname, session_user);
-    PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
     sql := Format('ALTER SEQUENCE IF EXISTS %s OWNER TO %s', destseq, session_user);
-    PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
   END IF;
 
   -- If we used a temporary destination table
   -- we can now rename it into place
   IF destschema = relschema THEN
     sql := Format('ALTER TABLE %s RENAME TO %I', copyname, destname);
-    PERFORM _CDB_SQL(sql, '_CDB_Rewrite_Table');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Rewrite_Table');
   END IF;
 
   RETURN true;
@@ -1149,7 +1150,7 @@ $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 -- Assumes the table already has the right metadata columns
 -- (primary key and two geometry columns) and adds primary key
 -- and geometry indexes if necessary.
-CREATE OR REPLACE FUNCTION _CDB_Add_Indexes(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Add_Indexes(reloid REGCLASS)
   RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -1163,7 +1164,7 @@ BEGIN
   RAISE DEBUG 'CDB(_CDB_Add_Indexes): %', 'entered function';
 
   -- Read CartoDB standard column names in
-  const := _CDB_Columns();
+  const := @extschema@._CDB_Columns();
 
   -- Extract just the relname to use for the index names
   SELECT c.relname
@@ -1189,7 +1190,7 @@ BEGIN
   IF FOUND THEN
     RAISE DEBUG 'CDB(_CDB_Add_Indexes): dropping unwanted primary key ''%''', rec.pkey;
     sql := Format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s', reloid::text, rec.pkey);
-    PERFORM _CDB_SQL(sql, '_CDB_Add_Indexes');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Add_Indexes');
   END IF;
 
 
@@ -1210,7 +1211,7 @@ BEGIN
   -- No primary key? Add one.
   IF NOT FOUND THEN
     sql := Format('ALTER TABLE %s ADD PRIMARY KEY (%s)', reloid::text, const.pkey);
-    PERFORM _CDB_SQL(sql, '_CDB_Add_Indexes');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Add_Indexes');
   END IF;
 
   -- Add geometry indexes to all "special geometry columns" that
@@ -1239,7 +1240,7 @@ BEGIN
     AND am.amname != 'gist'
   LOOP
     sql := Format('CREATE INDEX ON %s USING GIST (%s)', reloid::text, rec.attname);
-    PERFORM _CDB_SQL(sql, '_CDB_Add_Indexes');
+    PERFORM @extschema@._CDB_SQL(sql, '_CDB_Add_Indexes');
   END LOOP;
 
   RETURN true;
@@ -1247,8 +1248,8 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
-DROP FUNCTION IF EXISTS CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS);
-CREATE OR REPLACE FUNCTION CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
+DROP FUNCTION IF EXISTS @extschema@.CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS);
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CartodbfyTable(destschema TEXT, reloid REGCLASS)
 RETURNS REGCLASS
 AS $$
 DECLARE
@@ -1270,7 +1271,7 @@ BEGIN
   FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
   WHERE c.oid = reloid;
 
-  PERFORM cartodb._CDB_check_prerequisites(destschema, reloid);
+  PERFORM @extschema@._CDB_check_prerequisites(destschema, reloid);
 
   -- Check destination schema exists
   -- Throws an exception of there is no matching schema
@@ -1287,29 +1288,29 @@ BEGIN
   END IF;
 
   -- Drop triggers first
-  PERFORM _CDB_drop_triggers(reloid);
+  PERFORM @extschema@._CDB_drop_triggers(reloid);
 
   -- Rasters only get a cartodb_id and a limited selection of triggers
   -- underlying assumption is that they are already formed up correctly
-  SELECT cartodb._CDB_is_raster_table(destschema, reloid) INTO is_raster;
+  SELECT @extschema@._CDB_is_raster_table(destschema, reloid) INTO is_raster;
   IF is_raster THEN
 
-    PERFORM cartodb._CDB_create_cartodb_id_column(reloid);
-    PERFORM cartodb._CDB_create_raster_triggers(destschema, reloid);
+    PERFORM @extschema@._CDB_create_cartodb_id_column(reloid);
+    PERFORM @extschema@._CDB_create_raster_triggers(destschema, reloid);
 
   ELSE
 
     -- Rewrite (or rename) the table to the new location
-    PERFORM _CDB_Rewrite_Table(reloid, destschema);
+    PERFORM @extschema@._CDB_Rewrite_Table(reloid, destschema);
 
     -- The old regclass might not be valid anymore if we re-wrote the table...
     destoid := (destschema || '.' || destname)::regclass;
 
     -- Add indexes to the destination table, as necessary
-    PERFORM _CDB_Add_Indexes(destoid);
+    PERFORM @extschema@._CDB_Add_Indexes(destoid);
 
     -- Add triggers to the destination table, as necessary
-    PERFORM _CDB_create_triggers(destschema, destoid);
+    PERFORM @extschema@._CDB_create_triggers(destschema, destoid);
 
   END IF;
 

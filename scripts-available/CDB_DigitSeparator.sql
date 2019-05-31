@@ -1,5 +1,5 @@
 -- Find thousand and decimal digits separators
-CREATE OR REPLACE FUNCTION CDB_DigitSeparator (rel REGCLASS, fld TEXT, OUT t CHAR, OUT d CHAR)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DigitSeparator (rel REGCLASS, fld TEXT, OUT t CHAR, OUT d CHAR)
 as $$ 
 DECLARE
   sql TEXT;

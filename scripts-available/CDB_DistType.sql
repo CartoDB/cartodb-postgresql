@@ -10,7 +10,7 @@
 --    1. width_bucket/histograms: http://tapoueh.org/blog/2014/02/21-PostgreSQL-histogram
 --    2. R implementation: https://github.com/cran/agrmt
 
-CREATE OR REPLACE FUNCTION CDB_DistType ( in_array NUMERIC[] ) RETURNS text as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DistType ( in_array NUMERIC[] ) RETURNS text as $$
 DECLARE
     element_count INT4;
     minv numeric;
@@ -60,7 +60,7 @@ BEGIN
             i := i + 1;
         END LOOP;
 
-        signature = _CDB_DistTypeClassify(ajus);
+        signature = @extschema@._CDB_DistTypeClassify(ajus);
     END IF;
 
     RETURN signature;
@@ -69,7 +69,7 @@ $$ language plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Classify data into AJUSFL
 
-CREATE OR REPLACE FUNCTION _CDB_DistTypeClassify ( in_array INT[] ) RETURNS text as $$
+CREATE OR REPLACE FUNCTION @extschema@._CDB_DistTypeClassify ( in_array INT[] ) RETURNS text as $$
 DECLARE
     element_count INT4;
     maxv numeric;

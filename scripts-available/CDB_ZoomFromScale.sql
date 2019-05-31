@@ -1,5 +1,5 @@
 -- Maximum supported zoom level
-CREATE OR REPLACE FUNCTION _CDB_MaxSupportedZoom()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_MaxSupportedZoom()
 RETURNS int
 LANGUAGE SQL
 IMMUTABLE PARALLEL SAFE
@@ -12,7 +12,7 @@ AS $$
   SELECT 29;
 $$;
 
-CREATE OR REPLACE FUNCTION cartodb.CDB_ZoomFromScale(scaleDenominator numeric)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_ZoomFromScale(scaleDenominator numeric)
 RETURNS int
 LANGUAGE SQL
 IMMUTABLE PARALLEL SAFE
@@ -24,12 +24,12 @@ AS $$
         NULL
       WHEN scaleDenominator = 0 THEN
         -- Actual zoom level would be infinite
-        _CDB_MaxSupportedZoom()
+        @extschema@._CDB_MaxSupportedZoom()
       ELSE
         CAST (
           LEAST(
             ROUND(LOG(2, 559082264.028/scaleDenominator)),
-            _CDB_MaxSupportedZoom()
+            @extschema@._CDB_MaxSupportedZoom()
           )
         AS INTEGER)
     END;

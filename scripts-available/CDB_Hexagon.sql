@@ -1,18 +1,18 @@
 -- Return an Hexagon with given center and side (or maximal radius)
-CREATE OR REPLACE FUNCTION CDB_MakeHexagon(center GEOMETRY, radius FLOAT8)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_MakeHexagon(center GEOMETRY, radius FLOAT8)
 RETURNS GEOMETRY
 AS $$
-  SELECT ST_MakePolygon(ST_MakeLine(geom))
+  SELECT @postgisschema@.ST_MakePolygon(@postgisschema@.ST_MakeLine(geom))
     FROM
     (
-      SELECT (ST_DumpPoints(ST_ExteriorRing(ST_Buffer($1, $2, 3)))).*
+      SELECT (@postgisschema@.ST_DumpPoints(@postgisschema@.ST_ExteriorRing(@postgisschema@.ST_Buffer($1, $2, 3)))).*
     ) as points
     WHERE path[1] % 2 != 0
 $$ LANGUAGE 'sql' IMMUTABLE STRICT PARALLEL SAFE;
 
 
 -- In older versions of the extension, CDB_HexagonGrid had a different signature
-DROP FUNCTION IF EXISTS cartodb.CDB_HexagonGrid(GEOMETRY, FLOAT8, GEOMETRY);
+DROP FUNCTION IF EXISTS @extschema@.CDB_HexagonGrid(GEOMETRY, FLOAT8, GEOMETRY);
 
 --
 -- Fill given extent with an hexagonal coverage
@@ -35,7 +35,7 @@ DROP FUNCTION IF EXISTS cartodb.CDB_HexagonGrid(GEOMETRY, FLOAT8, GEOMETRY);
 --                 and exception will occur.
 ----
 -- DROP FUNCTION IF EXISTS CDB_HexagonGrid(ext GEOMETRY, side FLOAT8);
-CREATE OR REPLACE FUNCTION CDB_HexagonGrid(ext GEOMETRY, side FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_HexagonGrid(ext GEOMETRY, side FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -80,11 +80,11 @@ BEGIN
   yoff := 0;
 
   IF origin IS NOT NULL THEN
-    IF ST_SRID(origin) != srid THEN
+    IF @postgisschema@.ST_SRID(origin) != srid THEN
       RAISE EXCEPTION 'SRID mismatch between extent (%) and origin (%)', srid, ST_SRID(origin);
     END IF;
-    xoff := ST_X(origin);
-    yoff := ST_Y(origin);
+    xoff := @postgisschema@.ST_X(origin);
+    yoff := @postgisschema@.ST_Y(origin);
   END IF;
 
   RAISE DEBUG 'X offset: %', xoff;
@@ -96,19 +96,19 @@ BEGIN
   RAISE DEBUG 'Y grid size: %', ygrd;
 
   -- Tweak horizontal start on hstep*2 grid from origin 
-  hskip := ceil((ST_XMin(ext)-xoff)/hstep);
+  hskip := ceil((@postgisschema@.ST_XMin(ext)-xoff)/hstep);
   RAISE DEBUG 'hskip: %', hskip;
   hstart := xoff + hskip*hstep;
   RAISE DEBUG 'hstart: %', hstart;
 
   -- Tweak vertical start on hstep grid from origin 
-  vstart := yoff + ceil((ST_Ymin(ext)-yoff)/vstep)*vstep; 
+  vstart := yoff + ceil((@postgisschema@.ST_Ymin(ext)-yoff)/vstep)*vstep; 
   RAISE DEBUG 'vstart: %', vstart;
 
-  hend := ST_XMax(ext);
-  vend := ST_YMax(ext);
+  hend := @postgisschema@.ST_XMax(ext);
+  vend := @postgisschema@.ST_YMax(ext);
 
-  IF vstart - (vstep/2.0) < ST_YMin(ext) THEN
+  IF vstart - (vstep/2.0) < @postgisschema@.ST_YMin(ext) THEN
     vstartary := ARRAY[ vstart + (vstep/2.0), vstart ];
   ELSE
     vstartary := ARRAY[ vstart - (vstep/2.0), vstart ];
@@ -125,21 +125,21 @@ BEGIN
   RAISE DEBUG 'vstartary: % : %', vstartary[1], vstartary[2];
   RAISE DEBUG 'vstartidx: %', vstartidx;
 
-  c := ST_SetSRID(ST_MakePoint(hstart, vstartary[vstartidx+1]), srid);
-  h := ST_SnapToGrid(CDB_MakeHexagon(c, side), xoff, yoff, xgrd, ygrd);
+  c := @postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(hstart, vstartary[vstartidx+1]), srid);
+  h := @postgisschema@.ST_SnapToGrid(@extschema@.CDB_MakeHexagon(c, side), xoff, yoff, xgrd, ygrd);
   vstartidx := (vstartidx + 1) % 2;
-  WHILE ST_X(c) < hend LOOP -- over X
+  WHILE @postgisschema@.ST_X(c) < hend LOOP -- over X
     --RAISE DEBUG 'X loop starts, center point: %', ST_AsText(c);
-    WHILE ST_Y(c) < vend LOOP -- over Y
+    WHILE @postgisschema@.ST_Y(c) < vend LOOP -- over Y
       --RAISE DEBUG 'Center: %', ST_AsText(c);
       --h := ST_SnapToGrid(CDB_MakeHexagon(c, side), xoff, yoff, xgrd, ygrd);
       RETURN NEXT h;
-      h := ST_SnapToGrid(ST_Translate(h, 0, vstep), xoff, yoff, xgrd, ygrd);
-      c := ST_Translate(c, 0, vstep);  -- TODO: drop ?
+      h := @postgisschema@.ST_SnapToGrid(ST_Translate(h, 0, vstep), xoff, yoff, xgrd, ygrd);
+      c := @postgisschema@.ST_Translate(c, 0, vstep);  -- TODO: drop ?
     END LOOP;
     -- TODO: translate h direcly ...
-    c := ST_SetSRID(ST_MakePoint(ST_X(c)+hstep, vstartary[vstartidx+1]), srid);
-    h := ST_SnapToGrid(CDB_MakeHexagon(c, side), xoff, yoff, xgrd, ygrd);
+    c := @postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(ST_X(c)+hstep, vstartary[vstartidx+1]), srid);
+    h := @postgisschema@.ST_SnapToGrid(@extschema@.CDB_MakeHexagon(c, side), xoff, yoff, xgrd, ygrd);
     vstartidx := (vstartidx + 1) % 2;
   END LOOP;
 

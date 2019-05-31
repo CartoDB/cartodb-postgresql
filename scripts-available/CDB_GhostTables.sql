@@ -1,5 +1,5 @@
 -- Enqueues a job to run Ghost tables linking process for the provided username
-CREATE OR REPLACE FUNCTION cartodb._CDB_LinkGhostTables(username text, db_name text, event_name text) 
+CREATE OR REPLACE FUNCTION @extschema@._CDB_LinkGhostTables(username text, db_name text, event_name text) 
 RETURNS void
 AS $$
   if not username:
@@ -11,7 +11,7 @@ AS $$
   else:
     json = GD['json']    
 
-  tis_config = plpy.execute("select cartodb.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
+  tis_config = plpy.execute("select @extschema@.CDB_Conf_GetConf('invalidation_service');")[0]['cdb_conf_getconf']
   if not tis_config:
     plpy.warning('Invalidation service configuration not found. Skipping Ghost Tables linking.')
     return
@@ -50,74 +50,74 @@ AS $$
 $$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
 
 -- Enqueues a job to run Ghost tables linking process for the current user
-CREATE OR REPLACE FUNCTION cartodb.CDB_LinkGhostTables(event_name text DEFAULT 'USER')
+CREATE OR REPLACE FUNCTION @extschema@.CDB_LinkGhostTables(event_name text DEFAULT 'USER')
 RETURNS void
 AS $$
   DECLARE
     username TEXT;
     db_name TEXT;
   BEGIN
-    EXECUTE 'SELECT cartodb.CDB_Username();' INTO username;
+    EXECUTE 'SELECT @extschema@.CDB_Username();' INTO username;
     EXECUTE 'SELECT current_database();' INTO db_name;
 
-    PERFORM cartodb._CDB_LinkGhostTables(username, db_name, event_name);
+    PERFORM @extschema@._CDB_LinkGhostTables(username, db_name, event_name);
     RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, event_name=%', username, event_name;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 -- Trigger function to call CDB_LinkGhostTables()
-CREATE OR REPLACE FUNCTION cartodb._CDB_LinkGhostTablesTrigger()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_LinkGhostTablesTrigger()
 RETURNS trigger
 AS $$
   DECLARE
     ddl_tag TEXT;
   BEGIN
-    EXECUTE 'DELETE FROM cartodb.cdb_ddl_execution WHERE txid = txid_current() RETURNING tag;' INTO ddl_tag;
-    PERFORM cartodb.CDB_LinkGhostTables(ddl_tag);
+    EXECUTE 'DELETE FROM @extschema@.cdb_ddl_execution WHERE txid = txid_current() RETURNING tag;' INTO ddl_tag;
+    PERFORM @extschema@.CDB_LinkGhostTables(ddl_tag);
     RETURN NULL;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
--- Event trigger to save the current transaction in cartodb.cdb_ddl_execution
-CREATE OR REPLACE FUNCTION cartodb.CDB_SaveDDLTransaction()
+-- Event trigger to save the current transaction in @extschema@.cdb_ddl_execution
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SaveDDLTransaction()
 RETURNS event_trigger
 AS $$
   BEGIN
-    INSERT INTO cartodb.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT (txid) DO NOTHING;
+    INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT (txid) DO NOTHING;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 -- Creates the trigger on DDL events to link ghost tables
-CREATE OR REPLACE FUNCTION cartodb.CDB_EnableGhostTablesTrigger()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_EnableGhostTablesTrigger()
 RETURNS void
 AS $$
   BEGIN
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
-    DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
+    DROP TRIGGER IF EXISTS check_ddl_update ON @extschema@.cdb_ddl_execution;
 
     -- Table to store the transaction id from DDL events to avoid multiple executions
-    CREATE TABLE IF NOT EXISTS cartodb.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
+    CREATE TABLE IF NOT EXISTS @extschema@.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
 
     CREATE CONSTRAINT TRIGGER check_ddl_update
-    AFTER INSERT ON cartodb.cdb_ddl_execution
+    AFTER INSERT ON @extschema@.cdb_ddl_execution
     INITIALLY DEFERRED
     FOR EACH ROW
-    EXECUTE PROCEDURE cartodb._CDB_LinkGhostTablesTrigger();
+    EXECUTE PROCEDURE @extschema@._CDB_LinkGhostTablesTrigger();
 
     CREATE EVENT TRIGGER link_ghost_tables
     ON ddl_command_end
     WHEN TAG IN ('CREATE TABLE', 'SELECT INTO', 'DROP TABLE', 'ALTER TABLE', 'CREATE TRIGGER', 'DROP TRIGGER', 'CREATE VIEW', 'DROP VIEW', 'ALTER VIEW')
-    EXECUTE PROCEDURE cartodb.CDB_SaveDDLTransaction();
+    EXECUTE PROCEDURE @extschema@.CDB_SaveDDLTransaction();
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 -- Drops the trigger on DDL events to link ghost tables
-CREATE OR REPLACE FUNCTION cartodb.CDB_DisableGhostTablesTrigger()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DisableGhostTablesTrigger()
 RETURNS void
 AS $$
   BEGIN
     DROP EVENT TRIGGER IF EXISTS link_ghost_tables;
-    DROP TRIGGER IF EXISTS check_ddl_update ON cartodb.cdb_ddl_execution;
-    DROP TABLE IF EXISTS cartodb.cdb_ddl_execution;
+    DROP TRIGGER IF EXISTS check_ddl_update ON @extschema@.cdb_ddl_execution;
+    DROP TABLE IF EXISTS @extschema@.cdb_ddl_execution;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;

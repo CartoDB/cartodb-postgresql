@@ -23,9 +23,9 @@ cat ${input} | grep -v 'duplicated extension$' >> ${output}
 
 # Migrate CDB_TableMetadata
 cat >> ${output} <<'EOF'
-ALTER TABLE cartodb.CDB_TableMetadata DISABLE TRIGGER ALL;
-INSERT INTO cartodb.CDB_TableMetadata SELECT * FROM public.CDB_TableMetadata;
-ALTER TABLE cartodb.CDB_TableMetadata ENABLE TRIGGER ALL;
+ALTER TABLE @extschema@.CDB_TableMetadata DISABLE TRIGGER ALL;
+INSERT INTO @extschema@.CDB_TableMetadata SELECT * FROM public.CDB_TableMetadata;
+ALTER TABLE @extschema@.CDB_TableMetadata ENABLE TRIGGER ALL;
 DROP TABLE public.CDB_TableMetadata;
 
 -- Set user quota
@@ -40,7 +40,7 @@ BEGIN
   EXCEPTION WHEN undefined_function THEN
     RAISE EXCEPTION 'Please set user quota before switching to cartodb extension';
   END;
-  PERFORM cartodb.CDB_SetUserQuotaInBytes(qmax);
+  PERFORM @extschema@.CDB_SetUserQuotaInBytes(qmax);
   DROP FUNCTION public._CDB_UserQuotaInBytes();
 END;
 $$ LANGUAGE 'plpgsql';
@@ -49,7 +49,7 @@ EOF
 ## Cartodbfy tables with a trigger using 'CDB_CheckQuota' or
 ## 'CDB_TableMetadata_Trigger' from the 'public' schema
 #cat >> ${output} <<'EOF'
-#select cartodb.CDB_CartodbfyTable(relname::regclass) from ( 
+#select @extschema@.CDB_CartodbfyTable(relname::regclass) from ( 
 #  -- names of tables using public.CDB_CheckQuota or
 #  -- public.CDB_TableMetadata_Trigger in their triggers
 #  SELECT distinct c.relname

@@ -1,6 +1,6 @@
 -- Convert timestamp to double precision
 --
-CREATE OR REPLACE FUNCTION CDB_DateToNumber(input timestamp)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DateToNumber(input timestamp)
 RETURNS double precision AS $$
 DECLARE output double precision;
 BEGIN
@@ -16,7 +16,7 @@ LANGUAGE 'plpgsql' IMMUTABLE STRICT PARALLEL UNSAFE;
 
 -- Convert timestamp with time zone to double precision
 --
-CREATE OR REPLACE FUNCTION CDB_DateToNumber(input timestamp with time zone)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DateToNumber(input timestamp with time zone)
 RETURNS double precision AS $$
 DECLARE output double precision;
 BEGIN

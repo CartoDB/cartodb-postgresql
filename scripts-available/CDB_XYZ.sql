@@ -1,7 +1,7 @@
 -- {
 -- Return pixel resolution at the given zoom level
 -- }{
-CREATE OR REPLACE FUNCTION CDB_XYZ_Resolution(z INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_XYZ_Resolution(z INTEGER)
 RETURNS FLOAT8
 AS $$
   -- circumference divided by 256 is z0 resolution, then divide by 2^z
@@ -15,7 +15,7 @@ $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 -- SRID of the returned polygon is forceably 3857
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_XYZ_Extent(x INTEGER, y INTEGER, z INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_XYZ_Extent(x INTEGER, y INTEGER, z INTEGER)
 RETURNS GEOMETRY
 AS $$
 DECLARE
@@ -34,7 +34,7 @@ BEGIN
   -- Size of each tile in pixels (1:1 aspect ratio)
   tile_size := 256;
 
-  initial_resolution := CDB_XYZ_Resolution(0);
+  initial_resolution := @extschema@.CDB_XYZ_Resolution(0);
   --RAISE DEBUG 'Initial resolution: %', initial_resolution;
 
   origin_shift := (initial_resolution * tile_size) / 2.0;
@@ -56,7 +56,7 @@ BEGIN
   --RAISE DEBUG 'ymin: %', ymin;
   --RAISE DEBUG 'ymax: %', ymax;
   
-  RETURN ST_MakeEnvelope(xmin, ymin, xmax, ymax, 3857);
+  RETURN @postgisschema@.ST_MakeEnvelope(xmin, ymin, xmax, ymax, 3857);
 END
 $$ LANGUAGE 'plpgsql' IMMUTABLE STRICT PARALLEL SAFE;
 -- }
