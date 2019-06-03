@@ -66,7 +66,7 @@ AS $$
     FROM
       @extschema@._CDB_UserTablesInSchema(), unnest(tables) base_table
     WHERE
-      schema_name = _cdb_schema_name(base_table)
+      schema_name = @extschema@._cdb_schema_name(base_table)
       AND @extschema@._CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL STABLE PARALLEL SAFE;
