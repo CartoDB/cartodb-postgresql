@@ -2,7 +2,7 @@
 -- Scope: public
 -- Parameters:
 --   reloid: oid of the table.
-CREATE OR REPLACE FUNCTION CDB_DropOverviews(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DropOverviews(reloid REGCLASS)
 RETURNS void
 AS $$
 DECLARE
@@ -10,9 +10,9 @@ DECLARE
     schema_name TEXT;
     table_name TEXT;
 BEGIN
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
     FOR row IN
-        SELECT * FROM CDB_Overviews(reloid)
+        SELECT * FROM @extschema@.CDB_Overviews(reloid)
     LOOP
         EXECUTE Format('DROP TABLE %s;', row.overview_table);
         RAISE NOTICE 'Dropped overview for level %: %', row.z, row.overview_table;
@@ -29,20 +29,20 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- Return relation of overviews for the table with
 -- the base table oid,
 -- z level of the overview and overview table oid, ordered by z.
-CREATE OR REPLACE FUNCTION CDB_Overviews(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Overviews(reloid REGCLASS)
 RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   DECLARE
     schema_name TEXT;
     base_table_name TEXT;
   BEGIN
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, base_table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, base_table_name;
     RETURN QUERY SELECT
       reloid AS base_table,
-      _CDB_OverviewTableZ(table_name) AS z,
+      @extschema@._CDB_OverviewTableZ(table_name) AS z,
       table_regclass AS overview_table
-      FROM _CDB_UserTablesInSchema(schema_name)
-      WHERE _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), table_name)
+      FROM @extschema@._CDB_UserTablesInSchema(schema_name)
+      WHERE @extschema@._CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=reloid), table_name)
       ORDER BY z;
   END
 $$ LANGUAGE PLPGSQL STABLE PARALLEL RESTRICTED;
@@ -56,18 +56,18 @@ $$ LANGUAGE PLPGSQL STABLE PARALLEL RESTRICTED;
 -- z level of the overview and overview table oid, ordered by z.
 -- Note: CDB_Overviews can be applied to the result of CDB_QueryTablesText
 -- to obtain the overviews applicable to a query.
-CREATE OR REPLACE FUNCTION CDB_Overviews(tables regclass[])
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Overviews(tables regclass[])
 RETURNS TABLE(base_table REGCLASS, z integer, overview_table REGCLASS)
 AS $$
   SELECT
     base_table::regclass AS base_table,
-    _CDB_OverviewTableZ(table_name) AS z,
+    @extschema@._CDB_OverviewTableZ(table_name) AS z,
     table_regclass AS overview_table
     FROM
-      _CDB_UserTablesInSchema(), unnest(tables) base_table
+      @extschema@._CDB_UserTablesInSchema(), unnest(tables) base_table
     WHERE
       schema_name = _cdb_schema_name(base_table)
-      AND _CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
+      AND @extschema@._CDB_IsOverviewTableOf((SELECT relname FROM pg_class WHERE oid=base_table), table_name)
     ORDER BY base_table, z;
 $$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
@@ -76,11 +76,11 @@ $$ LANGUAGE SQL STABLE PARALLEL SAFE;
 -- Parameters
 --   reloid: oid of the input table.
 -- Return value A box2d extent in 3857.
-CREATE OR REPLACE FUNCTION _cdb_estimated_extent(reloid REGCLASS)
-RETURNS box2d
+CREATE OR REPLACE FUNCTION @extschema@._cdb_estimated_extent(reloid REGCLASS)
+RETURNS @postgisschema@.box2d
 AS $$
   DECLARE
-    ext box2d;
+    ext @postgisschema@.box2d;
     ext_query text;
     table_id record;
   BEGIN
@@ -89,7 +89,7 @@ AS $$
       FROM pg_class c JOIN pg_namespace n on n.oid = c.relnamespace WHERE c.oid = reloid::oid;
 
     ext_query = format(
-      'SELECT ST_EstimatedExtent(''%1$s'', ''%2$s'', ''%3$s'');',
+      'SELECT @postgisschema@.ST_EstimatedExtent(''%1$s'', ''%2$s'', ''%3$s'');',
       table_id.schema_name, table_id.table_name, 'the_geom_webmercator'
     );
 
@@ -99,7 +99,7 @@ AS $$
           EXECUTE format('ANALYZE %1$s', reloid);
 
           -- We check the geometry type in case the error is due to empty geometries
-          IF _CDB_GeometryTypes(reloid) IS NULL THEN
+          IF @extschema@._CDB_GeometryTypes(reloid) IS NULL THEN
             RETURN NULL;
           END IF;
 
@@ -116,7 +116,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 --   nz: number of zoom levels to consider from z0 upward.
 -- Return value: feature density (num_features / webmercator_squared_meters).
-CREATE OR REPLACE FUNCTION _CDB_Feature_Density(reloid REGCLASS, nz integer)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Feature_Density(reloid REGCLASS, nz integer)
 RETURNS FLOAT8
 AS $$
   DECLARE
@@ -135,7 +135,7 @@ AS $$
   -- the area of tiles at level Z: c*c*power(2, -2*z)
   -- with c = CDB_XYZ_Resolution(-8) (earth circumference)
   min_features = '500';
-  SELECT CDB_XYZ_Resolution(-8) INTO c;
+  SELECT @extschema@.CDB_XYZ_Resolution(-8) INTO c;
 
   -- We first compute a set of *seed* tiles, of the minimum Z level, z0, such that
   -- they cover the extent of the table and we have at least n of them in each
@@ -146,27 +146,27 @@ AS $$
   -- considered tiles.
   EXECUTE Format('
     WITH RECURSIVE t(x, y, z, e) AS (
-      WITH ext AS (SELECT _cdb_estimated_extent(%6$s) as g),
+      WITH ext AS (SELECT @extschema@._cdb_estimated_extent(%6$s) as g),
       base AS (
         SELECT
           least(
-           -floor(log(2, (greatest(ST_XMax(ext.g)-ST_XMin(ext.g), ST_YMax(ext.g)-ST_YMin(ext.g))/(%4$s*%5$s))::numeric)),
-           _CDB_MaxOverviewLevel()+1
+           -floor(log(2, (greatest(@postgisschema@.ST_XMax(ext.g)-@postgisschema@.ST_XMin(ext.g), @postgisschema@.ST_YMax(ext.g)-@postgisschema@.ST_YMin(ext.g))/(%4$s*%5$s))::numeric)),
+           @extschema@._CDB_MaxOverviewLevel()+1
           )::integer z
         FROM ext
       ),
       lim AS (
         SELECT
-          FLOOR((ST_XMin(ext.g)+CDB_XYZ_Resolution(0)*128)/(CDB_XYZ_Resolution(base.z)*256))::integer x0,
-          FLOOR((ST_XMax(ext.g)+CDB_XYZ_Resolution(0)*128)/(CDB_XYZ_Resolution(base.z)*256))::integer x1,
-          FLOOR((CDB_XYZ_Resolution(0)*128-ST_YMin(ext.g))/(CDB_XYZ_Resolution(base.z)*256))::integer y1,
-          FLOOR((CDB_XYZ_Resolution(0)*128-ST_YMax(ext.g))/(CDB_XYZ_Resolution(base.z)*256))::integer y0
+          FLOOR((@postgisschema@.ST_XMin(ext.g)+@extschema@.CDB_XYZ_Resolution(0)*128)/(@extschema@.CDB_XYZ_Resolution(base.z)*256))::integer x0,
+          FLOOR((@postgisschema@.ST_XMax(ext.g)+@extschema@.CDB_XYZ_Resolution(0)*128)/(@extschema@.CDB_XYZ_Resolution(base.z)*256))::integer x1,
+          FLOOR((@extschema@.CDB_XYZ_Resolution(0)*128-@postgisschema@.ST_YMin(ext.g))/(@extschema@.CDB_XYZ_Resolution(base.z)*256))::integer y1,
+          FLOOR((@extschema@.CDB_XYZ_Resolution(0)*128-@postgisschema@.ST_YMax(ext.g))/(@extschema@.CDB_XYZ_Resolution(base.z)*256))::integer y0
         FROM ext, base
       ),
       seed AS (
         SELECT xt, yt, base.z, (
           SELECT count(*) FROM %1$s
-            WHERE the_geom_webmercator && CDB_XYZ_Extent(xt, yt, base.z)
+            WHERE the_geom_webmercator && @extschema@.CDB_XYZ_Extent(xt, yt, base.z)
         ) e
         FROM base, lim, generate_series(lim.x0, lim.x1) xt, generate_series(lim.y0, lim.y1) yt
       )
@@ -174,12 +174,12 @@ AS $$
       UNION ALL
       SELECT x*2 + xx, y*2 + yy, t.z+1, (
         SELECT count(*) FROM %1$s
-          WHERE the_geom_webmercator && CDB_XYZ_Extent(t.x*2 + c.xx, t.y*2 + c.yy, t.z+1)
+          WHERE the_geom_webmercator && @extschema@.CDB_XYZ_Extent(t.x*2 + c.xx, t.y*2 + c.yy, t.z+1)
       )
       FROM t, base, (VALUES (0, 0), (0, 1), (1, 1), (1, 0)) AS c(xx, yy)
       WHERE t.e > %2$s AND t.z < least(base.z + %3$s, _CDB_MaxZoomLevel())
     )
-    SELECT MAX(e/ST_Area(CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
+    SELECT MAX(e/@postgisschema@.ST_Area(@extschema@.CDB_XYZ_Extent(x,y,z))) FROM t where e > 0;
   ', reloid::text, min_features, nz, n, c, reloid::oid)
   INTO fd;
   RETURN fd;
@@ -193,7 +193,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- Parameters:
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: Z level as an integer
-CREATE OR REPLACE FUNCTION _CDB_Feature_Density_Ref_Z_Strategy(reloid REGCLASS, tolerance_px FLOAT8 DEFAULT NULL)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Feature_Density_Ref_Z_Strategy(reloid REGCLASS, tolerance_px FLOAT8 DEFAULT NULL)
 RETURNS INTEGER
 AS $$
   DECLARE
@@ -210,15 +210,15 @@ AS $$
 
     -- Compute fd as an estimation of the (maximum) number
     -- of features per unit of tile area (in webmercator squared meters)
-    SELECT _CDB_Feature_Density(reloid, nz) INTO fd;
+    SELECT @extschema@._CDB_Feature_Density(reloid, nz) INTO fd;
     -- lim maximum number of (desiderable) features per tile
     -- we have c = 2*Pi*R = CDB_XYZ_Resolution(-8) (earth circumference)
     -- ta(z): tile area = power(c*power(2,-z), 2) = c*c*power(2,-2*z)
     -- => fd*ta(z) is the average number of features per tile at level z
     -- find minimum z so that fd*ta(z) <= lim
     -- compute a rough 'feature density' value
-    SELECT CDB_XYZ_Resolution(-8) INTO c;
-    RETURN least(_CDB_MaxOverviewLevel()+1, ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
+    SELECT @extschema@.CDB_XYZ_Resolution(-8) INTO c;
+    RETURN least(@extschema@._CDB_MaxOverviewLevel()+1, ceil(log(2.0, (c*c*fd/lim)::numeric)/2));
   END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
@@ -231,7 +231,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --   overview_z Z level of the overview to be named, must be smaller than ref_z
 -- Return value: the name to be used for the overview. The name is always
 -- unqualified (does not include a schema name).
-CREATE OR REPLACE FUNCTION _CDB_Overview_Name(ref REGCLASS, ref_z INTEGER, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Overview_Name(ref REGCLASS, ref_z INTEGER, overview_z INTEGER)
 RETURNS TEXT
 AS $$
   DECLARE
@@ -240,9 +240,9 @@ AS $$
     suffix TEXT;
     is_overview BOOLEAN;
   BEGIN
-    SELECT * FROM _cdb_split_table_name(ref) INTO schema_name, base;
-    SELECT _CDB_OverviewBaseTableName(base) INTO base;
-    RETURN _CDB_OverviewTableName(base, overview_z);
+    SELECT * FROM @extschema@._cdb_split_table_name(ref) INTO schema_name, base;
+    SELECT @extschema@._CDB_OverviewBaseTableName(base) INTO base;
+    RETURN @extschema@._CDB_OverviewTableName(base, overview_z);
   END
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
@@ -254,7 +254,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, tolerance_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Sampling_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, tolerance_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -268,11 +268,11 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
     -- TODO: compute fraction from tolerance_px if not NULL
     fraction := power(2, 2*(overview_z - ref_z));
 
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
 
     overview_table_name := Format('%I.%I', schema_name, overview_rel);
     IF has_overview_created THEN
@@ -299,7 +299,7 @@ AS $$
         %1$s SELECT * FROM %2$s
           WHERE ctid = ANY (
             ARRAY[
-              (SELECT CDB_RandomTids(''%2$s'', %3$s))
+              (SELECT @extschema@.CDB_RandomTids(''%2$s'', %3$s))
             ]
           );
       ', creation_clause, reloid, num_samples);
@@ -320,7 +320,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- overview table to match those of the dataset. It will only perform any change
 -- if the overview table belgons to the same scheme as the dataset and it
 -- matches the scheme naming for overview tables.
-CREATE OR REPLACE FUNCTION _CDB_Register_Overview(dataset REGCLASS, overview_table REGCLASS, overview_z INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Register_Overview(dataset REGCLASS, overview_table REGCLASS, overview_z INTEGER)
 RETURNS VOID
 AS $$
   DECLARE
@@ -334,10 +334,10 @@ AS $$
     -- This function will only register a table as an overview table if it matches
     -- the overviews naming scheme for the dataset and z level and the table belongs
     -- to the same scheme as the the dataset
-    SELECT * FROM _cdb_split_table_name(dataset) INTO dataset_scheme, dataset_name;
-    SELECT * FROM _cdb_split_table_name(overview_table) INTO overview_scheme, overview_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(dataset) INTO dataset_scheme, dataset_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(overview_table) INTO overview_scheme, overview_name;
     IF dataset_scheme = overview_scheme AND
-       overview_name = _CDB_OverviewTableName(dataset_name, overview_z) THEN
+       overview_name = @extschema@._CDB_OverviewTableName(dataset_name, overview_z) THEN
 
       -- preserve the owner of the base table
       SELECT u.usename
@@ -356,7 +356,7 @@ AS $$
         WHERE c_from.oid  = dataset
         AND   c_to.oid    = overview_table;
 
-      PERFORM _CDB_Add_Indexes(overview_table);
+      PERFORM @extschema@._CDB_Add_Indexes(overview_table);
 
       -- TODO: If metadata about existing overviews is to be stored
       -- it should be done here (CDB_Overviews would consume such metadata)
@@ -371,10 +371,10 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 -- Parameters
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: set of attribute names
-CREATE OR REPLACE FUNCTION _CDB_Aggregable_Attributes(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Aggregable_Attributes(reloid REGCLASS)
 RETURNS SETOF information_schema.sql_identifier
 AS $$
-  SELECT c FROM CDB_ColumnNames(reloid) c, _CDB_Columns() cdb
+  SELECT c FROM @extschema@.CDB_ColumnNames(reloid) c, @extschema@._CDB_Columns() cdb
     WHERE c NOT IN (
       cdb.pkey, cdb.geomcol, cdb.mercgeomcol
     )
@@ -386,14 +386,14 @@ $$ LANGUAGE SQL STABLE PARALLEL SAFE;
 -- Parameters
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: SQL subexpression as text
-CREATE OR REPLACE FUNCTION _CDB_Aggregable_Attributes_Expression(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Aggregable_Attributes_Expression(reloid REGCLASS)
 RETURNS TEXT
 AS $$
 DECLARE
   attr_list TEXT;
 BEGIN
   SELECT string_agg(s.c, ',') FROM (
-    SELECT * FROM _CDB_Aggregable_Attributes(reloid) c
+    SELECT * FROM @extschema@._CDB_Aggregable_Attributes(reloid) c
   ) AS s INTO attr_list;
 
   RETURN attr_list;
@@ -401,7 +401,7 @@ END
 $$ LANGUAGE PLPGSQL STABLE PARALLEL SAFE;
 
 -- Check if a column of a table is of an unlimited-length text type
-CREATE OR REPLACE FUNCTION _cdb_unlimited_text_column(reloid REGCLASS, col_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_unlimited_text_column(reloid REGCLASS, col_name TEXT)
 RETURNS BOOLEAN
 AS $$
   SELECT EXISTS (
@@ -416,7 +416,7 @@ AS $$
   );
 $$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION _cdb_categorical_column(reloid REGCLASS, col_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_categorical_column(reloid REGCLASS, col_name TEXT)
 RETURNS BOOLEAN
 AS $$
 DECLARE
@@ -445,7 +445,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 
-CREATE OR REPLACE FUNCTION _cdb_mode_of_array(anyarray)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_mode_of_array(anyarray)
   RETURNS anyelement AS
 $$
     SELECT a
@@ -456,11 +456,11 @@ $$
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
-DROP AGGREGATE IF EXISTS _cdb_mode(anyelement);
-CREATE AGGREGATE _cdb_mode(anyelement) (
+DROP AGGREGATE IF EXISTS @extschema@._cdb_mode(anyelement);
+CREATE AGGREGATE @extschema@._cdb_mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
-  FINALFUNC=_cdb_mode_of_array,
+  FINALFUNC=@extschema@._cdb_mode_of_array,
   PARALLEL = SAFE,
   INITCOND='{}'
 );
@@ -473,7 +473,7 @@ CREATE AGGREGATE _cdb_mode(anyelement) (
 --   table_alias: (optional) table qualifier for the column to be aggregated
 -- Return SQL subexpression as text with aggregated attribute aliased
 -- with its original name.
-CREATE OR REPLACE FUNCTION _CDB_Attribute_Aggregation_Expression(reloid REGCLASS, column_name TEXT, table_alias TEXT DEFAULT '')
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Attribute_Aggregation_Expression(reloid REGCLASS, column_name TEXT, table_alias TEXT DEFAULT '')
 RETURNS TEXT
 AS $$
 DECLARE
@@ -490,10 +490,10 @@ BEGIN
     qualified_column := Format('%I', column_name);
   END IF;
 
-  column_type := CDB_ColumnType(reloid, column_name);
+  column_type := @extschema@.CDB_ColumnType(reloid, column_name);
 
   SELECT EXISTS (
-    SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
+    SELECT * FROM @extschema@.CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
   ) INTO has_counter_column;
   IF has_counter_column THEN
     feature_count := '_feature_count';
@@ -503,24 +503,24 @@ BEGIN
     total_feature_count := 'count(*)';
   END IF;
 
-  base_table := _CDB_OverviewBaseTable(reloid);
+  base_table := @extschema@._CDB_OverviewBaseTable(reloid);
 
   CASE column_type
   WHEN 'double precision', 'real', 'integer', 'bigint', 'numeric' THEN
     IF column_name = '_feature_count' THEN
       RETURN 'SUM(_feature_count)';
     ELSE
-      IF column_type = 'integer' AND _cdb_categorical_column(base_table, column_name) THEN
+      IF column_type = 'integer' AND @extschema@._cdb_categorical_column(base_table, column_name) THEN
         RETURN Format('CDB_Math_Mode(%s)::', qualified_column) || column_type;
       ELSE
         RETURN Format('SUM(%s*%s)/%s::' || column_type, qualified_column, feature_count, total_feature_count);
       END IF;
     END IF;
   WHEN 'text', 'character varying', 'character' THEN
-    IF _cdb_categorical_column(base_table, column_name) THEN
+    IF @extschema@._cdb_categorical_column(base_table, column_name) THEN
       RETURN Format('_cdb_mode(%s)::', qualified_column) || column_type;
     ELSE
-      IF _cdb_unlimited_text_column(base_table, column_name) THEN
+      IF @extschema@._cdb_unlimited_text_column(base_table, column_name) THEN
         -- TODO: this should not be applied to columns containing largish text;
         -- it is intended only to short names/identifiers
         RETURN  'CASE WHEN count(distinct ' || qualified_column || ') = 1 THEN MIN(' || qualified_column || ') WHEN ' || total_feature_count || ' < 5 THEN string_agg(distinct ' || qualified_column || ','' / '') ELSE ''*'' END::' || column_type;
@@ -542,15 +542,15 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 --   table_alias: (optional) table qualifier for the columns to be aggregated
 -- Return value: SQL subexpression as text
-CREATE OR REPLACE FUNCTION _CDB_Aggregated_Attributes_Expression(reloid REGCLASS, table_alias TEXT DEFAULT '')
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Aggregated_Attributes_Expression(reloid REGCLASS, table_alias TEXT DEFAULT '')
 RETURNS TEXT
 AS $$
 DECLARE
   attr_list TEXT;
 BEGIN
-  SELECT string_agg(_CDB_Attribute_Aggregation_Expression(reloid, s.c, table_alias) || Format(' AS %s', s.c), ',')
+  SELECT string_agg(@extschema@._CDB_Attribute_Aggregation_Expression(reloid, s.c, table_alias) || Format(' AS %s', s.c), ',')
   FROM (
-    SELECT * FROM _CDB_Aggregable_Attributes(reloid) c
+    SELECT * FROM @extschema@._CDB_Aggregable_Attributes(reloid) c
   ) AS s INTO attr_list;
 
   RETURN attr_list;
@@ -562,14 +562,14 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL RESTRICTED;
 -- Parameters
 --   reloid: oid of the input table. It must be a cartodbfy'ed table.
 -- Return value: array of geometry type names
-CREATE OR REPLACE FUNCTION _CDB_GeometryTypes(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_GeometryTypes(reloid REGCLASS)
 RETURNS TEXT[]
 AS $$
 DECLARE
   gtypes TEXT[];
 BEGIN
   EXECUTE Format('
-    SELECT array_agg(DISTINCT ST_GeometryType(the_geom)) FROM (
+    SELECT array_agg(DISTINCT @postgisschema@.ST_GeometryType(the_geom)) FROM (
       SELECT the_geom FROM %s
         WHERE (the_geom is not null) LIMIT 10
     ) as geom_types
@@ -589,7 +589,7 @@ $$ LANGUAGE PLPGSQL STABLE PARALLEL SAFE;
 --   ref_z Z level assigned to the original table
 --   overview_z Z level of the overview to be generated, must be smaller than ref_z
 -- Return value: Name of the generated overview table
-CREATE OR REPLACE FUNCTION _CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_GridCluster_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -613,7 +613,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    SELECT @extschema@._CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
@@ -621,22 +621,22 @@ AS $$
 
     --TODO: check applicability: geometry type, minimum number of points...
 
-    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
 
     -- Grid size in pixels at Z level overview_z
     IF grid_px IS NULL THEN
       grid_px := 1.0;
     END IF;
 
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
 
     -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    SELECT @extschema@.CDB_XYZ_Resolution(overview_z) INTO pixel_m;
     -- grid size in meters
     grid_m = grid_px * pixel_m;
 
-    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    attributes := @extschema@._CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := @extschema@._CDB_Aggregated_Attributes_Expression(reloid);
     IF attributes <> '' THEN
       attributes := ', ' || attributes;
     END IF;
@@ -666,12 +666,12 @@ AS $$
         CASE c
         WHEN 'cartodb_id' THEN 'cartodb_id'
         WHEN 'the_geom' THEN
-          Format('ST_Transform(%s, 4326) AS the_geom', point_geom)
+          Format('@postgisschema@.ST_Transform(%s, 4326) AS the_geom', point_geom)
         WHEN 'the_geom_webmercator' THEN
            Format('%s AS the_geom_webmercator', point_geom)
         ELSE c
         END AS column
-        FROM CDB_ColumnNames(reloid) c
+        FROM @extschema@.CDB_ColumnNames(reloid) c
     )
     SELECT string_agg(s.column, ',') FROM (
       SELECT * FROM cols
@@ -701,8 +701,8 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(@postgisschema@.ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(@postgisschema@.ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
              MIN(cartodb_id) AS cartodb_id
           FROM %1$s f
           WHERE f.the_geom_webmercator IS NOT NULL
@@ -716,7 +716,7 @@ AS $$
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- This strategy places the aggregation of each cluster at the centroid of the cluster members.
-CREATE OR REPLACE FUNCTION _CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_GridClusterCentroid_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -740,7 +740,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    SELECT @extschema@._CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
@@ -748,22 +748,22 @@ AS $$
 
     --TODO: check applicability: geometry type, minimum number of points...
 
-    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
 
     -- Grid size in pixels at Z level overview_z
     IF grid_px IS NULL THEN
       grid_px := 1.0;
     END IF;
 
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
 
     -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    SELECT @extschema@.CDB_XYZ_Resolution(overview_z) INTO pixel_m;
     -- grid size in meters
     grid_m = grid_px * pixel_m;
 
-    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    attributes := @extschema@._CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := @extschema@._CDB_Aggregated_Attributes_Expression(reloid);
     IF attributes <> '' THEN
       attributes := ', ' || attributes;
     END IF;
@@ -785,7 +785,7 @@ AS $$
       offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
     END IF;
 
-    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+    point_geom := Format('@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (
@@ -793,9 +793,9 @@ AS $$
         CASE c
         WHEN 'cartodb_id' THEN 'cartodb_id'
         WHEN 'the_geom' THEN
-          'ST_Transform(ST_SetSRID(ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857), 4326) AS the_geom'
+          '@postgisschema@.ST_Transform(@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857), 4326) AS the_geom'
         WHEN 'the_geom_webmercator' THEN
-          'ST_SetSRID(ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857) AS the_geom_webmercator'
+          '@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857) AS the_geom_webmercator'
         ELSE c
         END AS column
         FROM CDB_ColumnNames(reloid) c
@@ -828,10 +828,10 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             SUM(ST_X(f.the_geom_webmercator)) AS _sum_of_x,
-             SUM(ST_Y(f.the_geom_webmercator)) AS _sum_of_y,
-             Floor(ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
-             Floor(ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
+             SUM(@postgisschema@.ST_X(f.the_geom_webmercator)) AS _sum_of_x,
+             SUM(@postgisschema@.ST_Y(f.the_geom_webmercator)) AS _sum_of_y,
+             Floor(@postgisschema@.ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(@postgisschema@.ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
              MIN(cartodb_id) AS cartodb_id
           FROM %1$s f
           GROUP BY gx, gy
@@ -844,7 +844,7 @@ AS $$
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- This strategy places the aggregation of each cluster at the position of one of the cluster members.
-CREATE OR REPLACE FUNCTION _CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_GridClusterSample_Reduce_Strategy(reloid REGCLASS, ref_z INTEGER, overview_z INTEGER, grid_px FLOAT8 DEFAULT NULL, has_overview_created BOOLEAN DEFAULT FALSE)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -868,7 +868,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    SELECT _CDB_GeometryTypes(reloid) INTO gtypes;
+    SELECT @extschema@._CDB_GeometryTypes(reloid) INTO gtypes;
     IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
       -- This strategy only supports datasets with point geomety
       RETURN NULL;
@@ -876,22 +876,22 @@ AS $$
 
     --TODO: check applicability: geometry type, minimum number of points...
 
-    overview_rel := _CDB_Overview_Name(reloid, ref_z, overview_z);
+    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
 
     -- Grid size in pixels at Z level overview_z
     IF grid_px IS NULL THEN
       grid_px := 1.0;
     END IF;
 
-    SELECT * FROM _cdb_split_table_name(reloid) INTO schema_name, table_name;
+    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
 
     -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT CDB_XYZ_Resolution(overview_z) INTO pixel_m;
+    SELECT @extschema@.CDB_XYZ_Resolution(overview_z) INTO pixel_m;
     -- grid size in meters
     grid_m = grid_px * pixel_m;
 
-    attributes := _CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := _CDB_Aggregated_Attributes_Expression(reloid);
+    attributes := @extschema@._CDB_Aggregable_Attributes_Expression(reloid);
+    aggr_attributes := @extschema@._CDB_Aggregated_Attributes_Expression(reloid);
     IF attributes <> '' THEN
       attributes := ', ' || attributes;
     END IF;
@@ -913,7 +913,7 @@ AS $$
       offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
     END IF;
 
-    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+    point_geom := Format('@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (
@@ -922,7 +922,7 @@ AS $$
         WHEN 'cartodb_id' THEN 'cartodb_id'
         ELSE c
         END AS column
-        FROM CDB_ColumnNames(reloid) c
+        FROM @extschema@.CDB_ColumnNames(reloid) c
     )
     SELECT string_agg(s.column, ',') FROM (
       SELECT * FROM cols
@@ -952,8 +952,8 @@ AS $$
            SELECT
              %5$s
              count(*) AS n,
-             Floor(ST_X(_f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(ST_Y(_f.the_geom_webmercator)/%2$s)::int AS gy,
+             Floor(@postgisschema@.ST_X(_f.the_geom_webmercator)/%2$s)::int AS gx,
+             Floor(@postgisschema@.ST_Y(_f.the_geom_webmercator)/%2$s)::int AS gy,
              MIN(cartodb_id) AS cartodb_id
           FROM %1$s _f
           GROUP BY gx, gy
@@ -980,7 +980,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --                    created by the strategy must have the same columns
 --                    as the base table and in the same order.
 -- Return value: Array with the names of the generated overview tables
-CREATE OR REPLACE FUNCTION CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CreateOverviews(reloid REGCLASS, refscale_strategy regproc DEFAULT '@extschema@._CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '@extschema@._CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -988,12 +988,12 @@ DECLARE
 BEGIN
   -- Use the default tolerance
   tolerance_px := 1.0;
-  RETURN CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
+  RETURN @extschema@.CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 -- Create overviews with additional parameter to define the desired detail/tolerance in pixels
-CREATE OR REPLACE FUNCTION CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '_CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '_CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CreateOverviewsWithToleranceInPixels(reloid REGCLASS, tolerance_px FLOAT8, refscale_strategy regproc DEFAULT '@extschema@._CDB_Feature_Density_Ref_Z_Strategy(REGCLASS,FLOAT8)'::regprocedure, reduce_strategy regproc DEFAULT '@extschema@._CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8,BOOLEAN)'::regprocedure)
 RETURNS text[]
 AS $$
 DECLARE
@@ -1045,7 +1045,7 @@ BEGIN
 
   IF overview_tables IS NOT NULL AND array_length(overview_tables, 1) > 0 THEN
     SELECT EXISTS (
-      SELECT * FROM CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
+      SELECT * FROM @extschema@.CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
     ) INTO has_counter_column;
     IF NOT has_counter_column THEN
       EXECUTE Format('
@@ -1061,10 +1061,10 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- Here are some older signatures of these functions, no longer in use.
 -- They must be droped here, after the (new) definition of the function `CDB_CreateOverviews`
 -- because that function used to contain references to them in the default argument values.
-DROP FUNCTION IF EXISTS _CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
-DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
-DROP FUNCTION IF EXISTS _CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);
-DROP FUNCTION IF EXISTS _CDB_GridClusterCentroid_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
-DROP FUNCTION IF EXISTS _CDB_GridClusterSample_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
-DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
-DROP FUNCTION IF EXISTS _CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);
+DROP FUNCTION IF EXISTS @extschema@._CDB_Feature_Density_Ref_Z_Strategy(REGCLASS);
+DROP FUNCTION IF EXISTS @extschema@._CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS @extschema@._CDB_GridCluster_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);
+DROP FUNCTION IF EXISTS @extschema@._CDB_GridClusterCentroid_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
+DROP FUNCTION IF EXISTS @extschema@._CDB_GridClusterSample_Reduce_Strategy(REGCLASS, INTEGER, INTEGER, FLOAT8);
+DROP FUNCTION IF EXISTS @extschema@._CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER);
+DROP FUNCTION IF EXISTS @extschema@._CDB_Sampling_Reduce_Strategy(REGCLASS,INTEGER,INTEGER,FLOAT8);

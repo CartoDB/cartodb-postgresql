@@ -1,7 +1,7 @@
 -- Convert string to date
 --
-DROP FUNCTION IF EXISTS CDB_StringToDate(character varying);
-CREATE OR REPLACE FUNCTION CDB_StringToDate(input character varying)
+DROP FUNCTION IF EXISTS @extschema@.CDB_StringToDate(character varying);
+CREATE OR REPLACE FUNCTION @extschema@.CDB_StringToDate(input character varying)
 RETURNS TIMESTAMP AS $$
 DECLARE output TIMESTAMP;
 BEGIN

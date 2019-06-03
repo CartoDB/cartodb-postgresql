@@ -1,2 +1,2 @@
-SELECT pg_catalog.pg_extension_config_dump('cartodb.cdb_tablemetadata','');
+SELECT pg_catalog.pg_extension_config_dump('@extschema@.cdb_tablemetadata','');
 

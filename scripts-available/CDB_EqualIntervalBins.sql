@@ -11,7 +11,7 @@
 -- 
 --
 
-CREATE OR REPLACE FUNCTION CDB_EqualIntervalBins ( in_array anyarray, breaks INT ) RETURNS anyarray as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_EqualIntervalBins ( in_array anyarray, breaks INT ) RETURNS anyarray as $$
 WITH stats AS (
   SELECT min(e), (max(e)-min(e))/breaks AS del
     FROM (SELECT unnest(in_array) e) AS p)
@@ -21,4 +21,4 @@ SELECT array_agg(bins)
       FROM stats) q;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
-DROP FUNCTION IF EXISTS CDB_EqualIntervalBins( numeric[], integer);
+DROP FUNCTION IF EXISTS @extschema@.CDB_EqualIntervalBins( numeric[], integer);

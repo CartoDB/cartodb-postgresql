@@ -1,18 +1,18 @@
 
 CREATE TABLE IF NOT EXISTS
-  public.CDB_TableMetadata (
+  @extschema@.CDB_TableMetadata (
     tabname regclass not null primary key,
     updated_at timestamp with time zone not null default now()
   );
 
-CREATE OR REPLACE VIEW public.CDB_TableMetadata_Text AS
+CREATE OR REPLACE VIEW @extschema@.CDB_TableMetadata_Text AS
        SELECT FORMAT('%I.%I', n.nspname::text, c.relname::text) tabname, updated_at
-       FROM public.CDB_TableMetadata m JOIN pg_catalog.pg_class c ON m.tabname::oid = c.oid
+       FROM @extschema@.CDB_TableMetadata m JOIN pg_catalog.pg_class c ON m.tabname::oid = c.oid
        LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid;
 
 -- No one can see this
 -- Updates are only possible trough the security definer trigger
--- GRANT SELECT ON public.CDB_TableMetadata TO public;
+-- GRANT SELECT ON @extschema@.CDB_TableMetadata TO public;
 
 --
 -- Trigger logging updated_at in the CDB_TableMetadata
@@ -27,17 +27,17 @@ CREATE OR REPLACE VIEW public.CDB_TableMetadata_Text AS
 --
 -- NOTE: _never_ attach to CDB_TableMetadata ...
 --
-CREATE OR REPLACE FUNCTION CDB_TableMetadata_Trigger()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_TableMetadata_Trigger()
 RETURNS trigger AS
 $$
 BEGIN
   -- Guard against infinite loop
-  IF TG_RELID = 'public.CDB_TableMetadata'::regclass::oid THEN
+  IF TG_RELID = '@extschema@.CDB_TableMetadata'::regclass::oid THEN
     RETURN NULL;
   END IF;
 
   -- Cleanup stale entries
-  DELETE FROM public.CDB_TableMetadata
+  DELETE FROM @extschema@.CDB_TableMetadata
    WHERE NOT EXISTS (
     SELECT oid FROM pg_class WHERE oid = tabname
   );
@@ -45,11 +45,11 @@ BEGIN
   WITH nv as (
     SELECT TG_RELID as tabname, NOW() as t
   ), updated as (
-    UPDATE public.CDB_TableMetadata x SET updated_at = nv.t
+    UPDATE @extschema@.CDB_TableMetadata x SET updated_at = nv.t
     FROM nv WHERE x.tabname = nv.tabname
     RETURNING x.tabname
   )
-  INSERT INTO public.CDB_TableMetadata SELECT nv.*
+  INSERT INTO @extschema@.CDB_TableMetadata SELECT nv.*
   FROM nv LEFT JOIN updated USING(tabname)
   WHERE updated.tabname IS NULL;
 
@@ -62,7 +62,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 -- Trigger invalidating varnish whenever CDB_TableMetadata
 -- record change.
 --
-CREATE OR REPLACE FUNCTION _CDB_TableMetadata_Updated()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_TableMetadata_Updated()
 RETURNS trigger AS
 $$
 DECLARE
@@ -93,14 +93,14 @@ BEGIN
   --
 
   -- Call the first varnish invalidation function owned
-  -- by a superuser found in cartodb or public schema
+  -- by a superuser found in @extschema@ or public schema
   -- (in that order)
   found := false;
   FOR rec IN SELECT u.usesuper, u.usename, n.nspname, p.proname
              FROM pg_proc p, pg_namespace n, pg_user u
              WHERE p.proname = 'cdb_invalidate_varnish'
                AND p.pronamespace = n.oid
-               AND n.nspname IN ('public', 'cartodb')
+               AND n.nspname IN ('public', '@extschema@')
                AND u.usesysid = p.proowner
                AND u.usesuper
              ORDER BY n.nspname
@@ -119,26 +119,26 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS table_modified ON public.CDB_TableMetadata;
+DROP TRIGGER IF EXISTS table_modified ON @extschema@.CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table
 --       oid (regclass) to its name
 CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
-ON public.CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
+ON @extschema@.CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
  _CDB_TableMetadata_Updated();
 
 
 -- similar to TOUCH(1) in unix filesystems but for table in cdb_tablemetadata
-CREATE OR REPLACE FUNCTION public.CDB_TableMetadataTouch(tablename regclass)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_TableMetadataTouch(tablename regclass)
     RETURNS void AS
     $$
     BEGIN
         WITH upsert AS (
-            UPDATE public.cdb_tablemetadata
+            UPDATE @extschema@.cdb_tablemetadata
             SET updated_at = NOW()
             WHERE tabname = tablename
             RETURNING *
         )
-        INSERT INTO public.cdb_tablemetadata (tabname, updated_at)
+        INSERT INTO @extschema@.cdb_tablemetadata (tabname, updated_at)
             SELECT tablename, NOW()
             WHERE NOT EXISTS (SELECT * FROM upsert);
     END;
