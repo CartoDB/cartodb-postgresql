@@ -1,4 +1,4 @@
-0.27.0 (2019-05-31)
+0.27.0 (2019-06-03)
 * Fully qualify function calls
 * Several improvements to bash tests.
 * Avoid dropping publicuser in tests.
