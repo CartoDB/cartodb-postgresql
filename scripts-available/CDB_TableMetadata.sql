@@ -124,7 +124,7 @@ DROP TRIGGER IF EXISTS table_modified ON @extschema@.CDB_TableMetadata;
 --       oid (regclass) to its name
 CREATE TRIGGER table_modified AFTER INSERT OR UPDATE
 ON @extschema@.CDB_TableMetadata FOR EACH ROW EXECUTE PROCEDURE
- _CDB_TableMetadata_Updated();
+    @extschema@._CDB_TableMetadata_Updated();
 
 
 -- similar to TOUCH(1) in unix filesystems but for table in cdb_tablemetadata
