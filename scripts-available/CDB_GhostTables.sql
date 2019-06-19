@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_SaveDDLTransaction()
 RETURNS event_trigger
 AS $$
   BEGIN
-    INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT (txid) DO NOTHING;
+    INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT ON CONSTRAINT cdb_ddl_execution_pkey DO NOTHING;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
