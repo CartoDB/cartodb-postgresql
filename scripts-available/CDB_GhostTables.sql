@@ -96,7 +96,7 @@ AS $$
     DROP TRIGGER IF EXISTS check_ddl_update ON @extschema@.cdb_ddl_execution;
 
     -- Table to store the transaction id from DDL events to avoid multiple executions
-    CREATE TABLE IF NOT EXISTS @extschema@.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
+    CREATE TABLE IF NOT EXISTS @extschema@.cdb_ddl_execution(txid bigint PRIMARY KEY, tag text);
 
     CREATE CONSTRAINT TRIGGER check_ddl_update
     AFTER INSERT ON @extschema@.cdb_ddl_execution
