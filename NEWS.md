@@ -1,3 +1,6 @@
+0.27.2 (2019-06-21)
+* Improvements and fixes in Ghost tables functions (#360)
+
 0.27.1 (2019-06-03)
 * Add some qualifications that were left in the previous release.
 
