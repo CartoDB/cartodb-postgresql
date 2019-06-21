@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_SaveDDLTransaction()
 RETURNS event_trigger
 AS $$
   BEGIN
-    INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT (txid) DO NOTHING;
+    INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT ON CONSTRAINT cdb_ddl_execution_pkey DO NOTHING;
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
@@ -96,7 +96,7 @@ AS $$
     DROP TRIGGER IF EXISTS check_ddl_update ON @extschema@.cdb_ddl_execution;
 
     -- Table to store the transaction id from DDL events to avoid multiple executions
-    CREATE TABLE IF NOT EXISTS @extschema@.cdb_ddl_execution(txid integer PRIMARY KEY, tag text);
+    CREATE TABLE IF NOT EXISTS @extschema@.cdb_ddl_execution(txid bigint PRIMARY KEY, tag text);
 
     CREATE CONSTRAINT TRIGGER check_ddl_update
     AFTER INSERT ON @extschema@.cdb_ddl_execution
@@ -106,7 +106,7 @@ AS $$
 
     CREATE EVENT TRIGGER link_ghost_tables
     ON ddl_command_end
-    WHEN TAG IN ('CREATE TABLE', 'SELECT INTO', 'DROP TABLE', 'ALTER TABLE', 'CREATE TRIGGER', 'DROP TRIGGER', 'CREATE VIEW', 'DROP VIEW', 'ALTER VIEW')
+    WHEN TAG IN ('CREATE TABLE', 'SELECT INTO', 'DROP TABLE', 'ALTER TABLE', 'CREATE TRIGGER', 'DROP TRIGGER', 'CREATE VIEW', 'DROP VIEW', 'ALTER VIEW', 'CREATE FOREIGN TABLE', 'ALTER FOREIGN TABLE', 'DROP FOREIGN TABLE')
     EXECUTE PROCEDURE @extschema@.CDB_SaveDDLTransaction();
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
