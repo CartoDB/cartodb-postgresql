@@ -67,6 +67,19 @@ AS $$
   SELECT format('%s_%s_%s', prefix, txid_current(), (random()*1000000)::int)::NAME;
 $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 
+/*
+    Given a table name and an array of column names,
+    return array of column names qualified with the table name
+
+    Example of usage:
+
+       SELECT cartodb.__CDB_QualifyColumns('t', ARRAY['a','b']); --> ARRAY['t.a','t.b']
+
+*/
+CREATE OR REPLACE FUNCTION cartodb.__CDB_QualifyColumns(tablename TEXT, colnames TEXT[]) RETURNS TEXT[] AS
+$$
+    SELECT array_agg(tablename || '.' || _colname) from unnest(colnames) _colname;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
 
 /*
    A Table Syncer
@@ -88,7 +101,8 @@ DECLARE
   fq_dest_table TEXT;
 
   colnames TEXT[];
-  quoted_colnames TEXT;
+  dst_colnames TEXT;
+  src_colnames TEXT;
 
   src_hash_table_name NAME;
   dst_hash_table_name NAME;
@@ -113,35 +127,12 @@ BEGIN
 
   -- Get the list of columns from the source table, excluding skip_cols
   SELECT ARRAY(SELECT quote_ident(c) FROM cartodb._CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
-  quoted_colnames := array_to_string(colnames, ',');
-
-  src_hash_table_name := cartodb.__CDB_GenerateUniqueName('src_sync');
-  dst_hash_table_name := cartodb.__CDB_GenerateUniqueName('dst_sync');
-
-  EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', src_hash_table_name);
-  EXECUTE format('CREATE TEMP TABLE %I(cartodb_id BIGINT, hash TEXT) ON COMMIT DROP', dst_hash_table_name);
-
-  -- Compute hash tables for src_table and dst_table h[cartodb_id] = hash(row)
-  -- It'll take the form of a temp table with an index (easy to run set operations)
-  t := clock_timestamp();
-  EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %I', src_hash_table_name, quoted_colnames, src_table);
-  EXECUTE format('INSERT INTO %I SELECT cartodb_id, md5(ROW(%s)::text) hash FROM %s', dst_hash_table_name, quoted_colnames, fq_dest_table);
-  RAISE DEBUG 'Populate hash tables time (s): %', clock_timestamp() - t;
-
-  -- Create indexes
-  -- We use hash indexes as they are fit for id comparison.
-  t := clock_timestamp();
-  EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', src_hash_table_name);
-  EXECUTE format('CREATE INDEX ON %I USING HASH (cartodb_id)', dst_hash_table_name);
-  RAISE DEBUG 'Index creation on hash tables time (s): %', clock_timestamp() - t;
 
   -- Deal with deleted rows: ids in dest but not in source
   t := clock_timestamp();
   EXECUTE format(
-    'DELETE FROM %s WHERE cartodb_id IN (SELECT cartodb_id FROM %I EXCEPT SELECT cartodb_id FROM %I)',
-    fq_dest_table,
-    dst_hash_table_name,
-    src_hash_table_name);
+    'DELETE FROM %1$s _dst WHERE NOT EXISTS (SELECT * FROM %2$I _src WHERE _src.cartodb_id=_dst.cartodb_id)',
+    fq_dest_table, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'DELETED % row(s)', num_rows;
   RAISE DEBUG 'DELETE time (s): %', clock_timestamp() - t;
@@ -149,29 +140,26 @@ BEGIN
   -- Deal with inserted rows: ids in source but not in dest
   t := clock_timestamp();
   EXECUTE format('
-      INSERT INTO %1$s (cartodb_id,%2$s)
-      SELECT h.cartodb_id,%2$s FROM (SELECT cartodb_id FROM %3$I EXCEPT SELECT cartodb_id FROM %4$I) h
-      LEFT JOIN %5$I s ON s.cartodb_id = h.cartodb_id;
-  ', fq_dest_table, quoted_colnames, src_hash_table_name, dst_hash_table_name, src_table);
+      INSERT INTO %1$s(cartodb_id, %2$s)
+      SELECT cartodb_id, %2$s FROM %3$I _src WHERE NOT EXISTS (SELECT * FROM %1$s _dst WHERE _src.cartodb_id=_dst.cartodb_id)
+  ', fq_dest_table, array_to_string(colnames, ','), src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
   RAISE DEBUG 'INSERT time (s): %', clock_timestamp() - t;
 
   -- Deal with modified rows: ids in source and dest but different hashes
   t := clock_timestamp();
-  update_set_clause := cartodb.__CDB_GetUpdateSetClause(colnames, 'changed');
+  update_set_clause := cartodb.__CDB_GetUpdateSetClause(colnames, '_changed');
+  dst_colnames := array_to_string(cartodb.__CDB_QualifyColumns('_dst', colnames), ',');
+  src_colnames := array_to_string(cartodb.__CDB_QualifyColumns('_src', colnames), ',');
   EXECUTE format('
-    UPDATE %1$s dst SET %2$s
-    FROM (
-      SELECT *
-      FROM %3$s src
-      WHERE cartodb_id IN
-        (SELECT sh.cartodb_id FROM %4$I sh
-         LEFT JOIN %5$I dh ON sh.cartodb_id = dh.cartodb_id
-         WHERE sh.hash <> dh.hash)
-    ) changed
-    WHERE dst.cartodb_id = changed.cartodb_id;
-  ', fq_dest_table, update_set_clause, src_table, src_hash_table_name, dst_hash_table_name);
+      UPDATE %1$s _update SET %2$s
+      FROM (
+        SELECT _src.* FROM %3$s _src JOIN %1$s _dst ON (_dst.cartodb_id = _src.cartodb_id)
+        WHERE  md5(ROW(%4$s)::text) <> md5(ROW(%5$s)::text)
+      ) _changed
+      WHERE _update.cartodb_id = _changed.cartodb_id;
+  ', fq_dest_table, update_set_clause, src_table, dst_colnames, src_colnames);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'MODIFIED % row(s)', num_rows;
   RAISE DEBUG 'UPDATE time (s): %', clock_timestamp() - t;
