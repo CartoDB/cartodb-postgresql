@@ -5,7 +5,7 @@
 -- UTF8 safe and length aware. Find a unique identifier with a given prefix
 -- and/or suffix and withing a schema. If a schema is not specified, the identifier
 -- is guaranteed to be unique for all schemas.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Unique_Identifier(prefix TEXT, relname TEXT, suffix TEXT, schema TEXT DEFAULT NULL)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -24,10 +24,10 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  candrelname := _CDB_Octet_Truncate(relname, maxlen - usedspace);
+  candrelname := @extschema@._CDB_Octet_Truncate(relname, maxlen - usedspace);
 
   IF candrelname = '' THEN
-    PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
+    PERFORM @extschema@._CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Identifier');
   END IF;
 
   ident := coalesce(prefix, '') || candrelname || coalesce(suffix, '');
@@ -59,14 +59,14 @@ BEGIN
     i := i + 1;
   END LOOP;
 
-  PERFORM _CDB_Error('looping too far', '_CDB_Unique_Identifier');
+  PERFORM @extschema@._CDB_Error('looping too far', '_CDB_Unique_Identifier');
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
 -- UTF8 safe and length aware. Find a unique identifier for a column with a given prefix
 -- and/or suffix based on colname and within a relation specified via reloid.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Unique_Column_Identifier(prefix TEXT, colname TEXT, suffix TEXT, reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Unique_Column_Identifier(prefix TEXT, colname TEXT, suffix TEXT, reloid REGCLASS)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -85,10 +85,10 @@ BEGIN
   usedspace := usedspace + coalesce(octet_length(prefix), 0);
   usedspace := usedspace + coalesce(octet_length(suffix), 0);
 
-  candcolname := _CDB_Octet_Truncate(colname, maxlen - usedspace);
+  candcolname := @extschema@._CDB_Octet_Truncate(colname, maxlen - usedspace);
 
   IF candcolname = '' THEN
-    PERFORM _CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
+    PERFORM @extschema@._CDB_Error('prefixes are to long to generate a valid identifier', '_CDB_Unique_Column_Identifier');
   END IF;
 
   ident := coalesce(prefix, '') || candcolname || coalesce(suffix, '');
@@ -114,14 +114,14 @@ BEGIN
     i := i + 1;
   END LOOP;
 
-  PERFORM _CDB_Error('looping too far', '_CDB_Unique_Column_Identifier');
+  PERFORM @extschema@._CDB_Error('looping too far', '_CDB_Unique_Column_Identifier');
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE PARALLEL SAFE;
 
 
 -- Truncates a given string to a max_octets octets taking care
 -- not to leave characters in half. UTF8 safe.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Octet_Truncate(string TEXT, max_octets INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Octet_Truncate(string TEXT, max_octets INTEGER)
 RETURNS TEXT
 AS $$
 DECLARE
@@ -162,7 +162,7 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 
 -- Checks if a given text representing a qualified or unqualified table name (relation)
 -- actually exists in the database. It is meant to be used as a guard for other function/queries.
-CREATE OR REPLACE FUNCTION cartodb._CDB_Table_Exists(table_name_with_optional_schema TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Table_Exists(table_name_with_optional_schema TEXT)
 RETURNS bool
 AS $$
 DECLARE

@@ -13,7 +13,7 @@
 --
 --
 
-CREATE OR REPLACE FUNCTION CDB_JenksBins(in_array NUMERIC[], breaks INT, iterations INT DEFAULT 0, invert BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_JenksBins(in_array NUMERIC[], breaks INT, iterations INT DEFAULT 0, invert BOOLEAN DEFAULT FALSE)
 RETURNS NUMERIC[] as
 $$
 DECLARE
@@ -95,7 +95,7 @@ BEGIN
         IF i > breaks THEN EXIT; END IF;
     END LOOP;
 
-    best_result = CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
+    best_result = @extschema@.CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
 
     --set the seed so we can ensure the same results
     SELECT setseed(0.4567) INTO seedtarget;
@@ -126,7 +126,7 @@ BEGIN
             IF i > breaks THEN EXIT; END IF;
         END LOOP;
 
-        curr_result = CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
+        curr_result = @extschema@.CDB_JenksBinsIteration(in_matrix, breaks, classes, invert, sdam, shuffles);
 
         IF curr_result[1] > best_result[1] THEN
             best_result = curr_result;
@@ -146,9 +146,9 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL RESTRICTED;
 -- Returns an array with:
 -- - First element: gvf
 -- - Second to 2+n: Category limits
-DROP FUNCTION IF EXISTS CDB_JenksBinsIteration ( in_matrix NUMERIC[], breaks INT, classes INT[], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT); -- Old signature
+DROP FUNCTION IF EXISTS @extschema@.CDB_JenksBinsIteration ( in_matrix NUMERIC[], breaks INT, classes INT[], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT); -- Old signature
 
-CREATE OR REPLACE FUNCTION CDB_JenksBinsIteration ( in_matrix NUMERIC[], breaks INT, classes INT[], invert BOOLEAN, sdam NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_JenksBinsIteration ( in_matrix NUMERIC[], breaks INT, classes INT[], invert BOOLEAN, sdam NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
 DECLARE
     i INT;
     iterations INT = 0;

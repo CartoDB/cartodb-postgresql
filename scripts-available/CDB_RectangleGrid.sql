@@ -1,5 +1,5 @@
 -- In older versions of the extension, CDB_RectangleGrid had a different signature
-DROP FUNCTION IF EXISTS cartodb.CDB_RectangleGrid(GEOMETRY, FLOAT8, FLOAT8, GEOMETRY);
+DROP FUNCTION IF EXISTS @extschema@.CDB_RectangleGrid(GEOMETRY, FLOAT8, FLOAT8, GEOMETRY);
 
 --
 -- Fill given extent with a rectangular coverage
@@ -22,7 +22,7 @@ DROP FUNCTION IF EXISTS cartodb.CDB_RectangleGrid(GEOMETRY, FLOAT8, FLOAT8, GEOM
 --                 if the grid requires more cells to cover the extent
 --                 and exception will occur.
 --
-CREATE OR REPLACE FUNCTION CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL, maxcells INTEGER DEFAULT 512*512)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -44,17 +44,17 @@ DECLARE
   srid INTEGER;
 BEGIN
 
-  srid := ST_SRID(ext);
+  srid := @postgisschema@.ST_SRID(ext);
 
   xoff := 0; 
   yoff := 0;
 
   IF origin IS NOT NULL THEN
-    IF ST_SRID(origin) != srid THEN
+    IF @postgisschema@.ST_SRID(origin) != srid THEN
       RAISE EXCEPTION 'SRID mismatch between extent (%) and origin (%)', srid, ST_SRID(origin);
     END IF;
-    xoff := ST_X(origin);
-    yoff := ST_Y(origin);
+    xoff := @postgisschema@.ST_X(origin);
+    yoff := @postgisschema@.ST_Y(origin);
   END IF;
 
   --RAISE DEBUG 'X offset: %', xoff;
@@ -72,11 +72,11 @@ BEGIN
   vstep := height;
 
   -- Tweak horizontal start on hstep grid from origin 
-  hstart := xoff + ceil((ST_XMin(ext)-xoff)/hstep)*hstep; 
+  hstart := xoff + ceil((@postgisschema@.ST_XMin(ext)-xoff)/hstep)*hstep; 
   --RAISE DEBUG 'hstart: %', hstart;
 
   -- Tweak vertical start on vstep grid from origin 
-  vstart := yoff + ceil((ST_Ymin(ext)-yoff)/vstep)*vstep; 
+  vstart := yoff + ceil((@postgisschema@.ST_Ymin(ext)-yoff)/vstep)*vstep; 
   --RAISE DEBUG 'vstart: %', vstart;
 
   hend := ST_XMax(ext);
@@ -94,10 +94,10 @@ BEGIN
   x := hstart;
   WHILE x < hend LOOP -- over X
     y := vstart;
-    h := ST_MakeEnvelope(x-hw, y-hh, x+hw, y+hh, srid);
+    h := @postgisschema@.ST_MakeEnvelope(x-hw, y-hh, x+hw, y+hh, srid);
     WHILE y < vend LOOP -- over Y
       RETURN NEXT h;
-      h := ST_Translate(h, 0, vstep);
+      h := @postgisschema@.ST_Translate(h, 0, vstep);
       y := yoff + round(((y + vstep)-yoff)/ygrd)*ygrd; -- round to grid
     END LOOP;
     x := xoff + round(((x + hstep)-xoff)/xgrd)*xgrd; -- round to grid

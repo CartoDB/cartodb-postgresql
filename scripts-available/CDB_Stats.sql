@@ -9,7 +9,7 @@
 --
 
 -- Calculate kurtosis
-CREATE OR REPLACE FUNCTION CDB_Kurtosis ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Kurtosis ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
 DECLARE
     a numeric;
     c numeric;
@@ -32,7 +32,7 @@ END;
 $$ language plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Calculate skewness
-CREATE OR REPLACE FUNCTION CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Skewness ( in_array NUMERIC[] ) RETURNS NUMERIC as $$
 DECLARE
     a numeric;
     c numeric;

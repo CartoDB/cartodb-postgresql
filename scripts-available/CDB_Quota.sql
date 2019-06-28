@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION cartodb._CDB_total_relation_size(_schema_name TEXT, _table_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_total_relation_size(_schema_name TEXT, _table_name TEXT)
 RETURNS bigint AS
 $$
 DECLARE relation_size bigint := 0;
@@ -7,7 +7,7 @@ BEGIN
     SELECT pg_total_relation_size(format('"%s"."%s"', _schema_name, _table_name)) INTO relation_size;
   EXCEPTION
     WHEN undefined_table OR OTHERS THEN
-      RAISE NOTICE 'cartodb._CDB_total_relation_size(''%'', ''%'') caught error: % (%)', _schema_name, _table_name, SQLERRM, SQLSTATE;
+      RAISE NOTICE '@extschema@._CDB_total_relation_size(''%'', ''%'') caught error: % (%)', _schema_name, _table_name, SQLERRM, SQLSTATE;
   END;
   RETURN relation_size;
 END;
@@ -15,7 +15,7 @@ $$
 LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 -- Return the estimated size of user data. Used for quota checking.
-CREATE OR REPLACE FUNCTION CDB_UserDataSize(schema_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
 DECLARE
@@ -26,20 +26,20 @@ BEGIN
       WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
   ),
   user_tables AS (
-    SELECT table_name FROM _CDB_NonAnalysisTablesInSchema(schema_name)
+    SELECT table_name FROM @extschema@._CDB_NonAnalysisTablesInSchema(schema_name)
   ),
   table_cat AS (
     SELECT
       table_name,
       (
         EXISTS(select * from raster_tables where o_table_name = table_name)
-        OR table_name SIMILAR TO _CDB_OverviewTableDiscriminator() || '[\w\d]*'
+        OR table_name SIMILAR TO @extschema@._CDB_OverviewTableDiscriminator() || '[\w\d]*'
       ) AS is_overview,
       EXISTS(SELECT * FROM raster_tables WHERE r_table_name = table_name) AS is_raster
     FROM user_tables
   ),
   sizes AS (
-    SELECT COALESCE(INT8(SUM(cartodb._CDB_total_relation_size(schema_name, table_name)))) table_size,
+    SELECT COALESCE(INT8(SUM(@extschema@._CDB_total_relation_size(schema_name, table_name)))) table_size,
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
@@ -60,15 +60,15 @@ LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 -- Return the estimated size of user data. Used for quota checking.
 -- Implicit schema version for backwards compatibility
-CREATE OR REPLACE FUNCTION CDB_UserDataSize()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_UserDataSize()
 RETURNS bigint AS
 $$
-  SELECT CDB_UserDataSize('public');
+  SELECT @extschema@.CDB_UserDataSize('public');
 $$
 LANGUAGE 'sql' VOLATILE PARALLEL UNSAFE;
 
 -- Triggers cannot have declared arguments: pbfact float8, qmax int8, schema_name text
-CREATE OR REPLACE FUNCTION CDB_CheckQuota()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CheckQuota()
 RETURNS trigger AS
 $$
 DECLARE
@@ -80,7 +80,7 @@ DECLARE
 BEGIN
   IF TG_NARGS = 3 THEN
     schema_name := TG_ARGV[2];
-    IF cartodb.schema_exists(schema_name) = false THEN
+    IF @extschema@.schema_exists(schema_name) = false THEN
       RAISE EXCEPTION 'Invalid schema name "%"', schema_name;
     END IF;
   ELSE
@@ -111,7 +111,7 @@ BEGIN
       RETURN NEW;
     END IF;
 
-    SELECT public.CDB_UserDataSize(schema_name) INTO quota;
+    SELECT @extschema@.CDB_UserDataSize(schema_name) INTO quota;
     IF quota > qmax THEN
       RAISE EXCEPTION 'Quota exceeded by %KB', (quota-qmax)/1024;
     ELSE RAISE DEBUG 'User quota in bytes: % < % (max allowed)', quota, qmax;
@@ -124,13 +124,13 @@ $$
 LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(schema_name text, bytes int8)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUserQuotaInBytes(schema_name text, bytes int8)
 RETURNS int8 AS
 $$
 DECLARE
   sql text;
 BEGIN
-  IF cartodb.schema_exists(schema_name::text) = false THEN
+  IF @extschema@.schema_exists(schema_name::text) = false THEN
     RAISE EXCEPTION 'Invalid schema name "%"', schema_name::text;
   END IF;
 
@@ -145,11 +145,11 @@ $$
 LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION CDB_SetUserQuotaInBytes(bytes int8)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUserQuotaInBytes(bytes int8)
 RETURNS int8 AS
 $$
 BEGIN
-  return public.CDB_SetUserQuotaInBytes('public', bytes);
+  return @extschema@.CDB_SetUserQuotaInBytes('public', bytes);
 END;
 $$
 LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE;

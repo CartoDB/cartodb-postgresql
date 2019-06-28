@@ -10,7 +10,6 @@
 DATABASE=test_organizations
 CMD=psql
 SED=sed
-PG_PARALLEL=$(pg_config --version | awk '{$2*=1000; if ($2 >= 9600) print 1; else print 0;}' 2> /dev/null || echo 0)
 
 OK=0
 PARTIALOK=0
@@ -24,19 +23,6 @@ function set_failed() {
 function clear_partial_result() {
     PARTIALOK=0
 }
-
-function load_sql_file() {
-    if [[ $PG_PARALLEL -eq 0 ]]
-    then
-        tmp_file=/tmp/$(basename $1)_no_parallel
-        ${SED} $1 -e 's/PARALLEL \= [A-Z]*/''/g' -e 's/PARALLEL [A-Z]*/''/g' > $tmp_file
-        ${CMD} -d ${DATABASE} -f $tmp_file
-        rm $tmp_file
-    else
-        ${CMD} -d ${DATABASE} -f $1
-    fi
-}
-
 
 function sql() {
     local ROLE
@@ -146,6 +132,7 @@ function create_role_and_schema() {
     sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO ${ROLE};"
     sql "CREATE SCHEMA ${ROLE} AUTHORIZATION ${ROLE};"
     sql "SELECT cartodb.CDB_Organization_Create_Member('${ROLE}')"
+    sql "ALTER ROLE ${ROLE} SET search_path TO ${ROLE},cartodb,public;"
 }
 
 
@@ -168,34 +155,46 @@ function create_table() {
     sql ${ROLE} "CREATE TABLE ${ROLE}.${TABLENAME} ( a int );"
 }
 
+function truncate_table() {
+    if [[ $# -ne 2 ]]
+    then
+        log_error "truncate_table requires two arguments: role and table_name"
+        exit 1
+    fi
+    local ROLE="$1"
+    local TABLENAME="$2"
+    sql ${ROLE} "TRUNCATE TABLE ${ROLE}.${TABLENAME};"
+}
+
 
 function setup() {
     ${CMD} -c "CREATE DATABASE ${DATABASE}"
-    sql "CREATE SCHEMA cartodb;"
-    sql "CREATE EXTENSION plpythonu;"
-    sql "GRANT USAGE ON SCHEMA cartodb TO public;"
+    ${CMD} -c "ALTER DATABASE ${DATABASE} SET search_path = public, cartodb;"
+    sql "CREATE EXTENSION cartodb CASCADE;"
+    ${CMD} -c "ALTER DATABASE ${DATABASE} SET search_path = public, cartodb;"
 
-    log_info "########################### BOOTSTRAP ###########################"
-    load_sql_file scripts-available/CDB_Organizations.sql
-    load_sql_file scripts-available/CDB_Conf.sql
-    load_sql_file scripts-available/CDB_Groups.sql
-    load_sql_file scripts-available/CDB_Groups_API.sql
 
     log_info "############################# SETUP #############################"
     create_role_and_schema cdb_org_admin
     sql "SELECT cartodb.CDB_Organization_AddAdmin('cdb_org_admin');"
     create_role_and_schema cdb_testmember_1
     create_role_and_schema cdb_testmember_2
-    sql "CREATE ROLE publicuser LOGIN;"
+    sql postgres "DO
+\$\$
+BEGIN
+   IF NOT EXISTS (
+      SELECT *
+      FROM   pg_catalog.pg_user
+      WHERE  usename = 'publicuser') THEN
+
+      CREATE ROLE publicuser LOGIN;
+   END IF;
+END
+\$\$;"
     sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO publicuser;"
 
     create_table cdb_testmember_1 foo
-    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4), (5);'
-    sql cdb_testmember_1 'SELECT * FROM cdb_testmember_1.foo;'
-
     create_table cdb_testmember_2 bar
-    sql cdb_testmember_2 'INSERT INTO bar VALUES (1), (2), (3), (4), (5);'
-    sql cdb_testmember_2 'SELECT * FROM cdb_testmember_2.bar;'
 
     sql "SELECT cartodb.CDB_Group_CreateGroup('group_a_tmp')"
     sql "SELECT cartodb.CDB_Group_RenameGroup('group_a_tmp', 'group_a')"
@@ -235,7 +234,6 @@ function tear_down() {
 
     sql 'DROP ROLE cdb_testmember_1;'
     sql 'DROP ROLE cdb_testmember_2;'
-    sql 'DROP ROLE publicuser;'
     sql 'DROP ROLE cdb_org_admin;'
 
     ${CMD} -c "DROP DATABASE ${DATABASE}"
@@ -251,6 +249,8 @@ function run_tests() {
     else
         TESTS=`cat $0 | perl -n -e'/function (test.*)\(\)/ && print "$1\n"'`
     fi
+
+    setup
     for t in ${TESTS}
     do
         echo "####################################################################"
@@ -259,15 +259,15 @@ function run_tests() {
         echo "#"
         echo "####################################################################"
         clear_partial_result
-        setup
         log_info "############################# TESTS #############################"
         eval ${t}
         if [[ ${PARTIALOK} -ne 0 ]]
         then
             FAILED_TESTS+=(${t})
         fi
-        tear_down
     done
+    tear_down
+
     if [[ ${OK} -ne 0 ]]
     then
         echo
@@ -289,9 +289,14 @@ function test_member_1_cannot_grant_read_permission_to_other_schema_than_its_one
 }
 
 function test_member_1_grants_read_permission_and_member_2_can_read() {
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.bar;' fails
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
 }
 
 function test_member_2_cannot_add_table_to_member_1_schema_after_table_permission_added() {
@@ -300,10 +305,18 @@ function test_member_2_cannot_add_table_to_member_1_schema_after_table_permissio
 }
 
 function test_grant_read_permission_between_two_members() {
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
+    sql cdb_testmember_2 'INSERT INTO cdb_testmember_2.bar VALUES (5), (6), (7), (8), (9);'
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_2', 'bar', 'cdb_testmember_1')"
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_2.bar;' should 5
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
+    truncate_table cdb_testmember_2 bar
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_2', 'bar', 'cdb_testmember_1')"
 }
 
 function test_member_2_cannot_write_to_member_1_table() {
@@ -317,11 +330,15 @@ function test_member_1_cannot_grant_read_write_permission_to_other_schema_than_i
 function test_member_2_can_write_to_member_1_table_after_write_permission_is_added() {
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_2 'DELETE FROM cdb_testmember_1.foo where a = 9;'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
 }
 
 function test_member_2_can_write_to_member_1_table_and_sequence_after_write_permission_is_added() {
@@ -329,13 +346,17 @@ function test_member_2_can_write_to_member_1_table_and_sequence_after_write_perm
 
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_2 'DELETE FROM cdb_testmember_1.foo where a = 9;'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
 
     sql cdb_testmember_1 "ALTER TABLE cdb_testmember_1.foo DROP cartodb_id;"
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
 }
 
 function test_member_2_can_write_to_member_1_table_with_non_sequence_cartodb_id_after_write_permission_is_added() {
@@ -343,20 +364,28 @@ function test_member_2_can_write_to_member_1_table_with_non_sequence_cartodb_id_
 
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Write_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 10
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
     sql cdb_testmember_2 'DELETE FROM cdb_testmember_1.foo where a = 9;'
-    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 9
+    sql cdb_testmember_1 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
 
     sql cdb_testmember_1 "ALTER TABLE cdb_testmember_1.foo DROP cartodb_id;"
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
 }
 
 function test_member_1_removes_access_and_member_2_can_no_longer_query_the_table() {
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9), (10);'
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 6
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'SELECT * FROM cdb_testmember_1.foo;' fails
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
 }
 
 function test_member_1_removes_access_and_member_2_can_no_longer_write_to_the_table() {
@@ -364,12 +393,16 @@ function test_member_1_removes_access_and_member_2_can_no_longer_write_to_the_ta
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);'
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
     sql cdb_testmember_2 'INSERT INTO cdb_testmember_1.foo VALUES (5), (6), (7), (8), (9);' fails
+
+    # Cleanup
+    truncate_table cdb_testmember_1 foo
 }
 
 function test_giving_permissions_to_two_tables_and_removing_from_first_table_should_not_remove_from_second() {
     #### test setup
     # create an extra table for cdb_testmember_1
     create_table cdb_testmember_1 foo_2
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4);'
     sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo_2 VALUES (1), (2), (3), (4), (5);'
     sql cdb_testmember_1 'SELECT * FROM cdb_testmember_1.foo_2;'
 
@@ -378,7 +411,7 @@ function test_giving_permissions_to_two_tables_and_removing_from_first_table_sho
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo_2', 'cdb_testmember_2')"
 
     # cdb_testmember_2 has access to both tables
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo_2;' should 5
 
     # cdb_testmember_1 removes access to foo table
@@ -390,57 +423,60 @@ function test_giving_permissions_to_two_tables_and_removing_from_first_table_sho
 
 
     #### test tear down
+    truncate_table cdb_testmember_1 foo
     sql cdb_testmember_1 'DROP TABLE cdb_testmember_1.foo_2;'
 }
 
 function test_cdb_org_member_role_allows_reading_to_all_users_without_explicit_permission() {
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4);'
+
     sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Add_Table_Organization_Read_Permission('cdb_testmember_1', 'foo');"
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+
+    # Cleanup
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Remove_Organization_Access_Permission('cdb_testmember_1', 'foo');"
+    truncate_table cdb_testmember_1 foo
 }
 
 function test_user_can_read_when_it_has_permission_after_organization_permission_is_removed() {
     create_role_and_schema cdb_testmember_3
+    sql cdb_testmember_1 'INSERT INTO cdb_testmember_1.foo VALUES (1), (2), (3), (4);'
 
     # shares with cdb_testmember_2 and can read but cdb_testmember_3 cannot
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Add_Table_Read_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
     sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
 
     # granting to organization allows to read to both: cdb_testmember_2 and cdb_testmember_3
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Add_Table_Organization_Read_Permission('cdb_testmember_1', 'foo');"
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
-    sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
+    sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
 
     # removing access from organization should keep permission on cdb_testmember_2 but drop it to cdb_testmember_3
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Remove_Organization_Access_Permission('cdb_testmember_1', 'foo');"
-    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 5
+    sql cdb_testmember_2 'SELECT count(*) FROM cdb_testmember_1.foo;' should 4
     sql cdb_testmember_3 'SELECT count(*) FROM cdb_testmember_1.foo;' fails
 
+    # Cleanup
+    sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2')"
+    truncate_table cdb_testmember_1 foo
     drop_role_and_schema cdb_testmember_3
 }
 
 function test_cdb_querytables_returns_schema_and_table_name() {
-    load_sql_file scripts-available/CDB_QueryStatements.sql
-    load_sql_file scripts-available/CDB_QueryTables.sql
     sql cdb_testmember_1 "select * from CDB_QueryTables('select * from foo');" should "{cdb_testmember_1.foo}"
 }
 
 function test_cdb_querytables_works_with_parentheses() {
-    load_sql_file scripts-available/CDB_QueryStatements.sql
-    load_sql_file scripts-available/CDB_QueryTables.sql
     sql cdb_testmember_1 "select * from CDB_QueryTables('(select * from foo)');" should "{cdb_testmember_1.foo}"
 }
 
 function test_cdb_querytables_returns_schema_and_table_name_for_several_schemas() {
-    load_sql_file scripts-available/CDB_QueryStatements.sql
-    load_sql_file scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
 function test_cdb_querytables_does_not_return_functions_as_part_of_the_resultset() {
-    load_sql_file scripts-available/CDB_QueryStatements.sql
-    load_sql_file scripts-available/CDB_QueryTables.sql
     sql postgres "select * from CDB_QueryTables('select * from cdb_testmember_1.foo, cdb_testmember_2.bar, plainto_tsquery(''foo'')');" should "{cdb_testmember_1.foo,cdb_testmember_2.bar}"
 }
 
@@ -464,10 +500,6 @@ function test_cdb_usertables_should_work_with_orgusers() {
     # this is required to enable select from other schema
     sql postgres "GRANT USAGE ON SCHEMA cdb_testmember_1 TO publicuser";
 
-
-    # test CDB_UserTables with publicuser
-    load_sql_file scripts-available/CDB_UserTables.sql
-
     sql publicuser "SELECT count(*) FROM CDB_UserTables('all')" should 1
     sql publicuser "SELECT count(*) FROM CDB_UserTables('public')" should 1
     sql publicuser "SELECT count(*) FROM CDB_UserTables('private')" should 0
@@ -483,6 +515,7 @@ function test_cdb_usertables_should_work_with_orgusers() {
     # test cdb_testmember_2 can select from cdb_testmember_1's public table
     sql cdb_testmember_2 "SELECT * FROM cdb_testmember_1.test_perms_pub" should 1
 
+    sql postgres 'REVOKE USAGE ON SCHEMA cdb_testmember_1 FROM publicuser;'
     sql cdb_testmember_1 "DROP TABLE test_perms_pub"
     sql cdb_testmember_1 "DROP TABLE test_perms_priv"
 }

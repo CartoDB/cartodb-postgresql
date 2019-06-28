@@ -15,7 +15,7 @@
 --
 --
 -- }{
-CREATE OR REPLACE FUNCTION CDB_RandomTids(in_table regclass, in_nsamples integer)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_RandomTids(in_table regclass, in_nsamples integer)
   RETURNS tid[]
 AS $$
 DECLARE

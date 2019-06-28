@@ -1,6 +1,6 @@
 DO $$ BEGIN IF EXISTS (SELECT * FROM pg_proc p, pg_namespace n WHERE p.proname = 'cdb_transformtowebmercator' AND p.pronamespace = n.oid AND n.nspname = 'public') THEN RAISE EXCEPTION 'Use CREATE EXTENSION cartodb FROM unpackaged'; END IF; END; $$ LANGUAGE 'plpgsql'; -- forbid duplicated extension
 
-CREATE OR REPLACE FUNCTION cartodb.CDB_version()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_version()
 RETURNS text AS $$
   SELECT '@@VERSION@@'::text;
 $$ language 'sql' IMMUTABLE STRICT;

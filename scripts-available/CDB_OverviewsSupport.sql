@@ -1,7 +1,7 @@
 -- Auxiliary overviews FUNCTIONS
 
 -- Maximum zoom level for which overviews may be created
-CREATE OR REPLACE FUNCTION _CDB_MaxOverviewLevel()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_MaxOverviewLevel()
 RETURNS INTEGER
 AS $$
   BEGIN
@@ -18,7 +18,7 @@ AS $$
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Maximum zoom level usable with integer coordinates
-CREATE OR REPLACE FUNCTION _CDB_MaxZoomLevel()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_MaxZoomLevel()
 RETURNS INTEGER
 AS $$
   BEGIN
@@ -31,7 +31,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- that may contain user tables are returned.
 -- For each table, the regclass, schema name and table name are returned.
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_UserTablesInSchema(schema_name text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_UserTablesInSchema(schema_name text DEFAULT NULL)
 RETURNS TABLE(table_regclass REGCLASS, schema_name TEXT, table_name TEXT)
 AS $$
   SELECT
@@ -43,7 +43,7 @@ AS $$
   WHERE c.relkind = 'r'
   AND c.relname NOT IN ('cdb_tablemetadata', 'cdb_analysis_catalog', 'cdb_conf', 'spatial_ref_sys')
   AND CASE WHEN schema_name IS NULL
-             THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', 'cartodb')
+             THEN n.nspname NOT IN ('pg_catalog', 'information_schema', 'topology', '@extschema@')
            ELSE n.nspname = schema_name
            END;
 $$ LANGUAGE 'sql' STABLE PARALLEL SAFE;
@@ -51,7 +51,7 @@ $$ LANGUAGE 'sql' STABLE PARALLEL SAFE;
 -- Pattern that can be used to detect overview tables and Extract
 -- the intended zoom level from the table name.
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_OverviewTableDiscriminator()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewTableDiscriminator()
 RETURNS TEXT
 AS $$
   BEGIN
@@ -63,18 +63,18 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Pattern matched by the overview tables of a given base table name.
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_OverviewTablePattern(base_table TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewTablePattern(base_table TEXT)
 RETURNS TEXT
 AS $$
   BEGIN
-    RETURN _CDB_OverviewTableDiscriminator() || base_table;
+    RETURN @extschema@._CDB_OverviewTableDiscriminator() || base_table;
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- tablename SIMILAR TO _CDB_OverviewTablePattern(base_table)
 
 -- Name of an overview table, given the base table name and the Z level
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_OverviewTableName(base_table TEXT, z INTEGER)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewTableName(base_table TEXT, z INTEGER)
 RETURNS TEXT
 AS $$
   BEGIN
@@ -84,39 +84,39 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Condition to check if a tabla is an overview table of some base table
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_IsOverviewTableOf(base_table TEXT, otable TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_IsOverviewTableOf(base_table TEXT, otable TEXT)
 RETURNS BOOLEAN
 AS $$
   BEGIN
-    RETURN otable SIMILAR TO _CDB_OverviewTablePattern(base_table);
+    RETURN otable SIMILAR TO @extschema@._CDB_OverviewTablePattern(base_table);
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Extract the Z level from an overview table name
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_OverviewTableZ(otable TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewTableZ(otable TEXT)
 RETURNS INTEGER
 AS $$
   BEGIN
-    RETURN substring(otable from _CDB_OverviewTableDiscriminator())::integer;
+    RETURN substring(otable from @extschema@._CDB_OverviewTableDiscriminator())::integer;
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Name of the base table corresponding to an overview table
 -- Scope: private.
-CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTableName(overview_table TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewBaseTableName(overview_table TEXT)
 RETURNS TEXT
 AS $$
   BEGIN
-    IF _CDB_OverviewTableZ(overview_table) IS NULL THEN
+    IF @extschema@._CDB_OverviewTableZ(overview_table) IS NULL THEN
       RETURN overview_table;
     ELSE
-      RETURN regexp_replace(overview_table, _CDB_OverviewTableDiscriminator(), '');
+      RETURN regexp_replace(overview_table, @extschema@._CDB_OverviewTableDiscriminator(), '');
     END IF;
   END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION _CDB_OverviewBaseTable(overview_table REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_OverviewBaseTable(overview_table REGCLASS)
 RETURNS REGCLASS
 AS $$
   DECLARE
@@ -125,8 +125,8 @@ AS $$
     base_name TEXT;
     base_table REGCLASS;
   BEGIN
-    SELECT * FROM _cdb_split_table_name(overview_table) INTO schema_name, table_name;
-    base_name := _CDB_OverviewBaseTableName(table_name);
+    SELECT * FROM @extschema@._cdb_split_table_name(overview_table) INTO schema_name, table_name;
+    base_name := @extschema@._CDB_OverviewBaseTableName(table_name);
     IF base_name != table_name THEN
       base_table := Format('%I.%I', schema_name, base_name)::regclass;
     ELSE
@@ -142,7 +142,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 --   reloid: oid of the table.
 -- Return (schema_name, table_name)
 -- note that returned names will be quoted if necessary
-CREATE OR REPLACE FUNCTION _cdb_split_table_name(reloid REGCLASS, OUT schema_name TEXT, OUT table_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_split_table_name(reloid REGCLASS, OUT schema_name TEXT, OUT table_name TEXT)
 AS $$
   BEGIN
     SELECT n.nspname, c.relname
@@ -158,7 +158,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 --   reloid: oid of the table.
 -- Return (schema_name, table_name)
 -- note that returned names will be quoted if necessary
-CREATE OR REPLACE FUNCTION _cdb_schema_name(reloid REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_schema_name(reloid REGCLASS)
 RETURNS TEXT
 AS $$
   DECLARE

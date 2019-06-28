@@ -5,7 +5,7 @@
 -- 
 -- 
 
-CREATE OR REPLACE FUNCTION CDB_DistinctMeasure ( in_array text[], threshold numeric DEFAULT null ) RETURNS numeric as $$
+CREATE OR REPLACE FUNCTION @extschema@.CDB_DistinctMeasure ( in_array text[], threshold numeric DEFAULT null ) RETURNS numeric as $$
 DECLARE
     element_count INT4;
     maxval numeric;
