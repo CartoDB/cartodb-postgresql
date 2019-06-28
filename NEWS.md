@@ -1,3 +1,15 @@
+0.27.2 (2019-06-21)
+* Improvements and fixes in Ghost tables functions (#360)
+
+0.27.1 (2019-06-03)
+* Add some qualifications that were left in the previous release.
+
+0.27.0 (2019-06-03)
+* Fully qualify function calls
+* Several improvements to bash tests.
+* Avoid dropping publicuser in tests.
+* Raise minimum requirement to PostgreSQL 9.6.
+
 0.26.1 (2019-03-19)
 * Remove default TIS values from Ghost tables functions
 

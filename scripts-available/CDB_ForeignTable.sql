@@ -4,7 +4,7 @@
 -- All the FDW settings are read from the `cdb_conf.fdws` entry json file.
 ---------------------------
 
-CREATE OR REPLACE FUNCTION cartodb._CDB_Setup_FDW(fdw_name text, config json)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Setup_FDW(fdw_name text, config json)
 RETURNS void
 AS $$
 DECLARE
@@ -58,12 +58,12 @@ BEGIN
     END IF;
 
     -- Give the organization role usage permisions over the schema
-    SELECT cartodb.CDB_Organization_Member_Group_Role_Member_Name() INTO org_role;
+    SELECT @extschema@.CDB_Organization_Member_Group_Role_Member_Name() INTO org_role;
     EXECUTE FORMAT ('GRANT USAGE ON SCHEMA %I TO %I', fdw_name, org_role);
 
     -- Bring here the remote cdb_tablemetadata
     IF NOT EXISTS ( SELECT * FROM PG_CLASS WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname=fdw_name) and relname='cdb_tablemetadata') THEN
-      EXECUTE FORMAT ('CREATE FOREIGN TABLE %I.cdb_tablemetadata (tabname text, updated_at timestamp with time zone) SERVER %I OPTIONS (table_name ''cdb_tablemetadata_text'', schema_name ''public'', updatable ''false'')', fdw_name, fdw_name);
+      EXECUTE FORMAT ('CREATE FOREIGN TABLE %I.cdb_tablemetadata (tabname text, updated_at timestamp with time zone) SERVER %I OPTIONS (table_name ''cdb_tablemetadata_text'', schema_name ''@extschema@'', updatable ''false'')', fdw_name, fdw_name);
     END IF;
     EXECUTE FORMAT ('GRANT SELECT ON %I.cdb_tablemetadata TO %I', fdw_name, org_role);
 
@@ -71,37 +71,37 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION cartodb._CDB_Setup_FDWS()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Setup_FDWS()
 RETURNS VOID AS 
 $$
 DECLARE
 row record;
 BEGIN
-  FOR row IN SELECT p.key, p.value from lateral json_each(cartodb.CDB_Conf_GetConf('fdws')) p LOOP
-      EXECUTE 'SELECT cartodb._CDB_Setup_FDW($1, $2)' USING row.key, row.value;
+  FOR row IN SELECT p.key, p.value from lateral json_each(@extschema@.CDB_Conf_GetConf('fdws')) p LOOP
+      EXECUTE 'SELECT @extschema@._CDB_Setup_FDW($1, $2)' USING row.key, row.value;
     END LOOP;
   END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION cartodb._CDB_Setup_FDW(fdw_name text)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Setup_FDW(fdw_name text)
   RETURNS void AS
 $BODY$
 DECLARE
 config json;
 BEGIN
-  SELECT p.value FROM LATERAL json_each(cartodb.CDB_Conf_GetConf('fdws')) p WHERE p.key = fdw_name INTO config;
-  EXECUTE 'SELECT cartodb._CDB_Setup_FDW($1, $2)' USING fdw_name, config;
+  SELECT p.value FROM LATERAL json_each(@extschema@.CDB_Conf_GetConf('fdws')) p WHERE p.key = fdw_name INTO config;
+  EXECUTE 'SELECT @extschema@._CDB_Setup_FDW($1, $2)' USING fdw_name, config;
 END
 $BODY$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION cartodb.CDB_Add_Remote_Table(source text, table_name text)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Add_Remote_Table(source text, table_name text)
   RETURNS void AS
 $$
 BEGIN
-  PERFORM cartodb._CDB_Setup_FDW(source);
+  PERFORM @extschema@._CDB_Setup_FDW(source);
   EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', source, table_name, source, source);
   --- Grant SELECT to publicuser
   EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO publicuser;', source, table_name);
@@ -109,7 +109,7 @@ END
 $$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION cartodb.CDB_Get_Foreign_Updated_At(foreign_table regclass)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Get_Foreign_Updated_At(foreign_table regclass)
   RETURNS timestamp with time zone AS
 $$
 DECLARE
@@ -132,7 +132,7 @@ $$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION cartodb._cdb_dbname_of_foreign_table(reloid oid)
+CREATE OR REPLACE FUNCTION @extschema@._cdb_dbname_of_foreign_table(reloid oid)
 RETURNS TEXT AS $$
     SELECT option_value FROM pg_options_to_table((
 
@@ -149,18 +149,18 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
 -- Note: dbname is never quoted whereas schema and table names are when needed.
-CREATE OR REPLACE FUNCTION cartodb.CDB_QueryTables_Updated_At(query text)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_QueryTables_Updated_At(query text)
 RETURNS TABLE(dbname text, schema_name text, table_name text, updated_at timestamptz)
 AS $$
     WITH query_tables AS (
-      SELECT unnest(CDB_QueryTablesText(query)) schema_table_name
+      SELECT unnest(@extschema@.CDB_QueryTablesText(query)) schema_table_name
     ), query_tables_oid AS (
       SELECT schema_table_name, schema_table_name::regclass::oid AS reloid
       FROM query_tables
     ),
     fqtn AS (
       SELECT
-        (CASE WHEN c.relkind = 'f' THEN cartodb._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
+        (CASE WHEN c.relkind = 'f' THEN @extschema@._cdb_dbname_of_foreign_table(query_tables_oid.reloid)
               ELSE current_database()
          END)::text AS dbname,
          quote_ident(n.nspname::text) schema_name,
@@ -172,8 +172,8 @@ AS $$
       WHERE c.oid = query_tables_oid.reloid
     )
     SELECT fqtn.dbname, fqtn.schema_name, fqtn.table_name,
-      (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
-            ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
+      (CASE WHEN relkind = 'f' THEN @extschema@.CDB_Get_Foreign_Updated_At(reloid)
+            ELSE (SELECT md.updated_at FROM @extschema@.CDB_TableMetadata md WHERE md.tabname = reloid)
       END) AS updated_at
     FROM fqtn;
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
@@ -182,7 +182,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 -- Return the last updated time of a set of tables
 -- It is aware of foreign tables
 -- It assumes the local (schema_name, table_name) map to the remote ones with the same name
-CREATE OR REPLACE FUNCTION cartodb.CDB_Last_Updated_Time(tables text[])
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Last_Updated_Time(tables text[])
 RETURNS timestamptz AS $$
     WITH t AS (
         SELECT unnest(tables) AS schema_table_name
@@ -190,8 +190,8 @@ RETURNS timestamptz AS $$
         SELECT (t.schema_table_name)::regclass::oid as reloid FROM t
     ), t_updated_at AS (
         SELECT
-            (CASE WHEN relkind = 'f' THEN cartodb.CDB_Get_Foreign_Updated_At(reloid)
-                  ELSE (SELECT md.updated_at FROM CDB_TableMetadata md WHERE md.tabname = reloid)
+            (CASE WHEN relkind = 'f' THEN @extschema@.CDB_Get_Foreign_Updated_At(reloid)
+                  ELSE (SELECT md.updated_at FROM @extschema@.CDB_TableMetadata md WHERE md.tabname = reloid)
              END) AS updated_at
         FROM t_oid
         LEFT JOIN pg_catalog.pg_class c ON c.oid = reloid

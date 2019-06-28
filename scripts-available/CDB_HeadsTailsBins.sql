@@ -8,7 +8,7 @@
 --  
 --
 
-CREATE OR REPLACE FUNCTION CDB_HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$ 
+CREATE OR REPLACE FUNCTION @extschema@.CDB_HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$ 
 DECLARE 
     element_count INT4; 
     arr_mean numeric; 

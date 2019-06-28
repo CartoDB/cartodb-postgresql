@@ -3,7 +3,7 @@
 -- Regexp curtesy of Hubert Lubaczewski (depesz)
 -- Implemented in plpython for performance reasons
 --
-CREATE OR REPLACE FUNCTION CDB_QueryStatements(query text) 
+CREATE OR REPLACE FUNCTION @extschema@.CDB_QueryStatements(query text) 
 RETURNS SETOF TEXT AS $$
   import re
   pat = re.compile( r'''((?:[^'"$;]+|"[^"]*"|'[^']*'|(\$[^$]*\$).*?\2)+)''', re.DOTALL )

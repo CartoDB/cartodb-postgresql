@@ -1,24 +1,24 @@
 -- Read configuration parameter analysis_quota_factor, making it
 -- accessible to regular users (which don't have access to cdb_conf)
-CREATE OR REPLACE FUNCTION _CDB_GetConfAnalysisQuotaFactor()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_GetConfAnalysisQuotaFactor()
 RETURNS float8 AS
 $$
 BEGIN
-  RETURN CDB_Conf_GetConf('analysis_quota_factor')::text::float8;
+  RETURN @extschema@.CDB_Conf_GetConf('analysis_quota_factor')::text::float8;
 END;
 $$
 LANGUAGE 'plpgsql' STABLE PARALLEL SAFE SECURITY DEFINER;
 
 
 -- Get the factor (fraction of the quota) for Camshaft cached analysis tables
-CREATE OR REPLACE FUNCTION _CDB_AnalysisQuotaFactor()
+CREATE OR REPLACE FUNCTION @extschema@._CDB_AnalysisQuotaFactor()
 RETURNS float8 AS
 $$
 DECLARE
   factor float8;
 BEGIN
   -- We use a floating point cdb_conf parameter
-  factor := _CDB_GetConfAnalysisQuotaFactor();
+  factor := @extschema@._CDB_GetConfAnalysisQuotaFactor();
   -- With a default value
   IF factor IS NULL THEN
     factor := 2;
@@ -33,7 +33,7 @@ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 -- The name of an analysis table is passed; this, in addition to the
 -- db role that executes this function is used to determined which
 -- analysis tables will be considered.
-CREATE OR REPLACE FUNCTION CDB_CheckAnalysisQuota(table_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_CheckAnalysisQuota(table_name TEXT)
 RETURNS void AS
 $$
 DECLARE
@@ -54,7 +54,7 @@ BEGIN
 
   SELECT current_schema() INTO schema_name;
   EXECUTE FORMAT('SELECT %I._CDB_UserQuotaInBytes();', schema_name) INTO nominal_quota;
-  IF nominal_quota*_CDB_AnalysisQuotaFactor() < _CDB_AnalysisDataSize(schema_name) THEN
+  IF nominal_quota * @extschema@._CDB_AnalysisQuotaFactor() < @extschema@._CDB_AnalysisDataSize(schema_name) THEN
     -- The limit is defined by a factor applied to the total space quota for the user
     RAISE EXCEPTION 'Analysis cache space limits exceeded';
   END IF;

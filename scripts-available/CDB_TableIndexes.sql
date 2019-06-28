@@ -1,5 +1,5 @@
 -- Function returning indexes for a table
-CREATE OR REPLACE FUNCTION CDB_TableIndexes(REGCLASS)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_TableIndexes(REGCLASS)
 RETURNS TABLE(index_name name, index_unique bool, index_primary bool, index_keys text array)
 AS $$
 
@@ -24,4 +24,4 @@ $$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 -- This is to migrate from pre-0.2.0 version
 -- See http://github.com/CartoDB/cartodb-postgresql/issues/36
-GRANT EXECUTE ON FUNCTION CDB_TableIndexes(REGCLASS) TO public;
+GRANT EXECUTE ON FUNCTION @extschema@.CDB_TableIndexes(REGCLASS) TO public;

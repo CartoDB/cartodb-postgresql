@@ -1,4 +1,6 @@
-CREATE ROLE
+SET
+DO
+SET
 CREATE TABLE
 CREATE TABLE
 GRANT
@@ -15,4 +17,3 @@ public_publicuser|pub
 You are now connected to database "contrib_regression" as user "postgres".
 DROP TABLE
 DROP TABLE
-DROP ROLE

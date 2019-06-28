@@ -4,7 +4,7 @@
 -- Mode
 -- https://wiki.postgresql.org/wiki/Aggregate_Mode
 
-CREATE OR REPLACE FUNCTION cartodb._CDB_Math_final_mode(anyarray)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Math_final_mode(anyarray)
   RETURNS anyelement AS
 $BODY$
     SELECT a
@@ -15,12 +15,12 @@ $BODY$
 $BODY$
 LANGUAGE 'sql' IMMUTABLE PARALLEL SAFE;
 
-DROP AGGREGATE IF EXISTS cartodb.CDB_Math_Mode(anyelement);
+DROP AGGREGATE IF EXISTS @extschema@.CDB_Math_Mode(anyelement);
 
-CREATE AGGREGATE cartodb.CDB_Math_Mode(anyelement) (
+CREATE AGGREGATE @extschema@.CDB_Math_Mode(anyelement) (
   SFUNC=array_append,
   STYPE=anyarray,
-  FINALFUNC=_CDB_Math_final_mode,
+  FINALFUNC=@extschema@._CDB_Math_final_mode,
   PARALLEL = SAFE,
   INITCOND='{}'
 );
