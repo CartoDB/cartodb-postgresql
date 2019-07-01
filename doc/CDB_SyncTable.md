@@ -22,11 +22,25 @@ Import some data using COPY FROM into a temporary table, then synchronize a tabl
 finally delete the temporary table. This could be used import and update some data periodically while
 allowing to add columns to the data that will be preserved across updates.
 
-
 ```sql
-CREATE tmp_pois(cartodb_id int, name text, type text, longitude double precision, latitude double precision);
+CREATE tmp_pois(cartodb_id int, name text, type text, longitude double precision, latitude double precision, rank int);
 COPY tmp_pois FROM '/tmp/pois.csv';
 SELECT CDB_SyncTable('tmp_pois', 'public', 'pois');
+DROP TABLE tmp_pois;
+```
+
+Now we could perform some changes to the `pois` to maintain our own ranking:
+
+```sql
+UPDATE pois SET rank = random()*4 + 1;
+```
+
+Then, if the source were updated at `/tmp/pois.csv` we could synchronize with it while maintaining our `rank` values with:
+
+```sql
+CREATE tmp_pois(cartodb_id int, name text, type text, longitude double precision, latitude double precision, rank int);
+COPY tmp_pois FROM '/tmp/pois.csv';
+SELECT CDB_SyncTable('tmp_pois', 'public', 'pois', '{rank}');
 DROP TABLE tmp_pois;
 ```
 
