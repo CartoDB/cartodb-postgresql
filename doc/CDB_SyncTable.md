@@ -35,7 +35,7 @@ Now we could perform some changes to the `pois` to maintain our own ranking:
 UPDATE pois SET rank = random()*4 + 1;
 ```
 
-Then, if the source were updated at `/tmp/pois.csv` we could synchronize with it while maintaining our `rank` values with:
+Then, if the source were updated at `/tmp/pois.csv` we could synchronize with it while preserving our `rank` values with:
 
 ```sql
 CREATE tmp_pois(cartodb_id int, name text, type text, longitude double precision, latitude double precision, rank int);
