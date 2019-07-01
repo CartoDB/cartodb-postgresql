@@ -1,3 +1,6 @@
+0.28.0 (2019-07-01)
+* New function CDB_SyncTable (#355)
+
 0.27.2 (2019-06-21)
 * Improvements and fixes in Ghost tables functions (#360)
 
