@@ -9,7 +9,7 @@ If the destination table does not exist it will be created and all the rows of t
 Both tables must have a consistent `cartodb_id` primary key column which will be used to match
 the source and destination rows.
 
-Note that both tables do not necessaryly become identical after the synchronization, since additional columns
+Note that both tables do not necessarily become identical after the synchronization, since additional columns
 may have been added to the destination; those columns will not be altered by the synchronization.
 
 In addition some source columns may be skipped by listing them in the optional last argument; such columns
