@@ -77,8 +77,8 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 
    Sample usage:
 
-     SELECT cartodb.CDB_SyncTable('radar_stations', 'public', 'syncdest');
-     SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
+     SELECT CDB_SyncTable('radar_stations', 'public', 'syncdest');
+     SELECT CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
 
 */
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SyncTable(src_table REGCLASS, dst_schema REGNAMESPACE, dst_table NAME, skip_cols NAME[] = '{}')
