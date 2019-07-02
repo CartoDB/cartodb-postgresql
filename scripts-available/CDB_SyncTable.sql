@@ -21,7 +21,8 @@ AS $$
           LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
           WHERE c.oid = src_table::oid
             AND pg_catalog.pg_table_is_visible(c.oid)
-      );
+      )
+  ORDER BY a.attnum;
 $$ LANGUAGE sql STABLE PARALLEL UNSAFE;
 
 
