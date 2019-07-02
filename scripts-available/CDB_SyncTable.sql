@@ -104,9 +104,6 @@ DECLARE
   dst_colnames TEXT;
   src_colnames TEXT;
 
-  src_hash_table_name NAME;
-  dst_hash_table_name NAME;
-
   update_set_clause TEXT;
 
   num_rows BIGINT;
