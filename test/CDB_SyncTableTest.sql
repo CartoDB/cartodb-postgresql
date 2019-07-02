@@ -50,8 +50,8 @@ UPDATE test_sync_dest SET the_geom = cartodb.CDB_LatLng(lat, lon); -- A "gecodin
 \set QUIET off
 SET client_min_messages TO notice;
 SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
-SELECT * FROM test_sync_source;
-SELECT * FROM test_sync_dest;
+SELECT * FROM test_sync_source ORDER BY cartodb_id;
+SELECT * FROM test_sync_dest ORDER BY cartodb_id;
 
 
 -- Cleanup
