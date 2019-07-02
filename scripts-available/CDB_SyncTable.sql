@@ -69,16 +69,30 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 
 /*
     Given a table name and an array of column names,
-    return array of column names qualified with the table name
+    return array of column names qualified with the table name and quoted when necessary
 
     Example of usage:
 
-       SELECT cartodb.__CDB_QualifyColumns('t', ARRAY['a','b']); --> ARRAY['t.a','t.b']
+       SELECT @extschema@.__CDB_QualifyColumns('t', ARRAY['a','b-1']); --> ARRAY['t.a','t."b-1"']
 
 */
-CREATE OR REPLACE FUNCTION cartodb.__CDB_QualifyColumns(tablename TEXT, colnames TEXT[]) RETURNS TEXT[] AS
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_QualifyColumns(tablename NAME, colnames NAME[]) RETURNS TEXT[] AS
 $$
-    SELECT array_agg(tablename || '.' || _colname) from unnest(colnames) _colname;
+    SELECT array_agg(quote_ident(tablename) || '.' || quote_ident(_colname)) from unnest(colnames) _colname;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+
+/*
+    Given an array of column names,
+    return array of column names quoted when necessary
+
+    Example of usage:
+
+       SELECT @extschema@.__CDB_QuoteColumns(ARRAY['a','b-1']); --> ARRAY['a','"b-1"']
+
+*/
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_QuoteColumns(colnames NAME[]) RETURNS TEXT[] AS
+$$
+    SELECT array_agg(quote_ident(_colname)) from unnest(colnames) _colname;
 $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
 
 /*
@@ -139,7 +153,7 @@ BEGIN
   EXECUTE format('
       INSERT INTO %1$s(cartodb_id, %2$s)
       SELECT cartodb_id, %2$s FROM %3$I _src WHERE NOT EXISTS (SELECT * FROM %1$s _dst WHERE _src.cartodb_id=_dst.cartodb_id)
-  ', fq_dest_table, array_to_string(colnames, ','), src_table);
+  ', fq_dest_table, array_to_string(@extschema@.__CDB_QuoteColumns(colnames), ','), src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
   RAISE DEBUG 'INSERT time (s): %', clock_timestamp() - t;
@@ -147,8 +161,8 @@ BEGIN
   -- Deal with modified rows: ids in source and dest but different hashes
   t := clock_timestamp();
   update_set_clause :=  @extschema@.__CDB_GetUpdateSetClause(colnames, '_changed');
-  dst_colnames := array_to_string(cartodb.__CDB_QualifyColumns('_dst', colnames), ',');
-  src_colnames := array_to_string(cartodb.__CDB_QualifyColumns('_src', colnames), ',');
+  dst_colnames := array_to_string(@extschema@.__CDB_QualifyColumns('_dst', colnames), ',');
+  src_colnames := array_to_string(@extschema@.__CDB_QualifyColumns('_src', colnames), ',');
   EXECUTE format('
       UPDATE %1$s _update SET %2$s
       FROM (
