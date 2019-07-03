@@ -1,3 +1,6 @@
+x.y.z (YYYY-MM-DD)
+* Avoid temporary tables creation in CDB_SyncTable (#366)
+
 0.28.0 (2019-07-01)
 * New function CDB_SyncTable (#355)
 
