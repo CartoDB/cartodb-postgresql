@@ -127,7 +127,7 @@ DECLARE
   t timestamptz;
 BEGIN
   -- If the destination table does not exist, just copy the source table
-  fq_dest_table := format('%I.%I', dst_schema, dst_table);
+  fq_dest_table := format('%s.%I', dst_schema, dst_table);
   EXECUTE format('CREATE TABLE IF NOT EXISTS %s as TABLE %I', fq_dest_table, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   IF num_rows > 0 THEN
