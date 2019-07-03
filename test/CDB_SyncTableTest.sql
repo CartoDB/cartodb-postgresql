@@ -53,6 +53,12 @@ SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{t
 SELECT * FROM test_sync_source ORDER BY cartodb_id;
 SELECT * FROM test_sync_dest ORDER BY cartodb_id;
 
+\echo 'It will work with schemas that need quoting'
+\set QUIET on
+SET client_min_messages TO error;
+CREATE SCHEMA "sch-ema";
+\set QUIET off
+SELECT cartodb.CDB_SyncTable('test_sync_source', 'sch-ema', 'test_sync_dest');
 
 -- Cleanup
 ROLLBACK;
