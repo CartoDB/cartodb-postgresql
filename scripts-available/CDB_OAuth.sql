@@ -1,5 +1,5 @@
 -- Function that reassign the owner of a table to their ownership_role
-CREATE OR REPLACE FUNCTION @extschema.CDB_OAuthReassignTableOwnerOnCreation()
+CREATE OR REPLACE FUNCTION @extschema@.CDB_OAuthReassignTableOwnerOnCreation()
   RETURNS event_trigger
   SECURITY DEFINER
   AS $$

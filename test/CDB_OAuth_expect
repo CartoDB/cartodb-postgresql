@@ -1,0 +1,15 @@
+\set ECHO none
+
+CREATE TABLE
+INSERT 0 1
+1
+ERROR:  relation "test2" does not exist
+LINE 1: SELECT * FROM test2;
+                      ^
+NOTICE:  event trigger "oauth_reassign_tables_trigger" does not exist, skipping
+
+CREATE TABLE
+INSERT 0 1
+1
+1
+
