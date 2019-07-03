@@ -138,7 +138,7 @@ BEGIN
   skip_cols := skip_cols || '{cartodb_id}';
 
   -- Get the list of columns from the source table, excluding skip_cols
-  SELECT ARRAY(SELECT quote_ident(c) FROM  @extschema@._CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
+  SELECT ARRAY(SELECT quote_ident(c) FROM @extschema@._CDB_GetColumns(src_table) as c EXCEPT SELECT unnest(skip_cols)) INTO colnames;
 
   -- Deal with deleted rows: ids in dest but not in source
   t := clock_timestamp();
