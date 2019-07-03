@@ -131,8 +131,7 @@ BEGIN
     WHEN undefined_table THEN
       -- If you add a GET STACKED DIAGNOSTICS text_var = RETURNED_SQLSTATE
       -- you get a code 42P01 which corresponds to undefined_table
-      RAISE NOTICE 'CDB_Get_Foreign_Updated_At: could not find %.cdb_tablemetadata while checking % updated_at, returning NOW() timestamp', fdw_schema_name, foreign_table;
-      time := NOW();
+      RAISE NOTICE 'CDB_Get_Foreign_Updated_At: could not find %.cdb_tablemetadata while checking % updated_at, returning NULL timestamp', fdw_schema_name, foreign_table;
   END;
   RETURN time;
 END
