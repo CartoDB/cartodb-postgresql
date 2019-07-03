@@ -588,8 +588,7 @@ test_extension|public|"local-table-with-dashes"'
 
     # Check CDB_Get_Foreign_Updated_At is robust to unimported CDB_TableMetadata
     sql postgres "DROP FOREIGN TABLE IF EXISTS test_fdw.cdb_tablemetadata;"
-    sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo') < (now() + interval '1 minute')" should 't'
-    sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo') > (now() - interval '1 minute')" should 't'
+    sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo') IS NULL" should 't'
 
     # Teardown
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
