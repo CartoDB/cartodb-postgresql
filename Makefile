@@ -130,6 +130,8 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
+PG_VERSION := $(shell $(PG_CONFIG) --version | $(AWK) '{split($$2,a,"."); print a[1]}')
+
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
@@ -171,7 +173,11 @@ legacy_regress: $(REGRESS_OLD) Makefile
 			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" >> $${of}; \
 		exp=expected/test/$${tn}.out; \
 		echo '\set ECHO none' > $${exp}; \
-		cat test/$${tn}_expect >> $${exp}; \
+		if [[ -f "test/$${tn}_expect.pg$(PG_VERSION)" ]]; then \
+			cat test/$${tn}_expect.pg$(PG_VERSION) >> $${exp}; \
+		else \
+			cat test/$${tn}_expect >> $${exp}; \
+		fi \
 	done
 
 test_organization:
