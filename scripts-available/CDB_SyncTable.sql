@@ -71,29 +71,17 @@ $$ LANGUAGE sql VOLATILE PARALLEL UNSAFE;
 /*
     Given a table name and an array of column names,
     return array of column names qualified with the table name and quoted when necessary
+    tablename and colnames should be properly quoted, and for this reason the type NAME is not
+    used for them (with quotes they could exceed the maximum identifier length)
 
     Example of usage:
 
-       SELECT @extschema@.__CDB_QualifyColumns('t', ARRAY['a','b-1']); --> ARRAY['t.a','t."b-1"']
+       SELECT @extschema@.__CDB_QualifyColumns('t', ARRAY['a','"b-1"']); --> ARRAY['t.a','t."b-1"']
 
 */
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_QualifyColumns(tablename NAME, colnames NAME[]) RETURNS TEXT[] AS
 $$
-    SELECT array_agg(quote_ident(tablename) || '.' || quote_ident(_colname)) from unnest(colnames) _colname;
-$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
-
-/*
-    Given an array of column names,
-    return array of column names quoted when necessary
-
-    Example of usage:
-
-       SELECT @extschema@.__CDB_QuoteColumns(ARRAY['a','b-1']); --> ARRAY['a','"b-1"']
-
-*/
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_QuoteColumns(colnames NAME[]) RETURNS TEXT[] AS
-$$
-    SELECT array_agg(quote_ident(_colname)) from unnest(colnames) _colname;
+    SELECT array_agg(tablename || '.' || _colname) from unnest(colnames) _colname;
 $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
 
 /*
@@ -128,7 +116,7 @@ DECLARE
 BEGIN
   -- If the destination table does not exist, just copy the source table
   fq_dest_table := format('%s.%I', dst_schema, dst_table);
-  EXECUTE format('CREATE TABLE IF NOT EXISTS %s as TABLE %I', fq_dest_table, src_table);
+  EXECUTE format('CREATE TABLE IF NOT EXISTS %s as TABLE %s', fq_dest_table, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   IF num_rows > 0 THEN
     RAISE NOTICE 'INSERTED % row(s)', num_rows;
@@ -143,7 +131,7 @@ BEGIN
   -- Deal with deleted rows: ids in dest but not in source
   t := clock_timestamp();
   EXECUTE format(
-    'DELETE FROM %1$s _dst WHERE NOT EXISTS (SELECT * FROM %2$I _src WHERE _src.cartodb_id=_dst.cartodb_id)',
+    'DELETE FROM %1$s _dst WHERE NOT EXISTS (SELECT * FROM %2$s _src WHERE _src.cartodb_id=_dst.cartodb_id)',
     fq_dest_table, src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'DELETED % row(s)', num_rows;
@@ -153,8 +141,8 @@ BEGIN
   t := clock_timestamp();
   EXECUTE format('
       INSERT INTO %1$s(cartodb_id, %2$s)
-      SELECT cartodb_id, %2$s FROM %3$I _src WHERE NOT EXISTS (SELECT * FROM %1$s _dst WHERE _src.cartodb_id=_dst.cartodb_id)
-  ', fq_dest_table, array_to_string(@extschema@.__CDB_QuoteColumns(colnames), ','), src_table);
+      SELECT cartodb_id, %2$s FROM %3$s _src WHERE NOT EXISTS (SELECT * FROM %1$s _dst WHERE _src.cartodb_id=_dst.cartodb_id)
+  ', fq_dest_table, array_to_string(colnames, ','), src_table);
   GET DIAGNOSTICS num_rows = ROW_COUNT;
   RAISE NOTICE 'INSERTED % row(s)', num_rows;
   RAISE DEBUG 'INSERT time (s): %', clock_timestamp() - t;
