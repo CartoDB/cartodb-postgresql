@@ -1071,7 +1071,7 @@ BEGIN
   -- by selecting their names into an array and
   -- joining the array with a comma
   SELECT
-    ',' || array_to_string(array_agg(Format('%I',a.attname)),',') AS column_name_sql,
+    ',' || array_to_string(array_agg(Format('%I',a.attname) ORDER BY a.attnum),',') AS column_name_sql,
     Count(*) AS count
   INTO rec
   FROM pg_class c
