@@ -1,5 +1,6 @@
-x.y.z (YYYY-MM-DD)
+0.28.1 (2019-07-04)
 * Avoid temporary tables creation in CDB_SyncTable (#366)
+* Make CDB_Get_Foreign_Updated_At robust to missing CDB_TableMetadata (#362)
 
 0.28.0 (2019-07-01)
 * New function CDB_SyncTable (#355)
