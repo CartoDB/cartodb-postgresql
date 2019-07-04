@@ -17,7 +17,7 @@ BEGIN
                   obj.schema_name,
                   obj.object_identity;
       SELECT rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid INTO creator_role;
-      SELECT value->>'ownership_role_name' from cdb_conf where key = (SELECT 'api_keys_' || rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid) INTO owner_role;
+      SELECT value->>'ownership_role_name' from cdb_conf where key = 'api_keys_' || creator_role INTO owner_role;
       IF owner_role IS NULL THEN
         CONTINUE;
       ELSE
