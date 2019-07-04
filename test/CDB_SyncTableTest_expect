@@ -60,4 +60,35 @@ NOTICE:  MODIFIED 0 row(s)
 5|0101000020E610000000000000000014400000000000001440|0101000020110F000099476EE86AFC20413E7EB983F2012141|5|5|sandia
 It will work with schemas that need quoting
 
+INSERT 0 1
+DELETE 1
+UPDATE 1
+SET
+NOTICE:  relation "test_sync_dest" already exists, skipping
+NOTICE:  DELETED 1 row(s)
+NOTICE:  INSERTED 1 row(s)
+NOTICE:  MODIFIED 1 row(s)
+
+It will work with table names that need quoting
+
+INSERT 0 1
+DELETE 1
+UPDATE 1
+SET
+NOTICE:  relation "test-sync-dest" already exists, skipping
+NOTICE:  DELETED 1 row(s)
+NOTICE:  INSERTED 1 row(s)
+NOTICE:  MODIFIED 1 row(s)
+
+It will work with column names that need quoting
+
+INSERT 0 1
+DELETE 1
+UPDATE 1
+SET
+NOTICE:  relation "test_sync_dest2" already exists, skipping
+NOTICE:  DELETED 1 row(s)
+NOTICE:  INSERTED 1 row(s)
+NOTICE:  MODIFIED 1 row(s)
+
 ROLLBACK
