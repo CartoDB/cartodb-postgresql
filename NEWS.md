@@ -1,3 +1,9 @@
+0.29.0 (2019-xx-xx)
+* Added new function CDB_OAuth:
+  * Install event trigger to check for table/views creation
+  * Reassign the ownership of new tables to a defined role in the cdb_conf
+* Changed MakeFile to support different expects for differents PG versions
+
 0.28.1 (2019-07-04)
 * Avoid temporary tables creation in CDB_SyncTable (#366)
 * Make CDB_Get_Foreign_Updated_At robust to missing CDB_TableMetadata (#362)
