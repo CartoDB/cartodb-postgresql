@@ -18,7 +18,7 @@ BEGIN
                   obj.object_identity;
       SELECT rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid INTO creator_role;
       SELECT value->>'ownership_role_name' from cdb_conf where key = 'api_keys_' || creator_role INTO owner_role;
-      IF owner_role IS NULL THEN
+      IF owner_role IS NULL OR owner_role = '' THEN
         CONTINUE;
       ELSE
         EXECUTE 'ALTER ' || obj.object_type || ' ' || obj.object_identity || ' OWNER TO ' || QUOTE_IDENT(owner_role);
