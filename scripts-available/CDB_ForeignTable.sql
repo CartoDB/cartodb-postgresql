@@ -203,6 +203,9 @@ BEGIN
        EXECUTE format('CREATE ROLE %I NOLOGIN', fdw_name);
     END IF;
 
+    -- Transfer ownership of the server to the fdw role
+    EXECUTE format('ALTER SERVER %I OWNER TO %I', fdw_name, fdw_name);
+
     -- Create user mapping
     IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_name AND usename = fdw_name ) THEN
         EXECUTE FORMAT ('CREATE USER MAPPING FOR %I SERVER %I', fdw_name, fdw_name);
@@ -226,8 +229,8 @@ BEGIN
       EXECUTE FORMAT ('CREATE SCHEMA %I', fdw_name);
     END IF;
 
-    -- Give the fdw role usage permisions over the schema
-    EXECUTE FORMAT ('GRANT USAGE ON SCHEMA %I TO %I', fdw_name, fdw_name);
+    -- Give the fdw role ownership over the schema
+    EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_name, fdw_name);
 
     -- Grant the fdw role to the caller, and permissions to grant it to others
     EXECUTE FORMAT ('GRANT %I TO %I WITH ADMIN OPTION', fdw_name, session_user);
