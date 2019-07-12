@@ -219,7 +219,7 @@ BEGIN
 
     -- Grant usage on the wrapper and server to the fdw role
     EXECUTE FORMAT ('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', fdw_name);
-    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN ON FOREIGN SERVER %I TO %I', fdw_name, fdw_name);
+    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN SERVER %I TO %I', fdw_name, fdw_name);
 
     -- Create schema if it does not exist.
     IF NOT EXISTS ( SELECT * from pg_namespace WHERE nspname=fdw_name) THEN
