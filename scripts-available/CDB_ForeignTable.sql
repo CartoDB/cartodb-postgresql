@@ -139,6 +139,39 @@ $$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
+-- A function to set up a user-defined foreign data server
+-- It does not read from CDB_Conf
+--
+-- Sample call:
+-- SELECT cartodb.CDB_SetUp_Foreign_Server('amazon', '{
+--    "server": {
+--      "extensions": "postgis",
+--      "dbname": "testdb",
+--      "host": "myhostname.us-east-2.rds.amazonaws.com",
+--      "port": "5432"
+--    },
+--    "user": "fdw_user",
+--    "password": "secret"
+-- ');
+--
+-- Underneath it will:
+--   * Set up postgresql_fdw
+--   * Create a server with the name 'amazon'
+--   * Create a role called 'amazon' to manage access
+--   * Create a user mapping with that role 'amazon'
+--   * Create a schema 'amazon' as a convenience to set up all foreign
+--     tables over there
+--
+-- It is the responsibility of the caller to grant that role to either:
+--   * Nobody
+--   * Specific roles: GRANT amazon TO role_name;
+--   * Members of the organization: SELECT cartodb.CDB_Grant_Role_To_Org_Members('amazon'); TODO
+--   * The publicuser: GRANT amazon TO publicuser;
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_Foreign_Server(fdw_name NAME, config json)
+RETURNS void AS $$
+-- TODO Code here
+$$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
+
 CREATE OR REPLACE FUNCTION @extschema@._cdb_dbname_of_foreign_table(reloid oid)
 RETURNS TEXT AS $$
     SELECT option_value FROM pg_options_to_table((
