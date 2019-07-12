@@ -154,7 +154,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --      "user": "fdw_user",
 --      "password": "secret"
 --    }
--- ');
+-- }');
 --
 -- Underneath it will:
 --   * Set up postgresql_fdw
