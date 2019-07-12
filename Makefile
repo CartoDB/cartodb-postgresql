@@ -100,6 +100,7 @@ UPGRADABLE = \
   0.27.1 \
   0.27.2 \
   0.28.0 \
+  0.28.1 \
   0.29.0 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
