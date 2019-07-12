@@ -143,7 +143,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 -- It does not read from CDB_Conf
 --
 -- Sample call:
--- SELECT cartodb.CDB_SetUp_Foreign_Server('amazon', '{
+-- SELECT cartodb.CDB_SetUp_User_Foreign_Server('amazon', '{
 --    "server": {
 --      "extensions": "postgis",
 --      "dbname": "testdb",
@@ -169,7 +169,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   * Specific roles: GRANT amazon TO role_name;
 --   * Members of the organization: SELECT cartodb.CDB_Grant_Role_To_Org_Members('amazon'); TODO
 --   * The publicuser: GRANT amazon TO publicuser;
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_Foreign_Server(fdw_name NAME, config json)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Server(fdw_name NAME, config json)
 RETURNS void AS $$
 DECLARE
   row record;
