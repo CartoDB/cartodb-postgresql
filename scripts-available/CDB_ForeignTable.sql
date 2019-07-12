@@ -215,7 +215,6 @@ BEGIN
         ELSE
           EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (SET %I %L)', fdw_name, fdw_name, option.key, option.value);
         END IF;
-      END LOOP;
     END LOOP;
 
     -- Grant usage on the wrapper and server to the fdw role
@@ -234,7 +233,7 @@ BEGIN
     EXECUTE FORMAT ('GRANT %I TO %I WITH ADMIN OPTION', fdw_name, session_user);
 
     -- TODO: Bring here the remote cdb_tablemetadata
-
+END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION @extschema@._cdb_dbname_of_foreign_table(reloid oid)
