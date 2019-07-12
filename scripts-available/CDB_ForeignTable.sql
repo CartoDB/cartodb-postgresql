@@ -241,6 +241,17 @@ BEGIN
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
+
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Table(fdw_name NAME, table_name NAME)
+RETURNS void AS $$
+BEGIN
+  EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA carto_lite LIMIT TO (%I) FROM SERVER %I INTO %I;', table_name, fdw_name, fdw_name);
+  --- Grant SELECT to fdw role
+  EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO %I;', fdw_name, table_name, fdw_name);
+END
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
+
+
 CREATE OR REPLACE FUNCTION @extschema@._cdb_dbname_of_foreign_table(reloid oid)
 RETURNS TEXT AS $$
     SELECT option_value FROM pg_options_to_table((
