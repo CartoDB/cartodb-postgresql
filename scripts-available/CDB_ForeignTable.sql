@@ -209,7 +209,7 @@ BEGIN
     END IF;
 
     -- Update user mapping settings
-    FOR option IN SELECT o.key, o.value from lateral json_each_text('user_mapping') o LOOP
+    FOR option IN SELECT o.key, o.value from lateral json_each_text(config->'user_mapping') o LOOP
         IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_name AND usename = fdw_name) SELECT * from a where options = option.key) THEN
           EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (ADD %I %L)', fdw_name, fdw_name, option.key, option.value);
         ELSE
