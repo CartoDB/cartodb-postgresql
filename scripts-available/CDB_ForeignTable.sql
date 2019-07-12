@@ -207,16 +207,18 @@ BEGIN
     EXECUTE format('ALTER SERVER %I OWNER TO %I', fdw_name, fdw_name);
 
     -- Create user mapping
-    IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_name AND usename = fdw_name ) THEN
-        EXECUTE FORMAT ('CREATE USER MAPPING FOR %I SERVER %I', fdw_name, fdw_name);
+    -- NOTE: we use a PUBLIC user mapping but control access to the SERVER
+    -- so that we don't need to create a mapping for every user nor store credentials elsewhere
+    IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_name AND usename = 'public' ) THEN
+        EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', fdw_name);
     END IF;
 
     -- Update user mapping settings
     FOR option IN SELECT o.key, o.value from lateral json_each_text(config->'user_mapping') o LOOP
-        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_name AND usename = fdw_name) SELECT * from a where options = option.key) THEN
-          EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (ADD %I %L)', fdw_name, fdw_name, option.key, option.value);
+        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_name AND usename = 'public') SELECT * from a where options = option.key) THEN
+          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', fdw_name, option.key, option.value);
         ELSE
-          EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (SET %I %L)', fdw_name, fdw_name, option.key, option.value);
+          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', fdw_name, option.key, option.value);
         END IF;
     END LOOP;
 
