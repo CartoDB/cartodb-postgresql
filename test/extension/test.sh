@@ -607,14 +607,14 @@ test_extension|public|"local-table-with-dashes"'
    }
 }
 EOF
-    sql postgres "SELECT cartodb.CDB_SetUp_User_Foreign_Server('test_user_fdw', '$ufdw_config');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_Foreign_Server('test_user_fdw', '$ufdw_config');"
 
     # Set up a user foreign table
-    sql postgres "SELECT cartodb.CDB_SetUp_User_Foreign_Table('test_user_fdw', 'test_fdw', 'foo');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_Foreign_Table('test_user_fdw', 'test_fdw', 'foo');"
 
     # Check that the table can be accessed
-    sql postgres "SELECT * from test_user_fdw.foo;"
-    sql postgres "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+    sql cdb_testmember_1 "SELECT * from test_user_fdw.foo;"
+    sql cdb_testmember_1 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
 
 
     # Teardown
@@ -623,6 +623,12 @@ EOF
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
+
+    # TODO add to function to delete stuff
+    sql postgres 'DROP FOREIGN TABLE test_user_fdw.foo;'
+    sql postgres 'DROP schema test_user_fdw;'
+    sql postgres 'DROP USER MAPPING FOR public SERVER test_user_fdw;'
+    sql postgres 'DROP SERVER test_user_fdw;'
 
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
