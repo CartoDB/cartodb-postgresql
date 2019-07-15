@@ -631,8 +631,16 @@ EOF
     sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('test_user_fdw');"
 
+    # By default publicuser cannot access the FDW
+    sql publicuser "SELECT a from test_user_fdw.foo LIMIT 1;" fails
+    sql cdb_testmember_1 "GRANT test_user_fdw TO publicuser;" # but can be granted
+    sql publicuser "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+    sql cdb_testmember_1 "REVOKE test_user_fdw FROM publicuser;"
+
     # If there are dependent objects, we cannot drop the foreign server
     sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')" fails
+    sql cdb_testmember_1 "DROP FOREIGN TABLE test_user_fdw.foo;"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')"
 
 
     # Teardown
@@ -641,9 +649,6 @@ EOF
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
-
-    sql cdb_testmember_1 "DROP FOREIGN TABLE test_user_fdw.foo;"
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')"
 
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
