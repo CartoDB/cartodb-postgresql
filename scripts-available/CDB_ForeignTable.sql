@@ -242,10 +242,14 @@ END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Table(fdw_name NAME, table_name NAME)
+-- Set up a user foreign table
+-- E.g:
+--   SELECT cartodb.CDB_SetUp_User_Foreign_Table('amazon', 'carto_lite', 'mytable');
+--   SELECT * FROM amazon.my_table;
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Table(fdw_name NAME, foreign_schema NAME, table_name NAME)
 RETURNS void AS $$
 BEGIN
-  EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA carto_lite LIMIT TO (%I) FROM SERVER %I INTO %I;', table_name, fdw_name, fdw_name);
+  EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', foreign_schema, table_name, fdw_name, fdw_name);
   --- Grant SELECT to fdw role
   EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO %I;', fdw_name, table_name, fdw_name);
 END
