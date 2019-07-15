@@ -167,7 +167,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 -- It is the responsibility of the caller to grant that role to either:
 --   * Nobody
 --   * Specific roles: GRANT amazon TO role_name;
---   * Members of the organization: SELECT cartodb.CDB_Grant_Role_To_Org_Members('amazon'); TODO
+--   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('amazon');
 --   * The publicuser: GRANT amazon TO publicuser;
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Server(fdw_name NAME, config json)
 RETURNS void AS $$

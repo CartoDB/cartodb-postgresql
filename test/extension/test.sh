@@ -621,6 +621,11 @@ EOF
     sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
     sql cdb_testmember_1 "REVOKE test_user_fdw FROM cdb_testmember_2;"
 
+    # Check that the table can be accessed by org members
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Grant_Role('test_user_fdw');"
+    sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('test_user_fdw');"
+
 
     # Teardown
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
