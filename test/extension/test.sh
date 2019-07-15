@@ -616,12 +616,17 @@ EOF
     sql cdb_testmember_1 "SELECT * from test_user_fdw.foo;"
     sql cdb_testmember_1 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
 
+    # Check that a role with no permissions cannot use the FDW to access a remote table
+    sql cdb_testmember_2 "IMPORT FOREIGN SCHEMA test_fdw LIMIT TO (foo) FROM SERVER test_user_fdw INTO public" fails
+
     # Check that the table can be accessed by some other user by granting the role
+    sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" fails
     sql cdb_testmember_1 "GRANT test_user_fdw TO cdb_testmember_2;"
     sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
     sql cdb_testmember_1 "REVOKE test_user_fdw FROM cdb_testmember_2;"
 
     # Check that the table can be accessed by org members
+    sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" fails
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Grant_Role('test_user_fdw');"
     sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('test_user_fdw');"
