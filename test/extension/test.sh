@@ -590,6 +590,33 @@ test_extension|public|"local-table-with-dashes"'
     sql postgres "DROP FOREIGN TABLE IF EXISTS test_fdw.cdb_tablemetadata;"
     sql postgres "SELECT cartodb.CDB_Get_Foreign_Updated_At('test_fdw.foo') IS NULL" should 't'
 
+
+    # Check user-defined FDW's
+    # Set up a user foreign server
+    read -d '' ufdw_config <<- EOF
+{
+   "server": {
+     "extensions": "postgis",
+     "dbname": "fdw_target",
+     "host": "localhost",
+     "port": ${PGPORT:-5432}
+   },
+   "user_mapping": {
+     "user": "fdw_user",
+     "password": "foobarino"
+   }
+}
+EOF
+    sql postgres "SELECT cartodb.CDB_SetUp_User_Foreign_Server('test_user_fdw', '$ufdw_config');"
+
+    # Set up a user foreign table
+    sql postgres "SELECT cartodb.CDB_SetUp_User_Foreign_Table('test_user_fdw', 'test_fdw', 'foo');"
+
+    # Check that the table can be accessed
+    sql postgres "SELECT * from test_user_fdw.foo;"
+    sql postgres "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+
+
     # Teardown
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
