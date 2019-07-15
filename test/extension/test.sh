@@ -592,6 +592,11 @@ test_extension|public|"local-table-with-dashes"'
 
 
     # Check user-defined FDW's
+
+    # Grant the user permissions to use the postgres_fdw
+    sql postgres "GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO cdb_testmember_1;"
+    sql postgres "ALTER ROLE cdb_testmember_1 WITH CREATEROLE;"
+
     # Set up a user foreign server
     read -d '' ufdw_config <<- EOF
 {
@@ -629,6 +634,8 @@ EOF
     sql postgres 'DROP schema test_user_fdw;'
     sql postgres 'DROP USER MAPPING FOR public SERVER test_user_fdw;'
     sql postgres 'DROP SERVER test_user_fdw;'
+    sql postgres 'REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM test_user_fdw;'
+    sql postgres 'DROP ROLE test_user_fdw;'
 
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database

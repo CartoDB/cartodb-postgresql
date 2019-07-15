@@ -175,12 +175,6 @@ DECLARE
   row record;
   option record;
 BEGIN
-  -- TODO: refactor with original function
-  -- This function tries to be as idempotent as possible, by not creating anything more than once
-  -- (not even using IF NOT EXIST to avoid throwing warnings)
-  IF NOT EXISTS ( SELECT * FROM pg_extension WHERE extname = 'postgres_fdw') THEN
-    CREATE EXTENSION postgres_fdw;
-  END IF;
   -- Create FDW first if it does not exist
   IF NOT EXISTS ( SELECT * FROM pg_foreign_server WHERE srvname = fdw_name)
     THEN
@@ -202,6 +196,9 @@ BEGIN
     IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = fdw_name) THEN
        EXECUTE format('CREATE ROLE %I NOLOGIN', fdw_name);
     END IF;
+
+    -- Grant the fdw role to the caller, and permissions to grant it to others
+    EXECUTE FORMAT ('GRANT %I TO %I WITH ADMIN OPTION', fdw_name, session_user);
 
     -- Transfer ownership of the server to the fdw role
     EXECUTE format('ALTER SERVER %I OWNER TO %I', fdw_name, fdw_name);
@@ -234,12 +231,9 @@ BEGIN
     -- Give the fdw role ownership over the schema
     EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_name, fdw_name);
 
-    -- Grant the fdw role to the caller, and permissions to grant it to others
-    EXECUTE FORMAT ('GRANT %I TO %I WITH ADMIN OPTION', fdw_name, session_user);
-
     -- TODO: Bring here the remote cdb_tablemetadata
 END
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
 -- Set up a user foreign table
