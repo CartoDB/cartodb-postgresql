@@ -624,11 +624,8 @@ EOF
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
 
-    # TODO add to function to delete stuff
-    sql postgres 'DROP FOREIGN TABLE test_user_fdw.foo;'
-    sql postgres 'DROP schema test_user_fdw;'
-    sql postgres 'DROP USER MAPPING FOR public SERVER test_user_fdw;'
-    sql postgres 'DROP SERVER test_user_fdw;'
+    sql cdb_testmember_1 "DROP FOREIGN TABLE test_user_fdw.foo;"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')"
 
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database

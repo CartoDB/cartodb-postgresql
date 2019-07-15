@@ -241,6 +241,15 @@ BEGIN
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Drop_User_Foreign_Server(fdw_name NAME)
+RETURNS void AS $$
+BEGIN
+    EXECUTE FORMAT ('DROP SCHEMA %I', fdw_name);
+    EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_name);
+    EXECUTE FORMAT ('DROP SERVER %I', fdw_name);
+END
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
+
 
 -- Set up a user foreign table
 -- E.g:
