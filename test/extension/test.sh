@@ -612,9 +612,14 @@ EOF
     # Set up a user foreign table
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_Foreign_Table('test_user_fdw', 'test_fdw', 'foo');"
 
-    # Check that the table can be accessed
+    # Check that the table can be accessed by the owner/creator
     sql cdb_testmember_1 "SELECT * from test_user_fdw.foo;"
     sql cdb_testmember_1 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+
+    # Check that the table can be accessed by some other user by granting the role
+    sql cdb_testmember_1 "GRANT test_user_fdw TO cdb_testmember_2;"
+    sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
+    sql cdb_testmember_1 "REVOKE test_user_fdw FROM cdb_testmember_2;"
 
 
     # Teardown
