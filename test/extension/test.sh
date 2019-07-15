@@ -626,6 +626,9 @@ EOF
     sql cdb_testmember_2 "SELECT a from test_user_fdw.foo LIMIT 1;" should 42
     sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('test_user_fdw');"
 
+    # If there are dependent objects, we cannot drop the foreign server
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')" fails
+
 
     # Teardown
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'

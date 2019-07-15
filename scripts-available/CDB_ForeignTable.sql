@@ -241,14 +241,24 @@ BEGIN
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
+
+-- A function to drop a user-defined foreign server and all related objects
+-- It does not read from CDB_Conf
+--
+-- Sample call:
+--   SELECT cartodb.CDB_Drop_User_Foreign_Server('amazon')
+--
+-- Note: if there's any dependent object (i.e. foreign table) this call will fail
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Drop_User_Foreign_Server(fdw_name NAME)
 RETURNS void AS $$
 BEGIN
     EXECUTE FORMAT ('DROP SCHEMA %I', fdw_name);
     EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_name);
     EXECUTE FORMAT ('DROP SERVER %I', fdw_name);
+    EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_name);
+    EXECUTE FORMAT ('DROP ROLE %I', fdw_name);
 END
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 
 -- Set up a user foreign table
