@@ -266,18 +266,26 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   SELECT cartodb.CDB_Drop_User_PG_FDW_Server('amazon')
 --
 -- Note: if there's any dependent object (i.e. foreign table) this call will fail
-CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name NAME, force boolean = false)
 RETURNS void AS $$
 DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
+    cascade_clause NAME;
 BEGIN
-    EXECUTE FORMAT ('DROP SCHEMA %I', fdw_objects_name);
+    CASE force
+        WHEN true THEN
+            cascade_clause := 'CASCADE';
+        ELSE
+            cascade_clause := 'RESTRICT';
+    END CASE;
+
+    EXECUTE FORMAT ('DROP SCHEMA %I %s', fdw_objects_name, cascade_clause);
     RAISE NOTICE 'Dropped schema %', fdw_objects_name;
     EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_objects_name);
     RAISE NOTICE 'Dropped user mapping for server %', fdw_objects_name;
-    EXECUTE FORMAT ('DROP SERVER %I', fdw_objects_name);
+    EXECUTE FORMAT ('DROP SERVER %I %s', fdw_objects_name, cascade_clause);
     RAISE NOTICE 'Dropped foreign server %', fdw_objects_name;
-    EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_objects_name);
+    EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I %s', fdw_objects_name, cascade_clause);
     RAISE NOTICE 'Revoked usage on postgres_fdw from %', fdw_objects_name;
     EXECUTE FORMAT ('DROP ROLE %I', fdw_objects_name);
     RAISE NOTICE 'Dropped role %', fdw_objects_name;

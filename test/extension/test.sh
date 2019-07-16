@@ -645,6 +645,12 @@ EOF
     sql cdb_testmember_1 'DROP FOREIGN TABLE "cdb_fdw_user-defined-test".foo;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('user-defined-test')"
 
+    # But if there are, we can set the force flag to true to drop everything (defaults to false)
+    sql postgres "SELECT cartodb._CDB_SetUp_User_PG_FDW_Server('another_user_defined_test', '$ufdw_config');"
+    sql postgres 'GRANT cdb_fdw_another_user_defined_test TO cdb_testmember_1 WITH ADMIN OPTION;'
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('another_user_defined_test', 'test_fdw', 'foo');"
+    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('another_user_defined_test', /* force = */ true)"
+
 
     # Teardown
     DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
