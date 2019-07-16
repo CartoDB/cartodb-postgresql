@@ -170,7 +170,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   * Specific roles: GRANT amazon TO role_name;
 --   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('amazon');
 --   * The publicuser: GRANT amazon TO publicuser;
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_PG_FDW_Server(fdw_name NAME, config json)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_SetUp_User_PG_FDW_Server(fdw_name NAME, config json)
 RETURNS void AS $$
 DECLARE
   row record;
@@ -248,7 +248,7 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   SELECT cartodb.CDB_Drop_User_PG_FDW_Server('amazon')
 --
 -- Note: if there's any dependent object (i.e. foreign table) this call will fail
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Drop_User_PG_FDW_Server(fdw_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_name NAME)
 RETURNS void AS $$
 BEGIN
     EXECUTE FORMAT ('DROP SCHEMA %I', fdw_name);

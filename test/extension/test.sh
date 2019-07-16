@@ -607,7 +607,7 @@ test_extension|public|"local-table-with-dashes"'
    }
 }
 EOF
-    sql postgres "SELECT cartodb.CDB_SetUp_User_PG_FDW_Server('test_user_fdw', '$ufdw_config');"
+    sql postgres "SELECT cartodb._CDB_SetUp_User_PG_FDW_Server('test_user_fdw', '$ufdw_config');"
 
     # Grant a user access to that FDW, and to grant to others
     sql postgres "GRANT test_user_fdw TO cdb_testmember_1 WITH ADMIN OPTION;"
@@ -641,9 +641,9 @@ EOF
     sql cdb_testmember_1 "REVOKE test_user_fdw FROM publicuser;"
 
     # If there are dependent objects, we cannot drop the foreign server
-    sql postgres "SELECT cartodb.CDB_Drop_User_PG_FDW_Server('test_user_fdw')" fails
+    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('test_user_fdw')" fails
     sql cdb_testmember_1 "DROP FOREIGN TABLE test_user_fdw.foo;"
-    sql postgres "SELECT cartodb.CDB_Drop_User_PG_FDW_Server('test_user_fdw')"
+    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('test_user_fdw')"
 
 
     # Teardown
