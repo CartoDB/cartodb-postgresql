@@ -139,6 +139,15 @@ $$
 LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
+-- Produce a valid DB name for objects created for the user FDW's
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name NAME)
+RETURNS NAME AS $$
+  -- Note on input we use %s and on output we use %I, in order to
+  -- avoid double escaping
+  SELECT format('cdb_fdw_%s', fdw_input_name)::NAME;
+$$
+LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+
 -- A function to set up a user-defined foreign data server
 -- It does not read from CDB_Conf.
 -- Only superuser roles can invoke it successfully
@@ -159,22 +168,23 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --
 -- Underneath it will:
 --   * Set up postgresql_fdw
---   * Create a server with the name 'amazon'
---   * Create a role called 'amazon' to manage access
---   * Create a user mapping with that role 'amazon'
---   * Create a schema 'amazon' as a convenience to set up all foreign
+--   * Create a server with the name 'cdb_fdw_amazon'
+--   * Create a role called 'cdb_fdw_amazon' to manage access
+--   * Create a user mapping with that role 'cdb_fdw_amazon'
+--   * Create a schema 'cdb_fdw_amazon' as a convenience to set up all foreign
 --     tables over there
 --
 -- It is the responsibility of the superuser to grant that role to either:
 --   * Nobody
 --   * Specific roles: GRANT amazon TO role_name;
---   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('amazon');
---   * The publicuser: GRANT amazon TO publicuser;
-CREATE OR REPLACE FUNCTION @extschema@._CDB_SetUp_User_PG_FDW_Server(fdw_name NAME, config json)
+--   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('cdb_fdw_amazon');
+--   * The publicuser: GRANT cdb_fdw_amazon TO publicuser;
+CREATE OR REPLACE FUNCTION @extschema@._CDB_SetUp_User_PG_FDW_Server(fdw_input_name NAME, config json)
 RETURNS void AS $$
 DECLARE
   row record;
   option record;
+  fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
 BEGIN
   -- TODO: refactor with original function
   -- This function tries to be as idempotent as possible, by not creating anything more than once
@@ -183,57 +193,57 @@ BEGIN
     CREATE EXTENSION postgres_fdw;
   END IF;
   -- Create FDW first if it does not exist
-  IF NOT EXISTS ( SELECT * FROM pg_foreign_server WHERE srvname = fdw_name)
+  IF NOT EXISTS ( SELECT * FROM pg_foreign_server WHERE srvname = fdw_objects_name)
     THEN
-    EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', fdw_name);
+    EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', fdw_objects_name);
   END IF;
 
   -- Set FDW settings
   FOR row IN SELECT p.key, p.value from lateral json_each_text(config->'server') p
     LOOP
-      IF NOT EXISTS (WITH a AS (select split_part(unnest(srvoptions), '=', 1) as options from pg_foreign_server where srvname=fdw_name) SELECT * from a where options = row.key)
+      IF NOT EXISTS (WITH a AS (select split_part(unnest(srvoptions), '=', 1) as options from pg_foreign_server where srvname=fdw_objects_name) SELECT * from a where options = row.key)
         THEN
-        EXECUTE FORMAT('ALTER SERVER %I OPTIONS (ADD %I %L)', fdw_name, row.key, row.value);
+        EXECUTE FORMAT('ALTER SERVER %I OPTIONS (ADD %I %L)', fdw_objects_name, row.key, row.value);
       ELSE
-        EXECUTE FORMAT('ALTER SERVER %I OPTIONS (SET %I %L)', fdw_name, row.key, row.value);
+        EXECUTE FORMAT('ALTER SERVER %I OPTIONS (SET %I %L)', fdw_objects_name, row.key, row.value);
       END IF;
     END LOOP;
 
     -- Create specific role for this
-    IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = fdw_name) THEN
-       EXECUTE format('CREATE ROLE %I NOLOGIN', fdw_name);
+    IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = fdw_objects_name) THEN
+       EXECUTE format('CREATE ROLE %I NOLOGIN', fdw_objects_name);
     END IF;
 
     -- Transfer ownership of the server to the fdw role
-    EXECUTE format('ALTER SERVER %I OWNER TO %I', fdw_name, fdw_name);
+    EXECUTE format('ALTER SERVER %I OWNER TO %I', fdw_objects_name, fdw_objects_name);
 
     -- Create user mapping
     -- NOTE: we use a PUBLIC user mapping but control access to the SERVER
     -- so that we don't need to create a mapping for every user nor store credentials elsewhere
-    IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_name AND usename = 'public' ) THEN
-        EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', fdw_name);
+    IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_objects_name AND usename = 'public' ) THEN
+        EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', fdw_objects_name);
     END IF;
 
     -- Update user mapping settings
     FOR option IN SELECT o.key, o.value from lateral json_each_text(config->'user_mapping') o LOOP
-        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_name AND usename = 'public') SELECT * from a where options = option.key) THEN
-          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', fdw_name, option.key, option.value);
+        IF NOT EXISTS (WITH a AS (select split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = fdw_objects_name AND usename = 'public') SELECT * from a where options = option.key) THEN
+          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', fdw_objects_name, option.key, option.value);
         ELSE
-          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', fdw_name, option.key, option.value);
+          EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', fdw_objects_name, option.key, option.value);
         END IF;
     END LOOP;
 
     -- Grant usage on the wrapper and server to the fdw role
-    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', fdw_name);
-    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN SERVER %I TO %I', fdw_name, fdw_name);
+    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', fdw_objects_name);
+    EXECUTE FORMAT ('GRANT USAGE ON FOREIGN SERVER %I TO %I', fdw_objects_name, fdw_objects_name);
 
     -- Create schema if it does not exist.
-    IF NOT EXISTS ( SELECT * from pg_namespace WHERE nspname=fdw_name) THEN
-      EXECUTE FORMAT ('CREATE SCHEMA %I', fdw_name);
+    IF NOT EXISTS ( SELECT * from pg_namespace WHERE nspname=fdw_objects_name) THEN
+      EXECUTE FORMAT ('CREATE SCHEMA %I', fdw_objects_name);
     END IF;
 
     -- Give the fdw role ownership over the schema
-    EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_name, fdw_name);
+    EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_objects_name, fdw_objects_name);
 
     -- TODO: Bring here the remote cdb_tablemetadata
 END
@@ -248,14 +258,16 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   SELECT cartodb.CDB_Drop_User_PG_FDW_Server('amazon')
 --
 -- Note: if there's any dependent object (i.e. foreign table) this call will fail
-CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name NAME)
 RETURNS void AS $$
+DECLARE
+    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
 BEGIN
-    EXECUTE FORMAT ('DROP SCHEMA %I', fdw_name);
-    EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_name);
-    EXECUTE FORMAT ('DROP SERVER %I', fdw_name);
-    EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_name);
-    EXECUTE FORMAT ('DROP ROLE %I', fdw_name);
+    EXECUTE FORMAT ('DROP SCHEMA %I', fdw_objects_name);
+    EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_objects_name);
+    EXECUTE FORMAT ('DROP SERVER %I', fdw_objects_name);
+    EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_objects_name);
+    EXECUTE FORMAT ('DROP ROLE %I', fdw_objects_name);
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
@@ -264,12 +276,14 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 -- E.g:
 --   SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('amazon', 'carto_lite', 'mytable');
 --   SELECT * FROM amazon.my_table;
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_PG_FDW_Table(fdw_name NAME, foreign_schema NAME, table_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_PG_FDW_Table(fdw_input_name NAME, foreign_schema NAME, table_name NAME)
 RETURNS void AS $$
+DECLARE
+    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
 BEGIN
-  EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', foreign_schema, table_name, fdw_name, fdw_name);
+  EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', foreign_schema, table_name, fdw_objects_name, fdw_objects_name);
   --- Grant SELECT to fdw role
-  EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO %I;', fdw_name, table_name, fdw_name);
+  EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO %I;', fdw_objects_name, table_name, fdw_objects_name);
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
