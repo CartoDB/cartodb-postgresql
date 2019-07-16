@@ -140,7 +140,8 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
 -- A function to set up a user-defined foreign data server
--- It does not read from CDB_Conf
+-- It does not read from CDB_Conf.
+-- Only superuser roles can invoke it successfully
 --
 -- Sample call:
 -- SELECT cartodb.CDB_SetUp_User_PG_FDW_Server('amazon', '{
@@ -164,7 +165,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   * Create a schema 'amazon' as a convenience to set up all foreign
 --     tables over there
 --
--- It is the responsibility of the caller to grant that role to either:
+-- It is the responsibility of the superuser to grant that role to either:
 --   * Nobody
 --   * Specific roles: GRANT amazon TO role_name;
 --   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('amazon');
@@ -234,16 +235,14 @@ BEGIN
     -- Give the fdw role ownership over the schema
     EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_name, fdw_name);
 
-    -- Grant the fdw role to the caller, and permissions to grant it to others
-    EXECUTE FORMAT ('GRANT %I TO %I WITH ADMIN OPTION', fdw_name, session_user);
-
     -- TODO: Bring here the remote cdb_tablemetadata
 END
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
 -- A function to drop a user-defined foreign server and all related objects
 -- It does not read from CDB_Conf
+-- It must be executed with a superuser role to succeed
 --
 -- Sample call:
 --   SELECT cartodb.CDB_Drop_User_PG_FDW_Server('amazon')
@@ -258,7 +257,7 @@ BEGIN
     EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_name);
     EXECUTE FORMAT ('DROP ROLE %I', fdw_name);
 END
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
 
 -- Set up a user foreign table
