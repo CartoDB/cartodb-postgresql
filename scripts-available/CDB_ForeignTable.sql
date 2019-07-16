@@ -191,11 +191,13 @@ BEGIN
   -- (not even using IF NOT EXIST to avoid throwing warnings)
   IF NOT EXISTS ( SELECT * FROM pg_extension WHERE extname = 'postgres_fdw') THEN
     CREATE EXTENSION postgres_fdw;
+    RAISE NOTICE 'Created postgres_fdw extension';
   END IF;
   -- Create FDW first if it does not exist
   IF NOT EXISTS ( SELECT * FROM pg_foreign_server WHERE srvname = fdw_objects_name)
     THEN
     EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', fdw_objects_name);
+    RAISE NOTICE 'Created server % using postgres_fdw', fdw_objects_name;
   END IF;
 
   -- Set FDW settings
@@ -212,6 +214,7 @@ BEGIN
     -- Create specific role for this
     IF NOT EXISTS ( SELECT 1 FROM pg_roles WHERE rolname = fdw_objects_name) THEN
        EXECUTE format('CREATE ROLE %I NOLOGIN', fdw_objects_name);
+       RAISE NOTICE 'Created special role % to access the correponding FDW', fdw_objects_name;
     END IF;
 
     -- Transfer ownership of the server to the fdw role
@@ -222,6 +225,7 @@ BEGIN
     -- so that we don't need to create a mapping for every user nor store credentials elsewhere
     IF NOT EXISTS ( SELECT * FROM pg_user_mappings WHERE srvname = fdw_objects_name AND usename = 'public' ) THEN
         EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', fdw_objects_name);
+        RAISE NOTICE 'Created user mapping for accesing foreign server %', fdw_objects_name;
     END IF;
 
     -- Update user mapping settings
@@ -235,15 +239,19 @@ BEGIN
 
     -- Grant usage on the wrapper and server to the fdw role
     EXECUTE FORMAT ('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', fdw_objects_name);
+    RAISE NOTICE 'Granted usage on the postgres_fdw to the role %', fdw_objects_name;
     EXECUTE FORMAT ('GRANT USAGE ON FOREIGN SERVER %I TO %I', fdw_objects_name, fdw_objects_name);
+    RAISE NOTICE 'Granted usage on the foreign server to the role %', fdw_objects_name;
 
     -- Create schema if it does not exist.
     IF NOT EXISTS ( SELECT * from pg_namespace WHERE nspname=fdw_objects_name) THEN
       EXECUTE FORMAT ('CREATE SCHEMA %I', fdw_objects_name);
+      RAISE NOTICE 'Created schema % to host foreign tables', fdw_objects_name;
     END IF;
 
     -- Give the fdw role ownership over the schema
     EXECUTE FORMAT ('ALTER SCHEMA %I OWNER TO %I', fdw_objects_name, fdw_objects_name);
+    RAISE NOTICE 'Gave ownership on the schema % to %', fdw_objects_name, fdw_objects_name;
 
     -- TODO: Bring here the remote cdb_tablemetadata
 END
@@ -264,10 +272,15 @@ DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
 BEGIN
     EXECUTE FORMAT ('DROP SCHEMA %I', fdw_objects_name);
+    RAISE NOTICE 'Dropped schema %', fdw_objects_name;
     EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', fdw_objects_name);
+    RAISE NOTICE 'Dropped user mapping for server %', fdw_objects_name;
     EXECUTE FORMAT ('DROP SERVER %I', fdw_objects_name);
+    RAISE NOTICE 'Dropped foreign server %', fdw_objects_name;
     EXECUTE FORMAT ('REVOKE USAGE ON FOREIGN DATA WRAPPER postgres_fdw FROM %I', fdw_objects_name);
+    RAISE NOTICE 'Revoked usage on postgres_fdw from %', fdw_objects_name;
     EXECUTE FORMAT ('DROP ROLE %I', fdw_objects_name);
+    RAISE NOTICE 'Dropped role %', fdw_objects_name;
 END
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 
