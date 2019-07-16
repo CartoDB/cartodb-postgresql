@@ -607,43 +607,43 @@ test_extension|public|"local-table-with-dashes"'
    }
 }
 EOF
-    sql postgres "SELECT cartodb._CDB_SetUp_User_PG_FDW_Server('user_defined_test', '$ufdw_config');"
+    sql postgres "SELECT cartodb._CDB_SetUp_User_PG_FDW_Server('user-defined-test', '$ufdw_config');"
 
     # Grant a user access to that FDW, and to grant to others
-    sql postgres "GRANT cdb_fdw_user_defined_test TO cdb_testmember_1 WITH ADMIN OPTION;"
+    sql postgres 'GRANT "cdb_fdw_user-defined-test" TO cdb_testmember_1 WITH ADMIN OPTION;'
 
     # Set up a user foreign table
-    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('user_defined_test', 'test_fdw', 'foo');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('user-defined-test', 'test_fdw', 'foo');"
 
     # Check that the table can be accessed by the owner/creator
-    sql cdb_testmember_1 "SELECT * from cdb_fdw_user_defined_test.foo;"
-    sql cdb_testmember_1 "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" should 42
+    sql cdb_testmember_1 'SELECT * from "cdb_fdw_user-defined-test".foo;'
+    sql cdb_testmember_1 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' should 42
 
     # Check that a role with no permissions cannot use the FDW to access a remote table
-    sql cdb_testmember_2 "IMPORT FOREIGN SCHEMA test_fdw LIMIT TO (foo) FROM SERVER cdb_fdw_user_defined_test INTO public" fails
+    sql cdb_testmember_2 'IMPORT FOREIGN SCHEMA test_fdw LIMIT TO (foo) FROM SERVER "cdb_fdw_user-defined-test" INTO public' fails
 
     # Check that the table can be accessed by some other user by granting the role
-    sql cdb_testmember_2 "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" fails
-    sql cdb_testmember_1 "GRANT cdb_fdw_user_defined_test TO cdb_testmember_2;"
-    sql cdb_testmember_2 "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" should 42
-    sql cdb_testmember_1 "REVOKE cdb_fdw_user_defined_test FROM cdb_testmember_2;"
+    sql cdb_testmember_2 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' fails
+    sql cdb_testmember_1 'GRANT "cdb_fdw_user-defined-test" TO cdb_testmember_2;'
+    sql cdb_testmember_2 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' should 42
+    sql cdb_testmember_1 'REVOKE "cdb_fdw_user-defined-test" FROM cdb_testmember_2;'
 
     # Check that the table can be accessed by org members
-    sql cdb_testmember_2 "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" fails
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Grant_Role('cdb_fdw_user_defined_test');"
-    sql cdb_testmember_2 "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" should 42
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('cdb_fdw_user_defined_test');"
+    sql cdb_testmember_2 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Grant_Role('cdb_fdw_user-defined-test');"
+    sql cdb_testmember_2 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' should 42
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Organization_Revoke_Role('cdb_fdw_user-defined-test');"
 
     # By default publicuser cannot access the FDW
-    sql publicuser "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" fails
-    sql cdb_testmember_1 "GRANT cdb_fdw_user_defined_test TO publicuser;" # but can be granted
-    sql publicuser "SELECT a from cdb_fdw_user_defined_test.foo LIMIT 1;" should 42
-    sql cdb_testmember_1 "REVOKE cdb_fdw_user_defined_test FROM publicuser;"
+    sql publicuser 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' fails
+    sql cdb_testmember_1 'GRANT "cdb_fdw_user-defined-test" TO publicuser;' # but can be granted
+    sql publicuser 'SELECT a from "cdb_fdw_user-defined-test".foo LIMIT 1;' should 42
+    sql cdb_testmember_1 'REVOKE "cdb_fdw_user-defined-test" FROM publicuser;'
 
     # If there are dependent objects, we cannot drop the foreign server
-    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('user_defined_test')" fails
-    sql cdb_testmember_1 "DROP FOREIGN TABLE cdb_fdw_user_defined_test.foo;"
-    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('user_defined_test')"
+    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('user-defined-test')" fails
+    sql cdb_testmember_1 'DROP FOREIGN TABLE "cdb_fdw_user-defined-test".foo;'
+    sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('user-defined-test')"
 
 
     # Teardown
