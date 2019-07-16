@@ -143,7 +143,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 -- It does not read from CDB_Conf
 --
 -- Sample call:
--- SELECT cartodb.CDB_SetUp_User_Foreign_Server('amazon', '{
+-- SELECT cartodb.CDB_SetUp_User_PG_FDW_Server('amazon', '{
 --    "server": {
 --      "extensions": "postgis",
 --      "dbname": "testdb",
@@ -169,7 +169,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 --   * Specific roles: GRANT amazon TO role_name;
 --   * Members of the organization: SELECT cartodb.CDB_Organization_Grant_Role('amazon');
 --   * The publicuser: GRANT amazon TO publicuser;
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Server(fdw_name NAME, config json)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_PG_FDW_Server(fdw_name NAME, config json)
 RETURNS void AS $$
 DECLARE
   row record;
@@ -246,10 +246,10 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 -- It does not read from CDB_Conf
 --
 -- Sample call:
---   SELECT cartodb.CDB_Drop_User_Foreign_Server('amazon')
+--   SELECT cartodb.CDB_Drop_User_PG_FDW_Server('amazon')
 --
 -- Note: if there's any dependent object (i.e. foreign table) this call will fail
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Drop_User_Foreign_Server(fdw_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Drop_User_PG_FDW_Server(fdw_name NAME)
 RETURNS void AS $$
 BEGIN
     EXECUTE FORMAT ('DROP SCHEMA %I', fdw_name);
@@ -263,9 +263,9 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
 
 -- Set up a user foreign table
 -- E.g:
---   SELECT cartodb.CDB_SetUp_User_Foreign_Table('amazon', 'carto_lite', 'mytable');
+--   SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('amazon', 'carto_lite', 'mytable');
 --   SELECT * FROM amazon.my_table;
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_Foreign_Table(fdw_name NAME, foreign_schema NAME, table_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_User_PG_FDW_Table(fdw_name NAME, foreign_schema NAME, table_name NAME)
 RETURNS void AS $$
 BEGIN
   EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', foreign_schema, table_name, fdw_name, fdw_name);

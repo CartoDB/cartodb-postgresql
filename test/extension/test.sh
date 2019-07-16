@@ -607,10 +607,10 @@ test_extension|public|"local-table-with-dashes"'
    }
 }
 EOF
-    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_Foreign_Server('test_user_fdw', '$ufdw_config');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Server('test_user_fdw', '$ufdw_config');"
 
     # Set up a user foreign table
-    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_Foreign_Table('test_user_fdw', 'test_fdw', 'foo');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('test_user_fdw', 'test_fdw', 'foo');"
 
     # Check that the table can be accessed by the owner/creator
     sql cdb_testmember_1 "SELECT * from test_user_fdw.foo;"
@@ -638,9 +638,9 @@ EOF
     sql cdb_testmember_1 "REVOKE test_user_fdw FROM publicuser;"
 
     # If there are dependent objects, we cannot drop the foreign server
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')" fails
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_PG_FDW_Server('test_user_fdw')" fails
     sql cdb_testmember_1 "DROP FOREIGN TABLE test_user_fdw.foo;"
-    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_Foreign_Server('test_user_fdw')"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_Drop_User_PG_FDW_Server('test_user_fdw')"
 
 
     # Teardown
