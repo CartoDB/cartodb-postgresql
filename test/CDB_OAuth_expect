@@ -1,0 +1,90 @@
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for relation test
+ERROR:  permission denied for relation test_tablesas
+ERROR:  permission denied for relation test_view
+ERROR:  permission denied for relation test_mview
+ERROR:  permission denied for relation test_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+NOTICE:  event trigger "oauth_reassign_tables_trigger" does not exist, skipping
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for relation test2
+ERROR:  permission denied for relation test2_tablesas
+ERROR:  permission denied for relation test2_view
+ERROR:  permission denied for relation test2_mview
+ERROR:  permission denied for relation test2_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for relation test3
+ERROR:  permission denied for relation test3_tablesas
+ERROR:  permission denied for relation test3_view
+ERROR:  permission denied for relation test3_mview
+ERROR:  permission denied for relation test3_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+
