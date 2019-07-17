@@ -1,7 +1,9 @@
 -- Create user and enable OAuth event trigger
 \set QUIET on
 SET client_min_messages TO error;
+DROP ROLE IF EXISTS "creator_role";
 CREATE ROLE "creator_role" LOGIN;
+DROP ROLE IF EXISTS "ownership_role";
 CREATE ROLE "ownership_role" LOGIN;
 GRANT ALL ON SCHEMA cartodb TO "creator_role";
 SELECT CDB_Conf_SetConf('api_keys_creator_role', '{"username": "creator_role", "permissions":[]}');
