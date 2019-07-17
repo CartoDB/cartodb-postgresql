@@ -1,3 +1,6 @@
+0.30.0 (2019-07-17)
+* Added new admin functions to connect CARTO with user FDW's (#369)
+
 0.29.0 (2019-07-15)
 * Added new function CDB_OAuth:
   * Install event trigger to check for table/view/sequence/function creation
