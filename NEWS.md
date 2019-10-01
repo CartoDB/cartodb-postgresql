@@ -1,3 +1,6 @@
+0.31.0 (XXXX-XX-XX)
+* Ghost tables: Add missing tags (#370)
+
 0.30.0 (2019-07-17)
 * Added new admin functions to connect CARTO with user FDW's (#369)
 
