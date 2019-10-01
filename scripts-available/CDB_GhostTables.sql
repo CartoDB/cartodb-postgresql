@@ -106,7 +106,33 @@ AS $$
 
     CREATE EVENT TRIGGER link_ghost_tables
     ON ddl_command_end
-    WHEN TAG IN ('CREATE TABLE', 'SELECT INTO', 'DROP TABLE', 'ALTER TABLE', 'CREATE TRIGGER', 'DROP TRIGGER', 'CREATE VIEW', 'DROP VIEW', 'ALTER VIEW', 'CREATE FOREIGN TABLE', 'ALTER FOREIGN TABLE', 'DROP FOREIGN TABLE')
+    WHEN TAG IN ('CREATE TABLE',
+                'SELECT INTO',
+                'DROP TABLE',
+                'ALTER TABLE',
+
+                'CREATE TRIGGER',
+                'DROP TRIGGER',
+                'ALTER TRIGGER',
+
+                'CREATE VIEW',
+                'DROP VIEW',
+                'ALTER VIEW',
+
+                'CREATE FOREIGN TABLE',
+                'ALTER FOREIGN TABLE',
+                'DROP FOREIGN TABLE',
+
+                'ALTER MATERIALIZED VIEW',
+                'CREATE MATERIALIZED VIEW',
+                'DROP MATERIALIZED VIEW',
+
+                'IMPORT FOREIGN SCHEMA',
+
+                'DROP EXTENSION',
+                'DROP SCHEMA',
+                'DROP SERVER',
+                'DROP TYPE')
     EXECUTE PROCEDURE @extschema@.CDB_SaveDDLTransaction();
   END;
 $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
