@@ -43,7 +43,7 @@ BEGIN
   );
 
   WITH nv as (
-    SELECT TG_RELID as tabname, NOW() as t
+    SELECT TG_RELID as tabname, now() as t
   ), updated as (
     UPDATE @extschema@.CDB_TableMetadata x SET updated_at = nv.t
     FROM nv WHERE x.tabname = nv.tabname
@@ -55,8 +55,11 @@ BEGIN
 
   RETURN NULL;
 END;
-$$
-LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 --
 -- Trigger invalidating varnish whenever CDB_TableMetadata
@@ -116,8 +119,11 @@ BEGIN
 
   RETURN NULL;
 END;
-$$
-LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 DROP TRIGGER IF EXISTS table_modified ON @extschema@.CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table
