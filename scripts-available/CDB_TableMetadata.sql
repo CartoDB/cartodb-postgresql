@@ -59,7 +59,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 --
 -- Trigger invalidating varnish whenever CDB_TableMetadata
@@ -123,7 +123,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 DROP TRIGGER IF EXISTS table_modified ON @extschema@.CDB_TableMetadata;
 -- NOTE: on DELETE we would be unable to convert the table

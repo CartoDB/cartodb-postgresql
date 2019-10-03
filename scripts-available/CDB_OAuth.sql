@@ -30,7 +30,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 -- Creates the trigger on DDL events in order to reassign the owner
 CREATE OR REPLACE FUNCTION @extschema@.CDB_EnableOAuthReassignTablesTrigger()

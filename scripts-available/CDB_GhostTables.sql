@@ -67,7 +67,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 -- Trigger function to call CDB_LinkGhostTables()
 CREATE OR REPLACE FUNCTION @extschema@._CDB_LinkGhostTablesTrigger()
@@ -84,7 +84,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 -- Event trigger to save the current transaction in @extschema@.cdb_ddl_execution
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SaveDDLTransaction()
@@ -97,7 +97,7 @@ $$  LANGUAGE plpgsql
     VOLATILE
     PARALLEL UNSAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
 
 -- Creates the trigger on DDL events to link ghost tables
 CREATE OR REPLACE FUNCTION @extschema@.CDB_EnableGhostTablesTrigger()

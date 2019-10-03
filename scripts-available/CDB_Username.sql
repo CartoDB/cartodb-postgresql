@@ -7,4 +7,4 @@ $$  LANGUAGE SQL
     STABLE
     PARALLEL SAFE
     SECURITY DEFINER
-    SET search_path = @extschema@, pg_temp;
+    SET search_path = pg_temp;
