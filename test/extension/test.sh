@@ -362,7 +362,7 @@ function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
 
 function test_cdb_tablemetadatatouch_fully_qualifies_names() {
     sql postgres "CREATE TABLE touch_invalidations (table_name text);"
-    sql postgres "create or replace function cartodb.cdb_invalidate_varnish(table_name text) returns void as \$\$ begin insert into touch_invalidations select table_name; end; \$\$ language 'plpgsql';"
+    sql postgres "create or replace function cartodb.cdb_invalidate_varnish(table_name text) returns void as \$\$ begin insert into public.touch_invalidations select table_name; end; \$\$ language 'plpgsql';"
 
     #default schema
     sql "CREATE TABLE touch_example (a int);"
