@@ -1,7 +1,6 @@
 -- Function that reassign the owner of a table to their ownership_role
 CREATE OR REPLACE FUNCTION @extschema@.CDB_OAuthReassignTableOwnerOnCreation()
   RETURNS event_trigger
-  SECURITY DEFINER
   AS $$
 DECLARE
     obj record;
@@ -27,7 +26,11 @@ BEGIN
       END IF;
     END LOOP;
 END;
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 -- Creates the trigger on DDL events in order to reassign the owner
 CREATE OR REPLACE FUNCTION @extschema@.CDB_EnableOAuthReassignTablesTrigger()
