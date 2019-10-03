@@ -63,7 +63,11 @@ AS $$
     PERFORM @extschema@._CDB_LinkGhostTables(username, db_name, event_name);
     RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, event_name=%', username, event_name;
   END;
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 -- Trigger function to call CDB_LinkGhostTables()
 CREATE OR REPLACE FUNCTION @extschema@._CDB_LinkGhostTablesTrigger()
@@ -76,7 +80,11 @@ AS $$
     PERFORM @extschema@.CDB_LinkGhostTables(ddl_tag);
     RETURN NULL;
   END;
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 -- Event trigger to save the current transaction in @extschema@.cdb_ddl_execution
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SaveDDLTransaction()
@@ -85,7 +93,11 @@ AS $$
   BEGIN
     INSERT INTO @extschema@.cdb_ddl_execution VALUES (txid_current(), tg_tag) ON CONFLICT ON CONSTRAINT cdb_ddl_execution_pkey DO NOTHING;
   END;
-$$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE plpgsql
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = @extschema@, pg_temp;
 
 -- Creates the trigger on DDL events to link ghost tables
 CREATE OR REPLACE FUNCTION @extschema@.CDB_EnableGhostTablesTrigger()
