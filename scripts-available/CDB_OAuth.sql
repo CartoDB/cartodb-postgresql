@@ -17,11 +17,11 @@ BEGIN
                   obj.schema_name,
                   obj.object_identity;
       SELECT rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid INTO creator_role;
-      SELECT value->>'ownership_role_name' from cdb_conf where key = 'api_keys_' || creator_role INTO owner_role;
+      SELECT value->>'ownership_role_name' from @extschema@.CDB_Conf_GetConf('api_keys_' || quote_ident(creator_role)) value INTO owner_role;
       IF owner_role IS NULL OR owner_role = '' THEN
         CONTINUE;
       ELSE
-        EXECUTE 'ALTER ' || obj.object_type || ' ' || obj.object_identity || ' OWNER TO ' || QUOTE_IDENT(owner_role);
+        EXECUTE 'ALTER ' || obj.object_type || ' ' || obj.object_identity || ' OWNER TO ' || quote_ident(owner_role);
         EXECUTE 'GRANT ALL ON ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
         RAISE DEBUG 'Changing ownership from % to %', creator_role, owner_role;
       END IF;
