@@ -12,7 +12,12 @@ BEGIN
     EXECUTE Format('ANALYZE %s;', reloid);
   END IF;
 END
-$$ LANGUAGE 'plpgsql' VOLATILE STRICT PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE 'plpgsql'
+    VOLATILE
+    STRICT
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = pg_temp;
 
 -- Return a row count estimate of the result of a query using statistics
 CREATE OR REPLACE FUNCTION @extschema@.CDB_EstimateRowCount(query text)

@@ -318,7 +318,7 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- This function is declared SECURITY DEFINER so it executes with the privileges
 -- of the function creator to have a chance to alter the privileges of the
 -- overview table to match those of the dataset. It will only perform any change
--- if the overview table belgons to the same scheme as the dataset and it
+-- if the overview table belongs to the same scheme as the dataset and it
 -- matches the scheme naming for overview tables.
 CREATE OR REPLACE FUNCTION @extschema@._CDB_Register_Overview(dataset REGCLASS, overview_table REGCLASS, overview_z INTEGER)
 RETURNS VOID
@@ -362,7 +362,11 @@ AS $$
       -- it should be done here (CDB_Overviews would consume such metadata)
     END IF;
   END
-$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE SECURITY DEFINER;
+$$  LANGUAGE PLPGSQL
+    VOLATILE
+    PARALLEL UNSAFE
+    SECURITY DEFINER
+    SET search_path = pg_temp;
 
 -- Dataset attributes (column names other than the
 -- CartoDB primary key and geometry columns) which should be aggregated

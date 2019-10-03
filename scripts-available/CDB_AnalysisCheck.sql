@@ -6,8 +6,11 @@ $$
 BEGIN
   RETURN @extschema@.CDB_Conf_GetConf('analysis_quota_factor')::text::float8;
 END;
-$$
-LANGUAGE 'plpgsql' STABLE PARALLEL SAFE SECURITY DEFINER;
+$$  LANGUAGE 'plpgsql'
+    STABLE
+    PARALLEL SAFE
+    SECURITY DEFINER
+    SET search_path = pg_temp;
 
 
 -- Get the factor (fraction of the quota) for Camshaft cached analysis tables
