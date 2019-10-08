@@ -2,8 +2,8 @@
 -- Federated Tables management functions
 ----------------------------------------------------------------------
 
--- Take a server_config jsonb and transform it to an input suitable
--- for _CDB_SetUp_User_PG_FDW_Server
+-- Take a config jsonb and transform it to an input suitable for
+-- _CDB_SetUp_User_PG_FDW_Server
 CREATE OR REPLACE FUNCTION @extschema@.__cdb_credentials_to_user_mapping(input_config jsonb)
 RETURNS jsonb
 AS $$
@@ -17,6 +17,27 @@ BEGIN
         )
     );
     RETURN (input_config - 'credentials')::jsonb || user_mapping;
+END
+$$
+LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+
+
+-- Take a config jsonb as input and return it augmented with default
+-- options
+CREATE OR REPLACE FUNCTION @extschema@.__cdb_add_default_options(input_config jsonb)
+RETURNS jsonb
+AS $$
+DECLARE
+    default_options jsonb := '{
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    }';
+    server_config jsonb;
+BEGIN
+    server_config := default_options || to_jsonb(input_config->'server');
+    RETURN jsonb_set(input_config, '{server}'::text[], server_config);
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -42,7 +63,9 @@ AS $$
 DECLARE
     final_config jsonb;
 BEGIN
-    final_config := @extschema@.__cdb_credentials_to_user_mapping(server_config);
+    final_config := @extschema@.__cdb_credentials_to_user_mapping(
+        @extschema@.__cdb_add_default_options(server_config)
+    );
     PERFORM cartodb._CDB_SetUp_User_PG_FDW_Server(server_alias, final_config::json);
 END
 $$
