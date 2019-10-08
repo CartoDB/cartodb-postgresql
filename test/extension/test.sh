@@ -502,8 +502,7 @@ function test_cdb_querytables_happy_cases() {
     sql postgres 'DROP SCHEMA foo;'
 }
 
-function test_foreign_tables() {
-
+function setup_fdw_target() {
     DATABASE=fdw_target setup_database
     DATABASE=fdw_target sql postgres "DO
 \$\$
@@ -531,6 +530,22 @@ END
 
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
+}
+
+function tear_down_fdw_target() {
+    DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
+    DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
+
+    sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
+    DATABASE=fdw_target tear_down_database
+}
+
+function test_foreign_tables() {
+
+    setup_fdw_target
 
     # Add PGPORT to conf if it is set
     PORT_SPEC=""
@@ -651,19 +666,13 @@ EOF
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('another_user_defined_test', 'test_fdw', 'foo');"
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('another_user_defined_test', /* force = */ true)"
 
-
-    # Teardown
-    DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
-
-    sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
-    DATABASE=fdw_target tear_down_database
+    tear_down_fdw_target
 }
 
 function test_federated_tables() {
+    setup_fdw_target
+    # TODO
+    tear_down_fdw_target
 }
 
 function test_cdb_catalog_basic_node() {
