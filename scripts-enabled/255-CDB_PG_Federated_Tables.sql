@@ -1,0 +1,1 @@
+../scripts-available/CDB_PG_Federated_Tables.sql
