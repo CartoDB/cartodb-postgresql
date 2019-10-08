@@ -1,4 +1,4 @@
-0.31.0 (XXXX-XX-XX)
+0.31.0 (2019-10-08)
 * Ghost tables: Add missing tags (#370)
 * Set search_path in security definer functions.
 
