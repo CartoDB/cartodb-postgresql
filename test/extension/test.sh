@@ -675,24 +675,58 @@ EOF
 function test_federated_tables() {
     setup_fdw_target
 
-    # Set up a federated server
+    # Federated server configuration for tests
     read -d '' federated_server_config <<- EOF
 {
-   "server": {
-     "dbname": "fdw_target",
-     "host": "localhost",
-     "port": ${PGPORT:-5432}
-   },
-   "credentials": {
-     "username": "fdw_user",
-     "password": "foobarino"
-   }
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": ${PGPORT:-5432}
+    },
+    "credentials": {
+        "username": "fdw_user",
+        "password": "foobarino"
+    }
 }
 EOF
 
-    # Unit-test this helper method
-    sql postgres "SELECT cartodb.__cdb_credentials_to_user_mapping('$federated_server_config')" \
-        should '{"server": {"host": "localhost", "port": 5432, "dbname": "fdw_target"}, "user_mapping": {"user": "fdw_user", "password": "foobarino"}}'
+    # Unit-test __cdb_credentials_to_user_mapping
+    read -d '' expected_user_mapping <<- EOF
+{
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": ${PGPORT:-5432}
+    },
+    "user_mapping": {
+        "user": "fdw_user",
+        "password": "foobarino"
+    }
+}
+EOF
+    sql postgres "SELECT cartodb.__cdb_credentials_to_user_mapping('$federated_server_config') = '$expected_user_mapping'" \
+        should 't'
+
+    # Unit-test __cdb_add_default_options
+    read -d '' expected_default_options <<- EOF
+{
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": ${PGPORT:-5432},
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    },
+    "credentials": {
+        "username": "fdw_user",
+        "password": "foobarino"
+    }
+}
+EOF
+    sql postgres "SELECT cartodb.__cdb_add_default_options('$federated_server_config') = '$expected_default_options'" \
+        should 't'
 
     # There must be a function with the expected interface
     sql postgres "SELECT cartodb.CDB_SetUp_PG_Federated_Server('my_server', '$federated_server_config');"
@@ -703,6 +737,10 @@ EOF
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_User_PG_FDW_Table('my_server', 'test_fdw', 'foo');"
     sql cdb_testmember_1 'SELECT * from "cdb_fdw_my_server".foo;'
     sql cdb_testmember_1 'SELECT a from "cdb_fdw_my_server".foo LIMIT 1;' should 42
+
+    # It must apply some sensible defaults
+    sql postgres "SELECT srvoptions FROM pg_foreign_server WHERE srvname = 'cdb_fdw_my_server'" \
+        should '{host=localhost,port=5432,dbname=fdw_target,updatable=false,extensions=postgis,fetch_size=1000,use_remote_estimate=true}'
 
     # Tear down
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
