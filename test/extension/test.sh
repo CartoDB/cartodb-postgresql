@@ -663,6 +663,9 @@ EOF
     DATABASE=fdw_target tear_down_database
 }
 
+function test_federated_tables() {
+}
+
 function test_cdb_catalog_basic_node() {
     DEF="'{\"type\":\"buffer\",\"source\":\"b2db66bc7ac02e135fd20bbfef0fdd81b2d15fad\",\"radio\":10000}'"
     sql postgres "INSERT INTO cartodb.cdb_analysis_catalog (node_id, analysis_def) VALUES ('1bbc4c41ea7c9d3a7dc1509727f698b7', ${DEF}::json)"
