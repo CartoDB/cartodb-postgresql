@@ -17,11 +17,11 @@
 --      "password": "secret"
 --    }
 -- }');
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Server(server_alias text, config json)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Server(server_alias text, server_config json)
 RETURNS void
 AS $$
 BEGIN
-    -- TODO
+    PERFORM cartodb._CDB_SetUp_User_PG_FDW_Server(server_alias, server_config);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
