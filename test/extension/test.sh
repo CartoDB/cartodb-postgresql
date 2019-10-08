@@ -503,8 +503,10 @@ function test_cdb_querytables_happy_cases() {
 }
 
 function setup_fdw_target() {
-    DATABASE=fdw_target setup_database
-    DATABASE=fdw_target sql postgres "DO
+    local DATABASE=fdw_target
+
+    setup_database
+    sql postgres "DO
 \$\$
 BEGIN
    IF NOT EXISTS (
@@ -517,34 +519,35 @@ BEGIN
 END
 \$\$;"
 
-    DATABASE=fdw_target sql postgres 'CREATE SCHEMA test_fdw;'
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo (a int);'
-    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo (a) values (42);'
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.foo2 (a int);'
-    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.foo2 (a) values (42);'
-    DATABASE=fdw_target sql postgres "CREATE USER fdw_user WITH PASSWORD 'foobarino';"
-    DATABASE=fdw_target sql postgres 'GRANT USAGE ON SCHEMA test_fdw TO fdw_user;'
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.foo TO fdw_user;'
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.foo2 TO fdw_user;'
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON cdb_tablemetadata_text TO fdw_user;'
+    sql postgres 'CREATE SCHEMA test_fdw;'
+    sql postgres 'CREATE TABLE test_fdw.foo (a int);'
+    sql postgres 'INSERT INTO test_fdw.foo (a) values (42);'
+    sql postgres 'CREATE TABLE test_fdw.foo2 (a int);'
+    sql postgres 'INSERT INTO test_fdw.foo2 (a) values (42);'
+    sql postgres "CREATE USER fdw_user WITH PASSWORD 'foobarino';"
+    sql postgres 'GRANT USAGE ON SCHEMA test_fdw TO fdw_user;'
+    sql postgres 'GRANT SELECT ON TABLE test_fdw.foo TO fdw_user;'
+    sql postgres 'GRANT SELECT ON TABLE test_fdw.foo2 TO fdw_user;'
+    sql postgres 'GRANT SELECT ON cdb_tablemetadata_text TO fdw_user;'
 
-    DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
-    DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
+    sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
+    sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
 }
 
 function tear_down_fdw_target() {
-    DATABASE=fdw_target sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
-    DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
+    local DATABASE=fdw_target
 
-    sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
+    sql postgres 'REVOKE USAGE ON SCHEMA test_fdw FROM fdw_user;'
+    sql postgres 'REVOKE SELECT ON test_fdw.foo FROM fdw_user;'
+    sql postgres 'REVOKE SELECT ON test_fdw.foo2 FROM fdw_user;'
+    sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
+    sql postgres 'DROP ROLE fdw_user;'
+
+    DATABASE=test_extension sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
 }
 
 function test_foreign_tables() {
-
     setup_fdw_target
 
     # Add PGPORT to conf if it is set
