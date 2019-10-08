@@ -683,12 +683,17 @@ function test_federated_tables() {
      "host": "localhost",
      "port": ${PGPORT:-5432}
    },
-   "user_mapping": {
-     "user": "fdw_user",
+   "credentials": {
+     "username": "fdw_user",
      "password": "foobarino"
    }
 }
 EOF
+
+    # Unit-test this helper method
+    sql postgres "SELECT cartodb.__cdb_credentials_to_user_mapping('$federated_server_config')" \
+        should '{"server": {"host": "localhost", "port": 5432, "dbname": "fdw_target"}, "user_mapping": {"user": "fdw_user", "password": "foobarino"}}'
+
     # There must be a function with the expected interface
     sql postgres "SELECT cartodb.CDB_SetUp_PG_Federated_Server('my_server', '$federated_server_config');"
 
@@ -699,6 +704,7 @@ EOF
     sql cdb_testmember_1 'SELECT * from "cdb_fdw_my_server".foo;'
     sql cdb_testmember_1 'SELECT a from "cdb_fdw_my_server".foo LIMIT 1;' should 42
 
+    # Tear down
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
     tear_down_fdw_target
 }
