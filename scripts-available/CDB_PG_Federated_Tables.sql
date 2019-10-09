@@ -158,6 +158,8 @@ DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
     src_table REGCLASS;
     rest_of_cols TEXT[];
+    geom_expression TEXT;
+    webmercator_expression TEXT;
 BEGIN
     -- Import the foreign table
     PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
@@ -176,19 +178,35 @@ BEGIN
         WHERE c NOT IN (id_column, geom_column, webmercator_column)
     ) INTO rest_of_cols;
 
+    -- Figure out whether a ST_Transform to 4326 is needed or not
+    IF Find_SRID(fdw_objects_name::varchar, table_name::varchar, geom_column::varchar) = 4326
+    THEN
+        geom_expression := format('t.%I AS the_geom', geom_column);
+    ELSE
+        geom_expression := format('ST_Transform(t.%I, 4326) AS the_geom', geom_column);
+    END IF;
+
+    -- Figure out whether a ST_Transform to 3857 is needed or not
+    IF Find_SRID(fdw_objects_name::varchar, table_name::varchar, webmercator_column::varchar) = 3857
+    THEN
+        webmercator_expression := format('t.%I AS the_geom_webmercator', webmercator_column);
+    ELSE
+        webmercator_expression := format('ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
+    END IF;
+
     -- Create a view with homogeneous CDB fields
     EXECUTE format(
         'CREATE OR REPLACE VIEW %1$I AS
             SELECT
                 t.%2$I AS cartodb_id,
-                ST_Transform(t.%3$I, 4326) AS the_geom,
-                ST_Transform(t.%4$I, 3857) AS the_geom_webmercator,
+                %3$s,
+                %4$s,
                 %5$s
             FROM %6$s t',
         table_name,
         id_column,
-        geom_column,
-        webmercator_column,
+        geom_expression,
+        webmercator_expression,
         array_to_string(rest_of_cols, ','), -- rest of columns
         src_table
     );
