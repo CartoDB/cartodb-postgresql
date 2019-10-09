@@ -673,6 +673,7 @@ EOF
     tear_down_fdw_target
 }
 
+
 function test_federated_tables() {
     setup_fdw_target
 
@@ -759,12 +760,21 @@ EOF
                               'the_geom_webmercator'
                           )"
 
-     # Now it shall be able to access the table/view from its schema
-    sql cdb_testmember_1 "SELECT * FROM remote_table;"
+    # Now it shall be able to access the table/view from its schema
+    # the resulting table should have CDB form
+    sql cdb_testmember_1 "SELECT cartodb_id, the_geom, the_geom_webmercator FROM remote_table;"
+    sql cdb_testmember_1 "SELECT cartodb_id, ST_AsText(the_geom) FROM remote_table;" should '1|POINT(0 0)'
+
+    # In this sunnyday case, it does not need to generate ST_Transforms
+    sql cdb_testmember_1 "SELECT pg_get_viewdef('remote_table')" should ' SELECT t.cartodb_id,
+    t.the_geom,
+    t.the_geom_webmercator,
+    t.another_field
+   FROM cdb_fdw_my_server.remote_table t;'
 
 
-    # It checks that the id column is numeric
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table2 (cartodb_id text,  another_field text, geom geometry(Geometry,4326));'
+    # It fails if the id column is not numeric
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table2 (cartodb_id text, geom geometry(Geometry,4326));'
     DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table2 TO fdw_user;'
 
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
@@ -777,11 +787,46 @@ EOF
                           )" fails
 
 
+    # It fails if the provided geom column is not of geometry type
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table3 (cartodb_id int, geom varchar);'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table3 TO fdw_user;'
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table3',
+                              'cartodb_id',
+                              'the_geom',
+                              'the_geom_webmercator'
+                          )" fails
+
+
+    # It does a correct mapping of fields when source is not in CDB form
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table4 (id int,  another_field text, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table4 VALUES (1, 'patata', cartodb.CDB_LatLng(0, 0));"
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table4',
+                              'id',
+                              'geom'
+                          )"
+
+    sql cdb_testmember_1 "SELECT cartodb_id, ST_AsText(the_geom) FROM remote_table;" should '1|POINT(0 0)'
+    sql cdb_testmember_1 "SELECT pg_get_viewdef('remote_table4')" should ' SELECT t.id AS cartodb_id,
+    t.geom AS the_geom,
+    st_transform(t.geom, 3857) AS the_geom_webmercator,
+    t.another_field
+   FROM cdb_fdw_my_server.remote_table4 t;'
+
+
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
     tear_down_fdw_target
 }
+
 
 function test_cdb_catalog_basic_node() {
     DEF="'{\"type\":\"buffer\",\"source\":\"b2db66bc7ac02e135fd20bbfef0fdd81b2d15fad\",\"radio\":10000}'"
