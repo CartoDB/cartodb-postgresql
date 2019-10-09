@@ -117,6 +117,7 @@ $$ LANGUAGE SQL;
 --      "password": "secret"
 --    }
 -- }');
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Server(server_alias text, server_config jsonb)
 RETURNS void
 AS $$
@@ -133,7 +134,13 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --
--- Set up a federated table
+-- Set up a Federated Table
+--
+-- Precondition: the federated server has to be set up via
+-- CDB_SetUp_PG_Federated_Server
+--
+-- Postcondition: it generates a view in the schema of the user that
+-- can be used through SQL and Maps API's.
 --
 -- E.g:
 -- SELECT cartodb.CDB_SetUp_PG_Federated_Table(
@@ -144,6 +151,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --   'geom',                    -- optional, name of the geom column, preferably in 4326
 --   'webmercator',             -- optional, must be in 3857 if present
 -- );
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
     server_alias text,
     schema_name name,
