@@ -745,8 +745,8 @@ EOF
 
 
     # It shall be able to register a fully cartodbfied table
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table (id int, geom geometry(Geometry,4326));'
-    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.carto_remote_table VALUES (1, cartodb.CDB_LatLng(0, 0));'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table (cartodb_id int,  another_field text, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.carto_remote_table VALUES (1, 'patata', cartodb.CDB_LatLng(0, 0));"
     DATABASE=fdw_target sql postgres "SELECT cartodb.CDB_CartodbfyTable('test_fdw', 'test_fdw.carto_remote_table');"
     DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.carto_remote_table TO fdw_user;'
 
