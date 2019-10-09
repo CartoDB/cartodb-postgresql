@@ -745,35 +745,35 @@ EOF
 
 
     # It shall be able to register a fully cartodbfied table
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table (cartodb_id int,  another_field text, geom geometry(Geometry,4326));'
-    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.carto_remote_table VALUES (1, 'patata', cartodb.CDB_LatLng(0, 0));"
-    DATABASE=fdw_target sql postgres "SELECT cartodb.CDB_CartodbfyTable('test_fdw', 'test_fdw.carto_remote_table');"
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.carto_remote_table TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table (cartodb_id int,  another_field text, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table VALUES (1, 'patata', cartodb.CDB_LatLng(0, 0));"
+    DATABASE=fdw_target sql postgres "SELECT cartodb.CDB_CartodbfyTable('test_fdw', 'test_fdw.remote_table');"
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table TO fdw_user;'
 
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
-                              'my_server', -- server alias
-                              'test_fdw', -- schema
-                              'carto_remote_table', -- table
-                              'cartodb_id', -- id column
-                              'the_geom', -- geom column
-                              'the_geom_webmercator' -- mercator column
+                              'my_server',
+                              'test_fdw',
+                              'remote_table',
+                              'cartodb_id',
+                              'the_geom',
+                              'the_geom_webmercator'
                           )"
 
      # Now it shall be able to access the table/view from its schema
-    sql cdb_testmember_1 "SELECT * FROM carto_remote_table;"
+    sql cdb_testmember_1 "SELECT * FROM remote_table;"
 
 
     # It checks that the id column is numeric
-    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table2 (cartodb_id text,  another_field text, geom geometry(Geometry,4326));'
-    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.carto_remote_table2 TO fdw_user;'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table2 (cartodb_id text,  another_field text, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table2 TO fdw_user;'
 
     sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
-                              'my_server', -- server alias
-                              'test_fdw', -- schema
-                              'carto_remote_table2', -- table
-                              'another_field', -- id column
-                              'the_geom', -- geom column
-                              'the_geom_webmercator' -- mercator column
+                              'my_server',
+                              'test_fdw',
+                              'remote_table2',
+                              'another_field',
+                              'the_geom',
+                              'the_geom_webmercator'
                           )" fails
 
 
