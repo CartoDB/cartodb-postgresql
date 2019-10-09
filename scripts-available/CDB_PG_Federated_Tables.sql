@@ -45,6 +45,7 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 --
 -- Set up a federated server for later connection of tables/views
+--
 -- E.g:
 -- SELECT cartodb.CDB_SetUp_PG_Federated_Server('amazon', '{
 --    "server": {
@@ -67,6 +68,48 @@ BEGIN
         @extschema@.__ft_add_default_options(server_config)
     );
     PERFORM cartodb._CDB_SetUp_User_PG_FDW_Server(server_alias, final_config::json);
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+--
+-- Set up a federated table
+--
+-- E.g:
+-- SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+--   'amazon',                  -- mandatory, name of the federated server
+--   'my_remote_schema',        -- mandatory, schema name
+--   'my_remote_table',         -- mandatory, table name
+--   'id',                      -- mandatory, name of the id column
+--   'geom',                    -- optional, name of the geom column, preferably in 4326
+--   'webmercator_column_name', -- optional, must be in 3857 if present
+-- );
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
+    server_alias text,
+    schema_name name,
+    table_name name,
+    id_colum_name name,
+    geom_column_name name,
+    webmercator_column_name name
+)
+RETURNS void
+AS $$
+DECLARE
+    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
+BEGIN
+    -- Get the table
+    PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+
+    -- Create the view
+    EXECUTE format(
+        'CREATE OR REPLACE VIEW %1$I AS SELECT * FROM %2$I.%1$s',
+        table_name,
+        fdw_objects_name
+    );
+
+    -- Grant perms to the view
+    EXECUTE format('GRANT SELECT ON %I TO %s', table_name, fdw_objects_name);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

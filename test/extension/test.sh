@@ -532,6 +532,7 @@ END
 
     sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
     sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
+    sql postgres "SELECT cartodb.CDB_SetUserQuotaInBytes('test_fdw', 0);"
 }
 
 function tear_down_fdw_target() {
@@ -742,7 +743,28 @@ EOF
     sql postgres "SELECT srvoptions FROM pg_foreign_server WHERE srvname = 'cdb_fdw_my_server'" \
         should '{host=localhost,port=5432,dbname=fdw_target,updatable=false,extensions=postgis,fetch_size=1000,use_remote_estimate=true}'
 
+
+    # It shall be able to register a fully cartodbfied table
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table (id int, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw.carto_remote_table VALUES (1, cartodb.CDB_LatLng(0, 0));'
+    DATABASE=fdw_target sql postgres "SELECT cartodb.CDB_CartodbfyTable('test_fdw', 'test_fdw.carto_remote_table');"
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.carto_remote_table TO fdw_user;'
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server', -- server alias
+                              'test_fdw', -- schema
+                              'carto_remote_table', -- table
+                              'cartodb_id', -- id column
+                              'the_geom', -- geom column
+                              'the_geom_webmercator' -- mercator column
+                          )"
+
+     # Now it shall be able to access the table/view from its schema
+    sql cdb_testmember_1 "SELECT * FROM carto_remote_table;"
+
+
     # Tear down
+    DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
     tear_down_fdw_target
 }
