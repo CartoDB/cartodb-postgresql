@@ -89,7 +89,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
     server_alias text,
     schema_name name,
     table_name name,
-    id_colum_name name,
+    id_column name,
     geom_column_name name,
     webmercator_column_name name
 )
@@ -97,9 +97,22 @@ RETURNS void
 AS $$
 DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
+    src_table REGCLASS;
 BEGIN
-    -- Get the table
+    -- Import the foreign table
     PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+
+    -- Check id_column is numeric
+    src_table := format('%s.%s', fdw_objects_name, table_name);
+    PERFORM atttypid FROM pg_catalog.pg_attribute
+       WHERE attrelid = src_table
+         AND attname = id_column
+         AND atttypid IN (SELECT oid FROM pg_type
+           WHERE typname IN
+             ('smallint', 'integer', 'bigint', 'int2', 'int4', 'int8'));
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'non integer id_column "%"', id_column;
+    END IF;
 
     -- Create the view
     EXECUTE format(

@@ -763,6 +763,20 @@ EOF
     sql cdb_testmember_1 "SELECT * FROM carto_remote_table;"
 
 
+    # It checks that the id column is numeric
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.carto_remote_table2 (cartodb_id text,  another_field text, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.carto_remote_table2 TO fdw_user;'
+
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server', -- server alias
+                              'test_fdw', -- schema
+                              'carto_remote_table2', -- table
+                              'another_field', -- id column
+                              'the_geom', -- geom column
+                              'the_geom_webmercator' -- mercator column
+                          )" fails
+
+
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
