@@ -77,6 +77,25 @@ $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
+CREATE OR REPLACE FUNCTION @extschema@.__ft_getcolumns(input_table REGCLASS)
+RETURNS SETOF NAME
+AS $$
+  SELECT
+    a.attname as "colname"
+  FROM
+    pg_catalog.pg_attribute a
+  WHERE
+    a.attnum > 0
+      AND NOT a.attisdropped
+      AND a.attrelid = (
+        SELECT c.oid
+          FROM pg_catalog.pg_class c
+          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.oid = input_table::oid
+      )
+  ORDER BY a.attnum;
+$$ LANGUAGE SQL;
+
 
 
 --------------------------------------------------------------------------------
@@ -138,6 +157,7 @@ AS $$
 DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
     src_table REGCLASS;
+    rest_of_cols TEXT[];
 BEGIN
     -- Import the foreign table
     PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
@@ -150,11 +170,27 @@ BEGIN
     PERFORM @extschema@.__ft_assert_geometry(src_table, geom_column);
     PERFORM @extschema@.__ft_assert_geometry(src_table, webmercator_column);
 
-    -- Create the view
+    -- Get a list of columns excluding the id, geom and the_geom_webmercator
+    SELECT ARRAY(
+        SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
+        WHERE c NOT IN (id_column, geom_column, webmercator_column)
+    ) INTO rest_of_cols;
+
+    -- Create a view with homogeneous CDB fields
     EXECUTE format(
-        'CREATE OR REPLACE VIEW %1$I AS SELECT * FROM %2$I.%1$s',
+        'CREATE OR REPLACE VIEW %1$I AS
+            SELECT
+                t.%2$I AS cartodb_id,
+                ST_Transform(t.%3$I, 4326) AS the_geom,
+                ST_Transform(t.%4$I, 3857) AS the_geom_webmercator,
+                %5$s
+            FROM %6$s t',
         table_name,
-        fdw_objects_name
+        id_column,
+        geom_column,
+        webmercator_column,
+        array_to_string(rest_of_cols, ','), -- rest of columns
+        src_table
     );
 
     -- Grant perms to the view
