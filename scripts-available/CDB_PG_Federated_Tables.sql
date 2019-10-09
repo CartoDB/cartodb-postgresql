@@ -149,7 +149,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --   'my_remote_table',         -- mandatory, table name
 --   'id',                      -- mandatory, name of the id column
 --   'geom',                    -- optional, name of the geom column, preferably in 4326
---   'webmercator',             -- optional, must be in 3857 if present
+--   'webmercator'              -- optional, should be in 3857 if present
 -- );
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
@@ -215,7 +215,76 @@ BEGIN
         id_column,
         geom_expression,
         webmercator_expression,
-        array_to_string(rest_of_cols, ','), -- rest of columns
+        array_to_string(rest_of_cols, ','),
+        src_table
+    );
+
+    -- Grant perms to the view
+    EXECUTE format('GRANT SELECT ON %I TO %s', table_name, fdw_objects_name);
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
+    server_alias text,
+    schema_name name,
+    table_name name,
+    id_column name,
+    geom_column name
+)
+RETURNS void
+AS $$
+    SELECT @extschema@.CDB_SetUp_PG_Federated_Table(
+        server_alias,
+        schema_name,
+        table_name,
+        id_column,
+        geom_column,
+        geom_column
+    );
+$$
+LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
+    server_alias text,
+    schema_name name,
+    table_name name,
+    id_column name
+)
+RETURNS void
+AS $$
+DECLARE
+    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
+    src_table REGCLASS;
+    rest_of_cols TEXT[];
+BEGIN
+    -- Import the foreign table
+    PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+    src_table := format('%s.%s', fdw_objects_name, table_name);
+
+    -- Check id_column is numeric
+    PERFORM @extschema@.__ft_assert_numeric(src_table, id_column);
+
+    -- Get a list of columns excluding the id
+    SELECT ARRAY(
+        SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
+        WHERE c <> id_column
+    ) INTO rest_of_cols;
+
+    -- Create a view with homogeneous CDB fields
+    EXECUTE format(
+        'CREATE OR REPLACE VIEW %1$I AS
+            SELECT
+                t.%2$I AS cartodb_id,
+                NULL AS the_geom,
+                NULL AS the_geom_webmercator,
+                %3$s
+            FROM %4$s t',
+        table_name,
+        id_column,
+        array_to_string(rest_of_cols, ','),
         src_table
     );
 
