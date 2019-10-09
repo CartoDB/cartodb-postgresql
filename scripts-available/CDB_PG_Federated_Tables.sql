@@ -54,7 +54,7 @@ BEGIN
            WHERE typname IN
              ('smallint', 'integer', 'bigint', 'int2', 'int4', 'int8'));
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'non integer id_column "%"', id_column;
+      RAISE EXCEPTION 'non integer id_column "%"', colname;
     END IF;
 END
 $$
@@ -70,7 +70,7 @@ BEGIN
            AND attname = colname
            AND atttypid = 'geometry'::regtype;
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'non geometry column "%"', geom_colum;
+        RAISE EXCEPTION 'non geometry column "%"', colname;
     END IF;
 END
 $$
