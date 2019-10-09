@@ -43,6 +43,46 @@ $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 
+CREATE OR REPLACE FUNCTION @extschema@.__ft_assert_numeric(input_table regclass, colname name)
+RETURNS VOID
+AS $$
+BEGIN
+    PERFORM atttypid FROM pg_catalog.pg_attribute
+       WHERE attrelid = input_table
+         AND attname = colname
+         AND atttypid IN (SELECT oid FROM pg_type
+           WHERE typname IN
+             ('smallint', 'integer', 'bigint', 'int2', 'int4', 'int8'));
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'non integer id_column "%"', id_column;
+    END IF;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.__ft_assert_geometry(input_table regclass, colname name)
+RETURNS VOID
+AS $$
+BEGIN
+    PERFORM atttypid FROM pg_catalog.pg_attribute
+        WHERE attrelid = input_table
+           AND attname = colname
+           AND atttypid = 'geometry'::regtype;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'non geometry column "%"', geom_colum;
+    END IF;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+
+
+--------------------------------------------------------------------------------
+-- Public functions
+--------------------------------------------------------------------------------
+
 --
 -- Set up a federated server for later connection of tables/views
 --
@@ -83,15 +123,15 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --   'my_remote_table',         -- mandatory, table name
 --   'id',                      -- mandatory, name of the id column
 --   'geom',                    -- optional, name of the geom column, preferably in 4326
---   'webmercator_column_name', -- optional, must be in 3857 if present
+--   'webmercator',             -- optional, must be in 3857 if present
 -- );
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
     server_alias text,
     schema_name name,
     table_name name,
     id_column name,
-    geom_column_name name,
-    webmercator_column_name name
+    geom_column name,
+    webmercator_column name
 )
 RETURNS void
 AS $$
@@ -101,18 +141,14 @@ DECLARE
 BEGIN
     -- Import the foreign table
     PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+    src_table := format('%s.%s', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
-    src_table := format('%s.%s', fdw_objects_name, table_name);
-    PERFORM atttypid FROM pg_catalog.pg_attribute
-       WHERE attrelid = src_table
-         AND attname = id_column
-         AND atttypid IN (SELECT oid FROM pg_type
-           WHERE typname IN
-             ('smallint', 'integer', 'bigint', 'int2', 'int4', 'int8'));
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'non integer id_column "%"', id_column;
-    END IF;
+    PERFORM @extschema@.__ft_assert_numeric(src_table, id_column);
+
+    -- Check if the geom and mercator columns have a geometry type
+    PERFORM @extschema@.__ft_assert_geometry(src_table, geom_column);
+    PERFORM @extschema@.__ft_assert_geometry(src_table, webmercator_column);
 
     -- Create the view
     EXECUTE format(
