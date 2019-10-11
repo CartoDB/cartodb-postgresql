@@ -24,7 +24,7 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 -- Take a config jsonb as input and return it augmented with default
 -- options
-CREATE OR REPLACE FUNCTION @extschema@.__ft_add_default_options(input_config jsonb)
+CREATE OR REPLACE FUNCTION @extschema@.__ft_add_default_readonly_options(input_config jsonb)
 RETURNS jsonb
 AS $$
 DECLARE
@@ -125,7 +125,7 @@ DECLARE
     final_config jsonb;
 BEGIN
     final_config := @extschema@.__ft_credentials_to_user_mapping(
-        @extschema@.__ft_add_default_options(server_config)
+        @extschema@.__ft_add_default_readonly_options(server_config)
     );
     PERFORM cartodb._CDB_SetUp_User_PG_FDW_Server(server_alias, final_config::json);
 END

@@ -709,7 +709,7 @@ EOF
     sql postgres "SELECT cartodb.__ft_credentials_to_user_mapping('$federated_server_config') = '$expected_user_mapping'" \
         should 't'
 
-    # Unit-test __ft_add_default_options
+    # Unit-test __ft_add_default_readonly_options
     read -d '' expected_default_options <<- EOF
 {
     "server": {
@@ -727,7 +727,7 @@ EOF
     }
 }
 EOF
-    sql postgres "SELECT cartodb.__ft_add_default_options('$federated_server_config') = '$expected_default_options'" \
+    sql postgres "SELECT cartodb.__ft_add_default_readonly_options('$federated_server_config') = '$expected_default_options'" \
         should 't'
 
     # There must be a function with the expected interface
