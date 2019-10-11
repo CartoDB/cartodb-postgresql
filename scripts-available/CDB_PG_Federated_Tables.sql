@@ -189,7 +189,7 @@ BEGIN
     ) INTO rest_of_cols;
 
     -- Figure out whether a ST_Transform to 4326 is needed or not
-    IF Find_SRID(fdw_objects_name::varchar, table_name::varchar, geom_column::varchar) = 4326
+    IF @postgisschema@.Find_SRID(fdw_objects_name::varchar, table_name::varchar, geom_column::varchar) = 4326
     THEN
         geom_expression := format('t.%I AS the_geom', geom_column);
     ELSE
