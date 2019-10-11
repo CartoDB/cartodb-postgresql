@@ -123,7 +123,7 @@ BEGIN
     final_config := @extschema@.__ft_credentials_to_user_mapping(
         @extschema@.__ft_add_default_readonly_options(server_config)
     );
-    PERFORM cartodb._CDB_SetUp_User_PG_FDW_Server(server_alias, final_config::json);
+    PERFORM @extschema@._CDB_SetUp_User_PG_FDW_Server(server_alias, final_config::json);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -166,7 +166,7 @@ DECLARE
     webmercator_expression TEXT;
 BEGIN
     -- Import the foreign table
-    PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+    PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
     src_table := format('%s.%s', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
@@ -193,7 +193,7 @@ BEGIN
     THEN
         geom_expression := format('t.%I AS the_geom', geom_column);
     ELSE
-        geom_expression := format('ST_Transform(t.%I, 4326) AS the_geom', geom_column);
+        geom_expression := format('@postgisschema@.ST_Transform(t.%I, 4326) AS the_geom', geom_column);
     END IF;
 
     -- Figure out whether a ST_Transform to 3857 is needed or not
@@ -201,7 +201,7 @@ BEGIN
     THEN
         webmercator_expression := format('t.%I AS the_geom_webmercator', webmercator_column);
     ELSE
-        webmercator_expression := format('ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
+        webmercator_expression := format('@postgisschema@.ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
     END IF;
 
     -- Create a view with homogeneous CDB fields
@@ -263,7 +263,7 @@ DECLARE
     rest_of_cols TEXT[];
 BEGIN
     -- Import the foreign table
-    PERFORM CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
+    PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
     src_table := format('%s.%s', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
