@@ -43,8 +43,8 @@ $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION @extschema@.__ft_assert_numeric(input_table regclass, colname name)
-RETURNS VOID
+CREATE OR REPLACE FUNCTION @extschema@.__ft_is_numeric(input_table regclass, colname name)
+RETURNS boolean
 AS $$
 BEGIN
     PERFORM atttypid FROM pg_catalog.pg_attribute
@@ -53,25 +53,21 @@ BEGIN
          AND atttypid IN (SELECT oid FROM pg_type
            WHERE typname IN
              ('smallint', 'integer', 'bigint', 'int2', 'int4', 'int8'));
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'non integer id_column "%"', colname;
-    END IF;
+    RETURN FOUND;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION @extschema@.__ft_assert_geometry(input_table regclass, colname name)
-RETURNS VOID
+CREATE OR REPLACE FUNCTION @extschema@.__ft_is_geometry(input_table regclass, colname name)
+RETURNS boolean
 AS $$
 BEGIN
     PERFORM atttypid FROM pg_catalog.pg_attribute
         WHERE attrelid = input_table
            AND attname = colname
            AND atttypid = 'geometry'::regtype;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'non geometry column "%"', colname;
-    END IF;
+    RETURN FOUND;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -174,11 +170,17 @@ BEGIN
     src_table := format('%s.%s', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
-    PERFORM @extschema@.__ft_assert_numeric(src_table, id_column);
+    IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
+        RAISE EXCEPTION 'non integer id_column "%"', id_colun;
+    END IF;
 
     -- Check if the geom and mercator columns have a geometry type
-    PERFORM @extschema@.__ft_assert_geometry(src_table, geom_column);
-    PERFORM @extschema@.__ft_assert_geometry(src_table, webmercator_column);
+    IF NOT @extschema@.__ft_is_geometry(src_table, geom_column) THEN
+        RAISE EXCEPTION 'non geometry column "%"', geom_column;
+    END IF;
+    IF NOT @extschema@.__ft_is_geometry(src_table, webmercator_column) THEN
+        RAISE EXCEPTION 'non geometry column "%"', webmercator_column;
+    END IF;
 
     -- Get a list of columns excluding the id, geom and the_geom_webmercator
     SELECT ARRAY(
