@@ -114,7 +114,7 @@ $$ LANGUAGE SQL;
 --    }
 -- }');
 --
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Server(server_alias text, server_config jsonb)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Server(server_alias name, server_config jsonb)
 RETURNS void
 AS $$
 DECLARE
@@ -149,7 +149,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- );
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
-    server_alias text,
+    server_alias name,
     schema_name name,
     table_name name,
     id_column name,
@@ -229,7 +229,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
-    server_alias text,
+    server_alias name,
     schema_name name,
     table_name name,
     id_column name,
@@ -250,7 +250,7 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 
 CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
-    server_alias text,
+    server_alias name,
     schema_name name,
     table_name name,
     id_column name
