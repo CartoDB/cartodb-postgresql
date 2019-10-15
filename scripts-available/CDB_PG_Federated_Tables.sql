@@ -274,7 +274,7 @@ BEGIN
     -- Get a list of columns excluding the id
     SELECT ARRAY(
         SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
-        WHERE c <> id_column
+        WHERE c NOT IN (id_column, 'the_geom', 'the_geom_webmercator')
     ) INTO rest_of_cols;
 
     -- Create a view with homogeneous CDB fields
