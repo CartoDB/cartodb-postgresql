@@ -821,6 +821,19 @@ EOF
    FROM cdb_fdw_my_server.remote_table4 t;'
 
 
+    # It shall work without any geometries
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table5 (id int,  another_field text);'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table5 TO fdw_user;'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table5 VALUES (1, 'patata');"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table5',
+                              'id'
+                          )"
+    sql cdb_testmember_1 "SELECT cartodb_id, another_field, the_geom, the_geom_webmercator FROM remote_table5;" should '1|patata||'
+
+
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"

@@ -267,7 +267,9 @@ BEGIN
     src_table := format('%s.%s', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
-    PERFORM @extschema@.__ft_assert_numeric(src_table, id_column);
+    IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
+        RAISE EXCEPTION 'non integer id_column "%"', id_colun;
+    END IF;
 
     -- Get a list of columns excluding the id
     SELECT ARRAY(
