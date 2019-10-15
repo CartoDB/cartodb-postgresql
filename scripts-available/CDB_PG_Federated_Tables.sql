@@ -171,7 +171,7 @@ BEGIN
 
     -- Check id_column is numeric
     IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
-        RAISE EXCEPTION 'non integer id_column "%"', id_colun;
+        RAISE EXCEPTION 'non integer id_column "%"', id_column;
     END IF;
 
     -- Check if the geom and mercator columns have a geometry type
@@ -268,7 +268,7 @@ BEGIN
 
     -- Check id_column is numeric
     IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
-        RAISE EXCEPTION 'non integer id_column "%"', id_colun;
+        RAISE EXCEPTION 'non integer id_column "%"', id_column;
     END IF;
 
     -- Get a list of columns excluding the id
