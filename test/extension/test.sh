@@ -833,6 +833,30 @@ EOF
                           )"
     sql cdb_testmember_1 "SELECT cartodb_id, another_field, the_geom, the_geom_webmercator FROM remote_table5;" should '1|patata||'
 
+    # It shall work without any geometries, even if the table has the_geom or the_geom_webmercator
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table6 (id int,  another_field text, the_geom geometry(Geometry,4326), the_geom_webmercator geometry(Geometry,3857));'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON TABLE test_fdw.remote_table6 TO fdw_user;'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table6 VALUES (1, 'patata', cartodb.CDB_latLng(0,0), ST_Transform(cartodb.CDB_LatLng(0, 0), 3857));"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table6',
+                              'id'
+                          )"
+    sql cdb_testmember_1 "SELECT cartodb_id, another_field, the_geom, the_geom_webmercator FROM remote_table6;" should '1|patata||'
+
+    # similar case, when providing a geom column, with potential clashing of the_geom_webmercator
+    sql cdb_testmember_1 "DROP VIEW remote_table6;"
+    sql cdb_testmember_1 "DROP FOREIGN TABLE cdb_fdw_my_server.remote_table6;"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table6',
+                              'id',
+                              'the_geom'
+                          )"
+    sql cdb_testmember_1 "SELECT cartodb_id, another_field, ST_AsText(the_geom) FROM remote_table6;" should '1|patata|POINT(0 0)'
+
 
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'

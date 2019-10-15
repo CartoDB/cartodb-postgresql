@@ -185,7 +185,7 @@ BEGIN
     -- Get a list of columns excluding the id, geom and the_geom_webmercator
     SELECT ARRAY(
         SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
-        WHERE c NOT IN (id_column, geom_column, webmercator_column)
+        WHERE c NOT IN (id_column, geom_column, webmercator_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator')
     ) INTO rest_of_cols;
 
     -- Figure out whether a ST_Transform to 4326 is needed or not
@@ -274,7 +274,7 @@ BEGIN
     -- Get a list of columns excluding the id
     SELECT ARRAY(
         SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
-        WHERE c <> id_column
+        WHERE c NOT IN (id_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator')
     ) INTO rest_of_cols;
 
     -- Create a view with homogeneous CDB fields
