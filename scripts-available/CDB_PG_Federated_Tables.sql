@@ -164,6 +164,7 @@ DECLARE
     rest_of_cols TEXT[];
     geom_expression TEXT;
     webmercator_expression TEXT;
+    carto_columns_expression TEXT[];
 BEGIN
     -- Import the foreign table
     PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
@@ -204,20 +205,20 @@ BEGIN
         webmercator_expression := format('@postgisschema@.ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
     END IF;
 
+    -- CARTO columns expressions
+    carto_columns_expression := ARRAY[
+        format('t.%1$I AS cartodb_id', id_column),
+        geom_expression,
+        webmercator_expression
+    ];
+
     -- Create a view with homogeneous CDB fields
     EXECUTE format(
         'CREATE OR REPLACE VIEW %1$I AS
-            SELECT
-                t.%2$I AS cartodb_id,
-                %3$s,
-                %4$s,
-                %5$s
-            FROM %6$s t',
+            SELECT %2s
+            FROM %3$s t',
         table_name,
-        id_column,
-        geom_expression,
-        webmercator_expression,
-        array_to_string(rest_of_cols, ','),
+        array_to_string(carto_columns_expression || rest_of_cols, ','),
         src_table
     );
 
