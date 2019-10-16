@@ -260,6 +260,7 @@ AS $$
 DECLARE
     fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
     src_table REGCLASS;
+    carto_columns_expression TEXT[];
     rest_of_cols TEXT[];
 BEGIN
     -- Import the foreign table
@@ -271,7 +272,14 @@ BEGIN
         RAISE EXCEPTION 'non integer id_column "%"', id_column;
     END IF;
 
-    -- Get a list of columns excluding the id
+    -- CARTO columns expressions
+    carto_columns_expression := ARRAY[
+        format('t.%1$I AS cartodb_id', id_column),
+        'NULL AS the_geom',
+        'NULL AS the_geom_webmercator'
+    ];
+
+    -- Get a list of columns excluding id and carto columns
     SELECT ARRAY(
         SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
         WHERE c NOT IN (id_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator')
@@ -280,15 +288,10 @@ BEGIN
     -- Create a view with homogeneous CDB fields
     EXECUTE format(
         'CREATE OR REPLACE VIEW %1$I AS
-            SELECT
-                t.%2$I AS cartodb_id,
-                NULL AS the_geom,
-                NULL AS the_geom_webmercator,
-                %3$s
-            FROM %4$s t',
+            SELECT %2s
+            FROM %3$s t',
         table_name,
-        id_column,
-        array_to_string(rest_of_cols, ','),
+        array_to_string(carto_columns_expression || rest_of_cols, ','),
         src_table
     );
 
