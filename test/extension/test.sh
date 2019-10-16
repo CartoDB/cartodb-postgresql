@@ -858,6 +858,37 @@ EOF
     sql cdb_testmember_1 "SELECT cartodb_id, another_field, ST_AsText(the_geom) FROM remote_table6;" should '1|patata|POINT(0 0)'
 
 
+    # It shall work with just the "carto" columns
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table7 (id int);'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table8 (id int, geom geometry(Geometry,4326));'
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw.remote_table9 (id int, geom geometry(Geometry,4326), webmercator geometry(Geometry,3857));'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON ALL TABLES IN SCHEMA test_fdw TO fdw_user;'
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table8 VALUES (1);"
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table8 VALUES (1, cartodb.CDB_latLng(0,0));"
+    DATABASE=fdw_target sql postgres "INSERT INTO test_fdw.remote_table9 VALUES (1, cartodb.CDB_latLng(0,0), ST_Transform(cartodb.CDB_LatLng(0, 0), 3857));"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table7',
+                              'id'
+                          )"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table8',
+                              'id',
+                              'geom'
+                          )"
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'remote_table9',
+                              'id',
+                              'geom',
+                              'webmercator'
+                          )"
+
+
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
     sql postgres "SELECT cartodb._CDB_Drop_User_PG_FDW_Server('my_server', /* force = */ true)"
