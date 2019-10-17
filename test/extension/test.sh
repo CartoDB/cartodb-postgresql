@@ -888,6 +888,19 @@ EOF
                               'webmercator'
                           )"
 
+    # It shall work with columns with especial characters (those that
+    # require quoting)
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw."Remote table10" ("my id" int, "my value" int);'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw."Remote table10" VALUES (1, 42);'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON ALL TABLES IN SCHEMA test_fdw TO fdw_user;'
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'Remote table10',
+                              'my id'
+                          )"
+    sql cdb_testmember_1 'SELECT * FROM "Remote table10";' should '1|||42'
+
 
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'
