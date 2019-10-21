@@ -208,7 +208,7 @@ BEGIN
     IF webmercator_column IS NULL
     THEN
         webmercator_expression := 'NULL AS the_geom_webmercator';
-    ELSIF Find_SRID(fdw_objects_name::varchar, table_name::varchar, webmercator_column::varchar) = 3857
+    ELSIF @postgisschema@.Find_SRID(fdw_objects_name::varchar, table_name::varchar, webmercator_column::varchar) = 3857
     THEN
         webmercator_expression := format('t.%I AS the_geom_webmercator', webmercator_column);
     ELSE
