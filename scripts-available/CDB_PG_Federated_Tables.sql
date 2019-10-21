@@ -173,7 +173,7 @@ BEGIN
 
     -- Import the foreign table
     PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
-    src_table := format('%s.%s', fdw_objects_name, table_name);
+    src_table := format('%I.%I', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
     IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
