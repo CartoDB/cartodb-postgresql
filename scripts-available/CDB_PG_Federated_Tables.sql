@@ -153,8 +153,8 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
     schema_name name,
     table_name name,
     id_column name,
-    geom_column name,
-    webmercator_column name
+    geom_column name DEFAULT NULL,
+    webmercator_column name DEFAULT NULL
 )
 RETURNS void
 AS $$
@@ -166,6 +166,11 @@ DECLARE
     webmercator_expression TEXT;
     carto_columns_expression TEXT[];
 BEGIN
+    -- Use geom_column as default for webmercator_column
+    IF webmercator_column IS NULL THEN
+        webmercator_column := geom_column;
+    END IF;
+
     -- Import the foreign table
     PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
     src_table := format('%s.%s', fdw_objects_name, table_name);
@@ -175,33 +180,39 @@ BEGIN
         RAISE EXCEPTION 'non integer id_column "%"', id_column;
     END IF;
 
-    -- Check if the geom and mercator columns have a geometry type
-    IF NOT @extschema@.__ft_is_geometry(src_table, geom_column) THEN
+    -- Check if the geom and mercator columns have a geometry type (if provided)
+    IF geom_column IS NOT NULL AND NOT @extschema@.__ft_is_geometry(src_table, geom_column) THEN
         RAISE EXCEPTION 'non geometry column "%"', geom_column;
     END IF;
-    IF NOT @extschema@.__ft_is_geometry(src_table, webmercator_column) THEN
+    IF webmercator_expression IS NOT NULL AND NOT @extschema@.__ft_is_geometry(src_table, webmercator_column) THEN
         RAISE EXCEPTION 'non geometry column "%"', webmercator_column;
     END IF;
 
     -- Get a list of columns excluding the id, geom and the_geom_webmercator
     SELECT ARRAY(
         SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
-        WHERE c NOT IN (id_column, geom_column, webmercator_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator')
+        WHERE c NOT IN (SELECT * FROM (SELECT unnest(ARRAY[id_column, geom_column, webmercator_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator']) col) carto WHERE carto.col IS NOT NULL)
     ) INTO rest_of_cols;
 
-    -- Figure out whether a ST_Transform to 4326 is needed or not
-    IF @postgisschema@.Find_SRID(fdw_objects_name::varchar, table_name::varchar, geom_column::varchar) = 4326
+    IF geom_column IS NULL
+    THEN
+        geom_expression := 'NULL AS the_geom';
+    ELSIF @postgisschema@.Find_SRID(fdw_objects_name::varchar, table_name::varchar, geom_column::varchar) = 4326
     THEN
         geom_expression := format('t.%I AS the_geom', geom_column);
     ELSE
+        -- It needs an ST_Transform to 4326
         geom_expression := format('@postgisschema@.ST_Transform(t.%I, 4326) AS the_geom', geom_column);
     END IF;
 
-    -- Figure out whether a ST_Transform to 3857 is needed or not
-    IF Find_SRID(fdw_objects_name::varchar, table_name::varchar, webmercator_column::varchar) = 3857
+    IF webmercator_column IS NULL
+    THEN
+        webmercator_expression := 'NULL AS the_geom_webmercator';
+    ELSIF @postgisschema@.Find_SRID(fdw_objects_name::varchar, table_name::varchar, webmercator_column::varchar) = 3857
     THEN
         webmercator_expression := format('t.%I AS the_geom_webmercator', webmercator_column);
     ELSE
+        -- It needs an ST_Transform to 3857
         webmercator_expression := format('@postgisschema@.ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
     END IF;
 
@@ -211,80 +222,6 @@ BEGIN
         geom_expression,
         webmercator_expression
     ];
-
-    -- Create a view with homogeneous CDB fields
-    EXECUTE format(
-        'CREATE OR REPLACE VIEW %1$I AS
-            SELECT %2s
-            FROM %3$s t',
-        table_name,
-        array_to_string(carto_columns_expression || rest_of_cols, ','),
-        src_table
-    );
-
-    -- Grant perms to the view
-    EXECUTE format('GRANT SELECT ON %I TO %s', table_name, fdw_objects_name);
-END
-$$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
-
-
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
-    server_alias name,
-    schema_name name,
-    table_name name,
-    id_column name,
-    geom_column name
-)
-RETURNS void
-AS $$
-    SELECT @extschema@.CDB_SetUp_PG_Federated_Table(
-        server_alias,
-        schema_name,
-        table_name,
-        id_column,
-        geom_column,
-        geom_column
-    );
-$$
-LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
-
-
-CREATE OR REPLACE FUNCTION @extschema@.CDB_SetUp_PG_Federated_Table(
-    server_alias name,
-    schema_name name,
-    table_name name,
-    id_column name
-)
-RETURNS void
-AS $$
-DECLARE
-    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(server_alias);
-    src_table REGCLASS;
-    carto_columns_expression TEXT[];
-    rest_of_cols TEXT[];
-BEGIN
-    -- Import the foreign table
-    PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
-    src_table := format('%s.%s', fdw_objects_name, table_name);
-
-    -- Check id_column is numeric
-    IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
-        RAISE EXCEPTION 'non integer id_column "%"', id_column;
-    END IF;
-
-    -- CARTO columns expressions
-    carto_columns_expression := ARRAY[
-        format('t.%1$I AS cartodb_id', id_column),
-        'NULL AS the_geom',
-        'NULL AS the_geom_webmercator'
-    ];
-
-    -- Get a list of columns excluding id and carto columns
-    SELECT ARRAY(
-        SELECT quote_ident(c) FROM @extschema@.__ft_getcolumns(src_table) AS c
-        WHERE c NOT IN (id_column, 'cartodb_id', 'the_geom', 'the_geom_webmercator')
-    ) INTO rest_of_cols;
 
     -- Create a view with homogeneous CDB fields
     EXECUTE format(
