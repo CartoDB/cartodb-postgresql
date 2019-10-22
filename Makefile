@@ -135,9 +135,9 @@ include $(PGXS)
 
 PG_VERSION := $(shell $(PG_CONFIG) --version | $(AWK) '{split($$2,a,"."); print a[1]}')
 PG_12_GE := $(shell [ $(PG_VERSION) -ge 12 ] && echo true)
-PLPYTHONU := "plpythonu"
+PLPYTHONU := plpythonu
 ifeq ($(PG_12_GE), true)
-PLPYTHONU := "plpython3u"
+PLPYTHONU := plpython3u
 endif
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
