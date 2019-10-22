@@ -14,6 +14,7 @@ env:
     - POSTGRESQL_VERSION="9.6"
     - POSTGRESQL_VERSION="10"
     - POSTGRESQL_VERSION="11"
+    - POSTGRESQL_VERSION="12"
 
 
 before_install:
