@@ -662,7 +662,7 @@ AS $$
       offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
     END IF;
 
-    point_geom := Format('ST_SetSRID(ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
+    point_geom := Format('@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
 
     -- compute the resulting columns in the same order as in the base table
     WITH cols AS (
