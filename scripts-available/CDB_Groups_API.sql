@@ -189,7 +189,10 @@ CREATE OR REPLACE
 FUNCTION @extschema@._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
 $$
-    import httplib
+    try:
+        import httplib as client
+    except:
+        from http import client
 
     params = plpy.execute("select c.host, c.port, c.timeout, c.auth from @extschema@._CDB_Group_API_Conf() c;")[0]
     if params['host'] is None:
@@ -202,17 +205,17 @@ $$
     last_err = None
     while retry > 0:
       try:
-        client = SD['groups_api_client'] = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+        conn = SD['groups_api_client'] = client.HTTPConnection(params['host'], params['port'], False, params['timeout'])
         database_name = plpy.execute("select current_database();")[0]['current_database']
-        client.request(method, url.format(database_name), body, headers)
-        response = client.getresponse()
+        conn.request(method, url.format(database_name), body, headers)
+        response = conn.getresponse()
         assert response.status in valid_return_codes
         return response.status
       except Exception as err:
         retry -= 1
         last_err = err
         plpy.warning('Retrying after: ' + str(err))
-        client = SD['groups_api_client'] = None
+        conn = SD['groups_api_client'] = None
 
     if last_err is not None:
       plpy.error('Fatal Group API error: ' + str(last_err))
