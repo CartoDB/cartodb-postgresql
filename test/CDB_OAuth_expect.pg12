@@ -1,0 +1,90 @@
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for table test
+ERROR:  permission denied for table test_tablesas
+ERROR:  permission denied for view test_view
+ERROR:  permission denied for materialized view test_mview
+ERROR:  permission denied for table test_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+NOTICE:  event trigger "oauth_reassign_tables_trigger" does not exist, skipping
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for table test2
+ERROR:  permission denied for table test2_tablesas
+ERROR:  permission denied for view test2_view
+ERROR:  permission denied for materialized view test2_mview
+ERROR:  permission denied for table test2_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+ERROR:  permission denied for table test3
+ERROR:  permission denied for table test3_tablesas
+ERROR:  permission denied for view test3_view
+ERROR:  permission denied for materialized view test3_mview
+ERROR:  permission denied for table test3_selectinto
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE VIEW
+SELECT 1
+SELECT 1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP TABLE
+

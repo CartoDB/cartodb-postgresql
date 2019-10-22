@@ -1,3 +1,6 @@
+0.32.0 (XXXX-XX-XX)
+* Make PG12 depend on plpython3u instead of plpythonu
+
 0.31.0 (2019-10-08)
 * Ghost tables: Add missing tags (#370)
 * Set search_path in security definer functions.
