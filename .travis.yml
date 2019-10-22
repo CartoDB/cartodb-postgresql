@@ -24,8 +24,7 @@ script:
   - if [[ $POSTGRESQL_VERSION == '9.6' ]]; then sudo apt-get install -y postgresql-contrib-9.6; fi;
   - sudo apt-get install -y --allow-unauthenticated postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION postgresql-$POSTGRESQL_VERSION-postgis-$POSTGIS_VERSION-scripts postgis
   # For pre12, install plpython2. For PG12 install plpython3
-  - sudo apt-get install -y python python-pip python3 python3-pip
-  - if [[ $POSTGRESQL_VERSION != '12' ]]; then sudo pip install redis; sudo apt-get install -y postgresql-plpython-$POSTGRESQL_VERSION; else sudo pip3 install pip; sudo pip3 install setuptools; sudo pip3 install redis; sudo apt-get install -y postgresql-plpython3-12; fi;
+  - if [[ $POSTGRESQL_VERSION != '12' ]]; then sudo apt-get install -y postgresql-plpython-$POSTGRESQL_VERSION python python-redis; else sudo apt-get install -y postgresql-plpython3-12 python3 python3-redis; fi;
   - sudo pg_dropcluster --stop $POSTGRESQL_VERSION main
   - sudo rm -rf /etc/postgresql/$POSTGRESQL_VERSION /var/lib/postgresql/$POSTGRESQL_VERSION
   - sudo pg_createcluster -u postgres $POSTGRESQL_VERSION main -- --auth-local trust --auth-host password
