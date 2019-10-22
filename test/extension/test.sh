@@ -888,6 +888,33 @@ EOF
                               'webmercator'
                           )"
 
+    # It shall work with columns with especial characters (those that
+    # require quoting)
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw."Remote table10" ("my id" int, "my value" int);'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw."Remote table10" VALUES (1, 42);'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON ALL TABLES IN SCHEMA test_fdw TO fdw_user;'
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'Remote table10',
+                              'my id'
+                          )"
+    sql cdb_testmember_1 'SELECT * FROM "Remote table10";' should '1|||42'
+
+    # same as above with geom and mercator cols
+    DATABASE=fdw_target sql postgres 'CREATE TABLE test_fdw."Remote table11" ("my id" int, "my value" int, "my geom" geometry(Geometry,4326), "my mercator" geometry(Geometry,3857));'
+    DATABASE=fdw_target sql postgres 'INSERT INTO test_fdw."Remote table11" VALUES (1, 42, cartodb.CDB_LatLng(0,0));'
+    DATABASE=fdw_target sql postgres 'GRANT SELECT ON ALL TABLES IN SCHEMA test_fdw TO fdw_user;'
+    sql cdb_testmember_1 "SELECT cartodb.CDB_SetUp_PG_Federated_Table(
+                              'my_server',
+                              'test_fdw',
+                              'Remote table11',
+                              'my id',
+                              'my geom',
+                              'my mercator'
+                          )"
+    sql cdb_testmember_1 'SELECT cartodb_id, ST_AsText(the_geom), the_geom_webmercator, "my value" FROM "Remote table11";' should '1|POINT(0 0)||42'
+
 
     # Tear down
     DATABASE=fdw_target sql postgres 'REVOKE ALL ON ALL TABLES IN SCHEMA test_fdw FROM fdw_user;'

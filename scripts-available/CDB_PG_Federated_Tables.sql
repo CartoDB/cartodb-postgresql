@@ -93,6 +93,10 @@ AS $$
 $$ LANGUAGE SQL;
 
 
+-- Drop legacy functions (this is just needed during development)
+DROP FUNCTION IF EXISTS cartodb.cdb_setup_pg_federated_table(server_alias name, schema_name name, table_name name, id_column name);
+DROP FUNCTION IF EXISTS cartodb.cdb_setup_pg_federated_table(server_alias name, schema_name name, table_name name, id_column name, geom_column name);
+DROP FUNCTION IF EXISTS cartodb.cdb_setup_pg_federated_table(server_alias text, schema_name name, table_name name, id_column name, geom_column name, webmercator_column name);
 
 --------------------------------------------------------------------------------
 -- Public functions
@@ -173,7 +177,7 @@ BEGIN
 
     -- Import the foreign table
     PERFORM @extschema@.CDB_SetUp_User_PG_FDW_Table(server_alias, schema_name, table_name);
-    src_table := format('%s.%s', fdw_objects_name, table_name);
+    src_table := format('%I.%I', fdw_objects_name, table_name);
 
     -- Check id_column is numeric
     IF NOT @extschema@.__ft_is_numeric(src_table, id_column) THEN
