@@ -21,8 +21,9 @@ $$
 DECLARE
   total_size INT8;
 BEGIN
+  -- TODO: Make this compatible with postgis without raster (No view and no raster tables)
   WITH raster_tables AS (
-    SELECT o_table_name, r_table_name FROM raster_overviews
+    SELECT o_table_name, r_table_name FROM @postgisschema@.raster_overviews
       WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
   ),
   user_tables AS (
