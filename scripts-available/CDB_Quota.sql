@@ -15,7 +15,7 @@ $$
 LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 -- Return the estimated size of user data. Used for quota checking.
-CREATE OR REPLACE FUNCTION cartodb.CDB_UserDataSize(schema_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
 DECLARE
