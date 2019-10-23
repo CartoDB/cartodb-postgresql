@@ -8,14 +8,15 @@ env:
     - PGDATABASE=postgres
     - PGOPTIONS='-c client_min_messages=NOTICE'
     - PGPORT=5432
-    - POSTGIS_VERSION="2.5"
 
 jobs:
   include:
-    - env: POSTGRESQL_VERSION="9.6"
-    - env: POSTGRESQL_VERSION="10"
-    - env: POSTGRESQL_VERSION="11"
-    - env: POSTGRESQL_VERSION="12"
+    - env: POSTGRESQL_VERSION="9.6" POSTGIS_VERSION="2.5"
+    - env: POSTGRESQL_VERSION="10" POSTGIS_VERSION="2.5"
+    - env: POSTGRESQL_VERSION="11" POSTGIS_VERSION="2.5"
+    - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="2.5"
+    - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="3"
+  
 
 script:
   - sudo service postgresql stop;
