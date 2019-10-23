@@ -1,5 +1,7 @@
 0.32.0 (XXXX-XX-XX)
+* Some fixes for PG12.
 * Make PG12 depend on plpython3u instead of plpythonu
+* CDB_UserDataSize is now compatible with postgis 3 without postgis_raster.
 
 0.31.0 (2019-10-08)
 * Ghost tables: Add missing tags (#370)
