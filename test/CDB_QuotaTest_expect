@@ -1,18 +1,19 @@
 SET
-
 CREATE TABLE
 CREATE TRIGGER
 INSERT 0 1
 ERROR:  Quota exceeded by 3.9990234375KB
 0
 big
+ERROR:  trigger "test_quota" for relation "big" already exists
+DROP TRIGGER
+CREATE TRIGGER
 INSERT 0 2048
 INSERT 0 2048
 INSERT 0 2048
 454656
 909312
 0
-
 2
 ERROR:  Quota exceeded by 443.998046875KB
 0
