@@ -397,7 +397,7 @@ DECLARE
   attr_list TEXT;
 BEGIN
   SELECT string_agg(s.c, ',') FROM (
-    SELECT * FROM @extschema@._CDB_Aggregable_Attributes(reloid) c
+    SELECT @extschema@._CDB_Aggregable_Attributes(reloid)::text c
   ) AS s INTO attr_list;
 
   RETURN attr_list;
@@ -554,7 +554,7 @@ DECLARE
 BEGIN
   SELECT string_agg(@extschema@._CDB_Attribute_Aggregation_Expression(reloid, s.c, table_alias) || Format(' AS %s', s.c), ',')
   FROM (
-    SELECT * FROM @extschema@._CDB_Aggregable_Attributes(reloid) c
+    SELECT @extschema@._CDB_Aggregable_Attributes(reloid)::text c
   ) AS s INTO attr_list;
 
   RETURN attr_list;
@@ -673,7 +673,7 @@ AS $$
           Format('@postgisschema@.ST_Transform(%s, 4326) AS the_geom', point_geom)
         WHEN 'the_geom_webmercator' THEN
            Format('%s AS the_geom_webmercator', point_geom)
-        ELSE c
+        ELSE c::text
         END AS column
         FROM @extschema@.CDB_ColumnNames(reloid) c
     )
@@ -800,7 +800,7 @@ AS $$
           '@postgisschema@.ST_Transform(@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857), 4326) AS the_geom'
         WHEN 'the_geom_webmercator' THEN
           '@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(_sum_of_x/n, _sum_of_y/n), 3857) AS the_geom_webmercator'
-        ELSE c
+        ELSE c::text
         END AS column
         FROM CDB_ColumnNames(reloid) c
     )
@@ -924,7 +924,7 @@ AS $$
       SELECT
         CASE c
         WHEN 'cartodb_id' THEN 'cartodb_id'
-        ELSE c
+        ELSE c::text
         END AS column
         FROM @extschema@.CDB_ColumnNames(reloid) c
     )
