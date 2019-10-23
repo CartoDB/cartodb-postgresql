@@ -15,39 +15,55 @@ $$
 LANGUAGE 'plpgsql' VOLATILE PARALLEL UNSAFE;
 
 -- Return the estimated size of user data. Used for quota checking.
-CREATE OR REPLACE FUNCTION @extschema@.CDB_UserDataSize(schema_name TEXT)
+CREATE OR REPLACE FUNCTION cartodb.CDB_UserDataSize(schema_name TEXT)
 RETURNS bigint AS
 $$
 DECLARE
   total_size INT8;
+  raster_available BOOLEAN;
+  raster_read_query TEXT;
 BEGIN
-  -- TODO: Make this compatible with postgis without raster (No view and no raster tables)
+  -- Postgis 3+ might not install raster
+  raster_available := EXISTS (
+        SELECT 1
+        FROM   pg_views
+        WHERE  schemaname = '@postgisschema@'
+        AND    viewname = 'raster_overviews'
+   );
+
+   IF raster_available THEN
+       raster_read_query := Format('SELECT o_table_name, r_table_name FROM @postgisschema@.raster_overviews
+                        WHERE o_table_schema = ''%I'' AND o_table_catalog = current_database()', schema_name);
+   ELSE
+       raster_read_query := 'SELECT NULL::text AS o_table_name, NULL::text AS r_table_name';
+   END IF;
+   EXECUTE Format('
   WITH raster_tables AS (
-    SELECT o_table_name, r_table_name FROM @postgisschema@.raster_overviews
-      WHERE o_table_schema = schema_name AND o_table_catalog = current_database()
+    %s
   ),
   user_tables AS (
-    SELECT table_name FROM @extschema@._CDB_NonAnalysisTablesInSchema(schema_name)
+    SELECT table_name FROM @extschema@._CDB_NonAnalysisTablesInSchema(''%I'')
   ),
   table_cat AS (
     SELECT
       table_name,
       (
         EXISTS(select * from raster_tables where o_table_name = table_name)
-        OR table_name SIMILAR TO @extschema@._CDB_OverviewTableDiscriminator() || '[\w\d]*'
+        OR table_name SIMILAR TO @extschema@._CDB_OverviewTableDiscriminator() || ''[\w\d]*''
       ) AS is_overview,
       EXISTS(SELECT * FROM raster_tables WHERE r_table_name = table_name) AS is_raster
     FROM user_tables
   ),
   sizes AS (
-    SELECT COALESCE(INT8(SUM(@extschema@._CDB_total_relation_size(schema_name, table_name)))) table_size,
+    SELECT COALESCE(INT8(SUM(@extschema@._CDB_total_relation_size(''%I'', table_name)))) table_size,
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
 	ELSE 0.5 -- Division by 2 is for not counting the_geom_webmercator
       END AS multiplier FROM table_cat GROUP BY is_overview, is_raster
   )
-  SELECT sum(table_size*multiplier)::int8 INTO total_size FROM sizes;
+  SELECT sum(table_size*multiplier)::int8 FROM sizes
+  ', raster_read_query, schema_name, schema_name) INTO total_size;
 
   IF total_size IS NOT NULL THEN
     RETURN total_size;
