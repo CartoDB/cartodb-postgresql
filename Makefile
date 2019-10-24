@@ -134,12 +134,18 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 PG_VERSION := $(shell $(PG_CONFIG) --version | $(AWK) '{split($$2,a,"."); print a[1]}')
+PG_12_GE := $(shell [ $(PG_VERSION) -ge 12 ] && echo true)
+PLPYTHONU := plpythonu
+ifeq ($(PG_12_GE), true)
+PLPYTHONU := plpython3u
+endif
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
 	cat $(CDBSCRIPTS) | \
 	$(SED) 	-e 's/@extschema@/cartodb/g' \
-		-e "s/@postgisschema@/public/g" >> $@
+		-e 's/@postgisschema@/public/g' \
+		-e 's/plpythonu/$(PLPYTHONU)/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_version.sql >> $@
 
@@ -153,10 +159,10 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 	cp $< $@
 
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/g' -e 's/plpythonu/$(PLPYTHONU)/g' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/plpythonu/$(PLPYTHONU)/g' $< > $@
 
 # Needed for consistent `echo` results with backslashes
 SHELL = bash
@@ -176,11 +182,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
 			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" >> $${of}; \
 		exp=expected/test/$${tn}.out; \
 		echo '\set ECHO none' > $${exp}; \
-		if [[ -f "test/$${tn}_expect.pg$(PG_VERSION)" ]]; then \
-			cat test/$${tn}_expect.pg$(PG_VERSION) >> $${exp}; \
-		else \
-			cat test/$${tn}_expect >> $${exp}; \
-		fi \
+		cat test/$${tn}_expect >> $${exp}; \
 	done
 
 test_organization:

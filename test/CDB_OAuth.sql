@@ -1,6 +1,23 @@
 -- Create user and enable OAuth event trigger
 \set QUIET on
 SET client_min_messages TO error;
+
+-- The permission error changed between pre PG11 and post 11 (before everythin "relation", now it's "view", "table" and so on
+CREATE OR REPLACE FUNCTION catch_permission_error(query text)
+RETURNS bool
+AS $$
+BEGIN
+    EXECUTE query;
+    RETURN FALSE;
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RETURN TRUE;
+    WHEN OTHERS THEN
+        RAISE WARNING 'Exception %', sqlstate;
+        RETURN FALSE;
+END
+$$ LANGUAGE 'plpgsql';
+
 DROP ROLE IF EXISTS "creator_role";
 CREATE ROLE "creator_role" LOGIN;
 DROP ROLE IF EXISTS "ownership_role";
@@ -30,11 +47,11 @@ SELECT * FROM test_selectinto;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
-SELECT * FROM test;
-SELECT * FROM test_tablesas;
-SELECT * FROM test_view;
-SELECT * FROM test_mview;
-SELECT * FROM test_selectinto;
+SELECT 'denied_table', catch_permission_error($$SELECT * FROM test;$$);
+SELECT 'denied_tableas', catch_permission_error($$SELECT * FROM test_tablesas;$$);
+SELECT 'denied_view', catch_permission_error($$SELECT * FROM test_view;$$);
+SELECT 'denied_mview', catch_permission_error($$SELECT * FROM test_mview;$$);
+SELECT 'denied_selectinto', catch_permission_error($$SELECT * FROM test_selectinto;$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -71,11 +88,11 @@ SELECT * FROM test2_selectinto;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
-SELECT * FROM test2;
-SELECT * FROM test2_tablesas;
-SELECT * FROM test2_view;
-SELECT * FROM test2_mview;
-SELECT * FROM test2_selectinto;
+SELECT 'denied_table2', catch_permission_error($$SELECT * FROM test2;$$);
+SELECT 'denied_tableas2', catch_permission_error($$SELECT * FROM test2_tablesas;$$);
+SELECT 'denied_view2', catch_permission_error($$SELECT * FROM test2_view;$$);
+SELECT 'denied_mview2', catch_permission_error($$SELECT * FROM test2_mview;$$);
+SELECT 'denied_selectinto2', catch_permission_error($$SELECT * FROM test2_selectinto;$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -112,11 +129,11 @@ SELECT * FROM test3_selectinto;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
-SELECT * FROM test3;
-SELECT * FROM test3_tablesas;
-SELECT * FROM test3_view;
-SELECT * FROM test3_mview;
-SELECT * FROM test3_selectinto;
+SELECT 'denied_table3', catch_permission_error($$SELECT * FROM test3;$$);
+SELECT 'denied_tableas3', catch_permission_error($$SELECT * FROM test3_tablesas;$$);
+SELECT 'denied_view3', catch_permission_error($$SELECT * FROM test3_view;$$);
+SELECT 'denied_mview3', catch_permission_error($$SELECT * FROM test3_mview;$$);
+SELECT 'denied_selectinto3', catch_permission_error($$SELECT * FROM test3_selectinto;$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -174,4 +191,5 @@ DROP ROLE "ownership_role";
 REVOKE ALL ON SCHEMA cartodb FROM "creator_role";
 DROP ROLE "creator_role";
 DELETE FROM cdb_conf WHERE key = 'api_keys_creator_role';
+DROP FUNCTION catch_permission_error(text);
 \set QUIET off

@@ -10,7 +10,7 @@ See [the cartodb-postgresql wiki](https://github.com/CartoDB/cartodb-postgresql/
 Dependencies
 ------------
 
- * PostgreSQL 9.6+ (with plpythonu extension and xml support)
+ * PostgreSQL 9.6+ (with plpythonu extension and xml support). For PostgreSQL 12+ plpython3u is required instead of plpythonu.
  * [PostGIS extension](http://postgis.net)
  * Python with [Redis module](https://pypi.org/project/redis/)
 

@@ -33,9 +33,12 @@ FUNCTION @extschema@._CDB_Group_DropGroup_API(group_name text)
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s' % (urllib.pathname2url(group_name))
+    url = '/api/v1/databases/{0}/groups/%s' % (pathname2url(group_name))
 
     query = "select @extschema@._CDB_Group_API_Request('DELETE', '%s', '', '{204, 404}') as response_status" % url
     plpy.execute(query)
@@ -50,9 +53,12 @@ FUNCTION @extschema@._CDB_Group_RenameGroup_API(old_group_name text, new_group_n
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s' % (urllib.pathname2url(old_group_name))
+    url = '/api/v1/databases/{0}/groups/%s' % (pathname2url(old_group_name))
     body = '{ "name": "%s", "database_role": "%s" }' % (new_group_name, new_group_role)
     query = "select @extschema@._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
@@ -67,9 +73,12 @@ FUNCTION @extschema@._CDB_Group_AddUsers_API(group_name text, usernames text[])
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
+    url = '/api/v1/databases/{0}/groups/%s/users' % (pathname2url(group_name))
     body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
     query = "select @extschema@._CDB_Group_API_Request('POST', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
@@ -84,9 +93,12 @@ FUNCTION @extschema@._CDB_Group_RemoveUsers_API(group_name text, usernames text[
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s/users' % (urllib.pathname2url(group_name))
+    url = '/api/v1/databases/{0}/groups/%s/users' % (pathname2url(group_name))
     body = "{ \"users\": [\"%s\"] }" % "\",\"".join(usernames)
     query = "select @extschema@._CDB_Group_API_Request('DELETE', '%s', '%s', '{200, 404}') as response_status" % (url, body)
     plpy.execute(query)
@@ -109,9 +121,12 @@ FUNCTION @extschema@._CDB_Group_Table_GrantPermission_API(group_name text, usern
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s/permission/%s/tables/%s' % (urllib.pathname2url(group_name), username, table_name)
+    url = '/api/v1/databases/{0}/groups/%s/permission/%s/tables/%s' % (pathname2url(group_name), username, table_name)
     body = '{ "access": "%s" }' % access
     query = "select @extschema@._CDB_Group_API_Request('PUT', '%s', '%s', '{200, 409}') as response_status" % (url, body)
     plpy.execute(query)
@@ -134,9 +149,12 @@ FUNCTION @extschema@._CDB_Group_Table_RevokeAllPermission_API(group_name text, u
     RETURNS VOID AS
 $$
     import string
-    import urllib
+    try:
+        from urllib import pathname2url
+    except:
+        from urllib.request import pathname2url
 
-    url = '/api/v1/databases/{0}/groups/%s/permission/%s/tables/%s' % (urllib.pathname2url(group_name), username, table_name)
+    url = '/api/v1/databases/{0}/groups/%s/permission/%s/tables/%s' % (pathname2url(group_name), username, table_name)
     query = "select @extschema@._CDB_Group_API_Request('DELETE', '%s', '', '{200, 404}') as response_status" % url
     plpy.execute(query)
 $$  LANGUAGE 'plpythonu'
@@ -189,7 +207,10 @@ CREATE OR REPLACE
 FUNCTION @extschema@._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
 $$
-    import httplib
+    try:
+        import httplib as client
+    except:
+        from http import client
 
     params = plpy.execute("select c.host, c.port, c.timeout, c.auth from @extschema@._CDB_Group_API_Conf() c;")[0]
     if params['host'] is None:
@@ -202,17 +223,17 @@ $$
     last_err = None
     while retry > 0:
       try:
-        client = SD['groups_api_client'] = httplib.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+        conn = SD['groups_api_client'] = client.HTTPConnection(params['host'], params['port'], False, params['timeout'])
         database_name = plpy.execute("select current_database();")[0]['current_database']
-        client.request(method, url.format(database_name), body, headers)
-        response = client.getresponse()
+        conn.request(method, url.format(database_name), body, headers)
+        response = conn.getresponse()
         assert response.status in valid_return_codes
         return response.status
       except Exception as err:
         retry -= 1
         last_err = err
         plpy.warning('Retrying after: ' + str(err))
-        client = SD['groups_api_client'] = None
+        conn = SD['groups_api_client'] = None
 
     if last_err is not None:
       plpy.error('Fatal Group API error: ' + str(last_err))
