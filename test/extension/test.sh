@@ -17,6 +17,10 @@ SED=sed
 OK=0
 PARTIALOK=0
 
+function reset_default_database() {
+    DATABASE=test_extension
+}
+
 function set_failed() {
     OK=1
     PARTIALOK=1
@@ -40,10 +44,10 @@ function sql() {
     fi
 
     if [ -n "${ROLE}" ]; then
-      log_debug "Executing query '${QUERY}' as ${ROLE}"
+      log_debug "Executing query '${QUERY}' as '${ROLE}' in '${DATABASE}'"
       RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
     else
-      log_debug "Executing query '${QUERY}'"
+      log_debug "Executing query '${QUERY}' in '${DATABASE}'"
       RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t`
     fi
     CODERESULT=$?
@@ -212,6 +216,8 @@ function tear_down_database() {
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
 function tear_down() {
+    reset_default_database
+
     log_info "########################### USER TEAR DOWN ###########################"
     sql cdb_testmember_1 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_1', 'foo', 'cdb_testmember_2');"
     sql cdb_testmember_2 "SELECT * FROM cartodb.CDB_Organization_Remove_Access_Permission('cdb_testmember_2', 'bar', 'cdb_testmember_1');"
@@ -532,6 +538,8 @@ END
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo'::regclass);"
     DATABASE=fdw_target sql postgres "SELECT cdb_tablemetadatatouch('test_fdw.foo2'::regclass);"
 
+    reset_default_database
+
     # Add PGPORT to conf if it is set
     PORT_SPEC=""
     if [[ "$PGPORT" != "" ]] ; then
@@ -659,8 +667,10 @@ EOF
     DATABASE=fdw_target sql postgres 'REVOKE SELECT ON cdb_tablemetadata_text FROM fdw_user;'
     DATABASE=fdw_target sql postgres 'DROP ROLE fdw_user;'
 
+    reset_default_database
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
+    reset_default_database
 }
 
 function test_cdb_catalog_basic_node() {
