@@ -182,11 +182,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
 			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" >> $${of}; \
 		exp=expected/test/$${tn}.out; \
 		echo '\set ECHO none' > $${exp}; \
-		if [[ -f "test/$${tn}_expect.pg$(PG_VERSION)" ]]; then \
-			cat test/$${tn}_expect.pg$(PG_VERSION) >> $${exp}; \
-		else \
-			cat test/$${tn}_expect >> $${exp}; \
-		fi \
+		cat test/$${tn}_expect >> $${exp}; \
 	done
 
 test_organization:

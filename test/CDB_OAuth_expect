@@ -10,11 +10,11 @@ SELECT 1
 1
 1
 1
-ERROR:  permission denied for relation test
-ERROR:  permission denied for relation test_tablesas
-ERROR:  permission denied for relation test_view
-ERROR:  permission denied for relation test_mview
-ERROR:  permission denied for relation test_selectinto
+denied_table|t
+denied_tableas|t
+denied_view|t
+denied_mview|t
+denied_selectinto|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
@@ -33,11 +33,11 @@ SELECT 1
 1
 1
 1
-ERROR:  permission denied for relation test2
-ERROR:  permission denied for relation test2_tablesas
-ERROR:  permission denied for relation test2_view
-ERROR:  permission denied for relation test2_mview
-ERROR:  permission denied for relation test2_selectinto
+denied_table2|t
+denied_tableas2|t
+denied_view2|t
+denied_mview2|t
+denied_selectinto2|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
@@ -55,11 +55,11 @@ SELECT 1
 1
 1
 1
-ERROR:  permission denied for relation test3
-ERROR:  permission denied for relation test3_tablesas
-ERROR:  permission denied for relation test3_view
-ERROR:  permission denied for relation test3_mview
-ERROR:  permission denied for relation test3_selectinto
+denied_table3|t
+denied_tableas3|t
+denied_view3|t
+denied_mview3|t
+denied_selectinto3|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
