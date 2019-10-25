@@ -26,7 +26,11 @@ BEGIN
         CONTINUE;
       ELSE
         EXECUTE 'ALTER ' || obj.object_type || ' ' || obj.object_identity || ' OWNER TO ' || quote_ident(owner_role);
-        EXECUTE 'GRANT ALL ON ' || obj.object_type || ' ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        IF obj.object_type = 'function' THEN
+          EXECUTE 'GRANT ALL ON FUNCTION ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        ELSE
+          EXECUTE 'GRANT ALL ON ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        END IF;        
         RAISE DEBUG 'Changing ownership from % to %', creator_role, owner_role;
       END IF;
     END LOOP;
