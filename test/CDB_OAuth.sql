@@ -54,6 +54,8 @@ SELECT 'denied_tableas', catch_permission_error($$SELECT * FROM test_tablesas;$$
 SELECT 'denied_view', catch_permission_error($$SELECT * FROM test_view;$$);
 SELECT 'denied_mview', catch_permission_error($$SELECT * FROM test_mview;$$);
 SELECT 'denied_selectinto', catch_permission_error($$SELECT * FROM test_selectinto;$$);
+SELECT test_function();
+SELECT public.test_function();
 SELECT 'denied_function', catch_permission_error($$SELECT public.test_function();$$);
 
 \set QUIET on
