@@ -5,6 +5,8 @@ SELECT 1
 CREATE VIEW
 SELECT 1
 SELECT 1
+CREATE FUNCTION
+1
 1
 1
 1
@@ -15,11 +17,13 @@ denied_tableas|t
 denied_view|t
 denied_mview|t
 denied_selectinto|t
+denied_function|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
 DROP TABLE
 DROP TABLE
+DROP FUNCTION
 NOTICE:  event trigger "oauth_reassign_tables_trigger" does not exist, skipping
 
 CREATE TABLE
@@ -28,6 +32,8 @@ SELECT 1
 CREATE VIEW
 SELECT 1
 SELECT 1
+CREATE FUNCTION
+1
 1
 1
 1
@@ -38,11 +44,13 @@ denied_tableas2|t
 denied_view2|t
 denied_mview2|t
 denied_selectinto2|t
+denied_function2|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
 DROP TABLE
 DROP TABLE
+DROP FUNCTION
 
 CREATE TABLE
 INSERT 0 1
@@ -50,6 +58,8 @@ SELECT 1
 CREATE VIEW
 SELECT 1
 SELECT 1
+CREATE FUNCTION
+1
 1
 1
 1
@@ -60,11 +70,13 @@ denied_tableas3|t
 denied_view3|t
 denied_mview3|t
 denied_selectinto3|t
+denied_function3|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
 DROP TABLE
 DROP TABLE
+DROP FUNCTION
 
 CREATE TABLE
 INSERT 0 1
@@ -72,6 +84,9 @@ SELECT 1
 CREATE VIEW
 SELECT 1
 SELECT 1
+CREATE FUNCTION
+1
+1
 1
 1
 1
@@ -87,4 +102,5 @@ DROP VIEW
 DROP MATERIALIZED VIEW
 DROP TABLE
 DROP TABLE
+DROP FUNCTION
 
