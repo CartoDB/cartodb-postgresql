@@ -2,6 +2,7 @@
 * Some fixes for PG12.
 * Make PG12 depend on plpython3u instead of plpythonu
 * CDB_UserDataSize is now compatible with postgis 3 without postgis_raster.
+* Makefile: Add regress target (checks regress tests without needing to install the extension)
 
 0.31.0 (2019-10-08)
 * Ghost tables: Add missing tags (#370)
