@@ -139,6 +139,8 @@ PLPYTHONU := plpythonu
 ifeq ($(PG_12_GE), true)
 PLPYTHONU := plpython3u
 endif
+PGPORT ?= '5432'
+PGUSER ?= 'postgres'
 
 $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	echo '\echo Use "CREATE EXTENSION $(EXTENSION)" to load this file. \quit' > $@
@@ -172,7 +174,7 @@ legacy_regress: $(REGRESS_OLD) Makefile
 	mkdir -p expected/test/
 	mkdir -p results/test/
 	cat sql/test_setup.sql | \
-			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/plpythonu/$(PLPYTHONU)/g' \
+			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/@@plpythonu@@/$(PLPYTHONU)/g' \
 			> sql/test/test_setup.sql
 	cp sql/test_setup_expect expected/test/test_setup.out
 	for f in $(REGRESS_OLD); do \
@@ -183,10 +185,23 @@ legacy_regress: $(REGRESS_OLD) Makefile
 		echo '\t' >> $${of}; \
 		echo '\set QUIET off' >> $${of}; \
 		cat $${f} | \
-			$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/plpythonu/$(PLPYTHONU)/g' >> $${of}; \
+			$(SED) 	-e 's/@@VERSION@@/$(EXTVERSION)/' \
+				-e 's/@extschema@/cartodb/g' \
+				-e "s/@postgisschema@/public/g" \
+				-e 's/@@plpythonu@@/$(PLPYTHONU)/g' \
+				-e 's/@@PGPORT@@/$(PGPORT)/g' \
+				-e 's/@@PGUSER@@/$(PGUSER)/g' \
+				>> $${of}; \
 		exp=expected/test/$${tn}.out; \
 		echo '\set ECHO none' > $${exp}; \
-		cat test/$${tn}_expect >> $${exp}; \
+		cat test/$${tn}_expect | \
+			$(SED) 	-e 's/@@VERSION@@/$(EXTVERSION)/' \
+				-e 's/@extschema@/cartodb/g' \
+				-e "s/@postgisschema@/public/g" \
+				-e 's/@@plpythonu@@/$(PLPYTHONU)/g' \
+				-e 's/@@PGPORT@@/$(PGPORT)/g' \
+				-e 's/@@PGUSER@@/$(PGUSER)/g' \
+				>> $${exp}; \
 	done
 
 test_organization:
@@ -198,8 +213,13 @@ test_extension_new:
 legacy_tests: legacy_regress $(EXTENSION)--unpackaged--$(EXTVERSION).sql
 
 PGREGRESS := $(shell dirname `$(PG_CONFIG) --pgxs`)/../../src/test/regress/pg_regress
+PGBINDIR := $(shell $(PG_CONFIG) --bindir)
+PGDATABASE = 'contrib_regression'
 regress: legacy_tests
-	$(PGREGRESS) --inputdir=./ --bindir='/usr/bin'    --dbname=contrib_regression $(REGRESS)
+	PGUSER=$(PGUSER) \
+	PGPORT=$(PGPORT) \
+	$(PGREGRESS) --inputdir=./ --bindir='$(PGBINDIR)' --dbname=$(PGDATABASE) $(REGRESS)
 
-installcheck: legacy_tests test_extension_new test_organization
+installcheck: test_extension_new test_organization
+	$(MAKE) -C regress
 
