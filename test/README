@@ -6,13 +6,6 @@ Example, to add a test for CDB_Something function, you'd add:
  - CDB_SomethingTest.sql
  - CDB_SomethingTest_expect
 
-In case you need multiple expects of a test for different versions you have
-to add .pg$(VERSION) at the end of the file.
-
-For example if you want an expect file for PG11 you need to have two expect files:
-
-  - CDB_SomethingTest_expect
-  - CDB_SomethingTest_expect.pg11
 
 To easy the generation of the expected file you can initially omit it,
 then run "make -C .. installcheck" from the top-level dir and copy
