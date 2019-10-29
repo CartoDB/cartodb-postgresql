@@ -38,6 +38,8 @@ SELECT '2.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::te
     }
 }'::jsonb);
 SELECT '2.2', cartodb.CDB_Federated_Server_List_Servers();
+-- Check that CDB_Federated_Server_List_Servers works with name
+SELECT '2.3', cartodb.CDB_Federated_Server_List_Servers(server := 'myRemote');
 
 
 -- Re-register the second server

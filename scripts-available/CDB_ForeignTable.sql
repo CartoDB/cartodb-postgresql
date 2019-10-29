@@ -271,7 +271,7 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name NAME, force boolean = false)
 RETURNS void AS $$
 DECLARE
-    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
+    fdw_objects_name NAME := fdw_input_name;
     cascade_clause NAME;
 BEGIN
     CASE force

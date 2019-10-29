@@ -128,14 +128,18 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION cartodb.CDB_Federated_Server_Unregister(server TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TEXT)
 RETURNS void
 AS $$
 DECLARE
-    final_name text := cartodb.__CDB_FS_Generate_Object_Name(server);
+    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(server);
 BEGIN
-    -- TODO: Check if the server exists to show a nice error instead of the automatic one (which uses the implementation name)
-    EXECUTE 'DROP SERVER ' || quote_ident(final_name) || ' CASCADE';
+    IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = final_name)
+    THEN
+        RAISE EXCEPTION 'Server "%" does not exist', server;
+    END IF;
+
+    EXECUTE @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name := final_name, force := true);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
