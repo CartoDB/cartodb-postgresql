@@ -1,0 +1,5 @@
+Test CDB_Federated_Server_List_Remote_Schemas (sunny day)
+S 1
+cartodb
+information_schema
+public

@@ -2,6 +2,7 @@
 -- create FDW objects
 -- ===================================================================
 \set QUIET on
+SET client_min_messages TO warning;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
@@ -66,8 +67,10 @@ ALTER TABLE "S 1"."T 4" SET (autovacuum_enabled = 'false');
 -- ===================================================================
 -- Test the listing functions
 -- ===================================================================
-SELECT cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback');
-
+\echo 'Test CDB_Federated_Server_List_Remote_Schemas (sunny day)'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback')
+    WHERE remote_schema NOT LIKE 'pg_%' -- Exclude toast and temp schemas
+    ORDER BY remote_schema;
 
 -- ===================================================================
 -- Cleanup
@@ -84,6 +87,6 @@ DROP TYPE user_enum;
 DROP USER MAPPING FOR CURRENT_USER SERVER loopback;
 DROP USER MAPPING FOR CURRENT_USER SERVER loopback2;
 
-DROP SERVER loopback;
-DROP SERVER loopback2;
+DROP SERVER loopback CASCADE;
+DROP SERVER loopback2 CASCADE;
 \set QUIET off
