@@ -10,18 +10,21 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 
 -- Produce a valid DB name for objects created for the user FDW's
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Object_Name(fdw_input_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Object_Name(input_name NAME, check_existence BOOL)
 RETURNS NAME
 AS $$
 DECLARE
-    object_name text := format('%s%s', @extschema@.__CDB_FS_Name_Pattern(), fdw_input_name);
+    object_name text := format('%s%s', @extschema@.__CDB_FS_Name_Pattern(), input_name);
 BEGIN
-  -- We discard anything that would be truncated
-  IF (char_length(object_name) < 64) THEN
-    RETURN object_name::name;
-  ELSE
-    RAISE EXCEPTION 'Object name is too long to be used as identifier';
-  END IF;
+    -- We discard anything that would be truncated
+    IF (char_length(object_name) < 64) THEN
+        IF (check_existence AND (NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = object_name))) THEN
+            RAISE EXCEPTION 'Server "%" does not exist', input_name;
+        END IF;
+        RETURN object_name::name;
+    ELSE
+        RAISE EXCEPTION 'Object name is too long to be used as identifier';
+    END IF;
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -120,7 +123,7 @@ RETURNS void
 AS $$
 DECLARE
     -- TODO: Check and handle existing servers (if needed)
-    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(server);
+    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(input_name := server, check_existence := false);
     final_config jsonb := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
 BEGIN
     PERFORM @extschema@._CDB_SetUp_User_PG_FDW_Server(final_name, final_config::json);
@@ -132,13 +135,8 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TE
 RETURNS void
 AS $$
 DECLARE
-    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(server);
+    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(input_name := server, check_existence := true);
 BEGIN
-    IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = final_name)
-    THEN
-        RAISE EXCEPTION 'Server "%" does not exist', server;
-    END IF;
-
     EXECUTE @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name := final_name, force := true);
 END
 $$
