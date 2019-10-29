@@ -1,6 +1,7 @@
 -- Setup
 \set QUIET on
 SET client_min_messages TO error;
+\set VERBOSITY terse
 SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
 \set QUIET off

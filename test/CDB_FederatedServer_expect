@@ -6,7 +6,5 @@
 4.1|
 4.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,fdw_user)
 ERROR:  server "cdb_fs_doesNotExist" does not exist
-CONTEXT:  SQL statement "DROP SERVER "cdb_fs_doesNotExist" CASCADE"
-PL/pgSQL function cdb_federated_server_unregister(text) line 5 at EXECUTE
 5.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,fdw_user)
 6.1|
