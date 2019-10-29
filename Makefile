@@ -214,12 +214,12 @@ legacy_tests: legacy_regress $(EXTENSION)--unpackaged--$(EXTVERSION).sql
 
 PGREGRESS := $(shell dirname `$(PG_CONFIG) --pgxs`)/../../src/test/regress/pg_regress
 PGBINDIR := $(shell $(PG_CONFIG) --bindir)
-PGDATABASE = 'contrib_regression'
+PGREGRESSDATABASE = 'contrib_regression'
 regress: legacy_tests
 	PGUSER=$(PGUSER) \
 	PGPORT=$(PGPORT) \
-	$(PGREGRESS) --inputdir=./ --bindir='$(PGBINDIR)' --dbname=$(PGDATABASE) $(REGRESS)
+	$(PGREGRESS) --inputdir=./ --bindir='$(PGBINDIR)' --dbname=$(PGREGRESSDATABASE) $(REGRESS)
 
-installcheck: test_extension_new test_organization
-	$(MAKE) -C regress
+installcheck: test_extension_new test_organization regress
+	$(MAKE) -f ... -C regress
 
