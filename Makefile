@@ -199,7 +199,7 @@ legacy_tests: legacy_regress $(EXTENSION)--unpackaged--$(EXTVERSION).sql
 
 PGREGRESS := $(shell dirname `$(PG_CONFIG) --pgxs`)/../../src/test/regress/pg_regress
 regress: legacy_tests
-	$(PGREGRESS) --inputdir=./ --bindir='/usr/bin'    --dbname=contrib_regression $(REGRESS)
+	$(PGREGRESS) --inputdir=./ --dbname=contrib_regression $(REGRESS)
 
 installcheck: legacy_tests test_extension_new test_organization
 
