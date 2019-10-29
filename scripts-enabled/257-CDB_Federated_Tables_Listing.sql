@@ -1,0 +1,1 @@
+../scripts-available/CDB_Federated_Tables_Listing.sql
