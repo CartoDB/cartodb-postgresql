@@ -1,1 +1,1 @@
-CDB_FederatedServerTables.sql
+../scripts-available/CDB_FederatedServerTables.sql

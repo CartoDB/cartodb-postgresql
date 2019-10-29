@@ -1,1 +1,1 @@
-CDB_FederatedServerListRemote.sql
+../scripts-available/CDB_FederatedServerListRemote.sql
