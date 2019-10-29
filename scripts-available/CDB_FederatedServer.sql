@@ -1,16 +1,19 @@
 
 -- This function is just a placement to store and use the pattern for
 -- foreign server names
+-- Servers:     cdb_fs_$(server_name)
+-- Schemas:     cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
+-- Owner role:  cdb_fs_$(md5sum(current_database() || server_name)
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Name_Pattern()
 RETURNS TEXT
 AS $$
-    SELECT 'cdb_fs_';
+    SELECT 'cdb_fs_'::text;
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 
--- Produce a valid DB name for objects created for the user FDW's
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Object_Name(input_name NAME, check_existence BOOL)
+-- Produce a valid DB name for servers generated for the Federated Server
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Name(input_name TEXT, check_existence BOOL)
 RETURNS NAME
 AS $$
 DECLARE
@@ -23,19 +26,65 @@ BEGIN
         END IF;
         RETURN object_name::name;
     ELSE
-        RAISE EXCEPTION 'Object name is too long to be used as identifier';
+        RAISE EXCEPTION 'Server name is too long to be used as identifier';
     END IF;
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Extract_Public_Name(fdw_stored_name NAME)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Extract_Server_Name(fdw_stored_name NAME)
 RETURNS TEXT
 AS $$
     SELECT right(fdw_stored_name,
-            char_length(fdw_stored_name::TEXT) -  char_length(@extschema@.__CDB_FS_Name_Pattern()))::TEXT;
+            char_length(fdw_stored_name::TEXT) - char_length(@extschema@.__CDB_FS_Name_Pattern()))::TEXT;
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+-- Produce a valid name for a schema generated for the Federated Server 
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Schema_Name(server_name TEXT, schema_name TEXT)
+RETURNS NAME
+AS $$
+DECLARE
+    server_full_name text := @extschema@.__CDB_FS_Generate_Server_Name(server_name, check_existence := true);
+    hash_value text := md5(server_full_name::text || '__' || schema_name::text);
+    schema_name text := format('%s%s%s', @extschema@.__CDB_FS_Name_Pattern(), 'schema_', hash_value);
+BEGIN
+    RETURN schema_name::name;
+END
+$$
+LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+
+-- Produce a valid name for a role generated for the Federated Server
+-- This needs to include the current database in its hash to avoid collisions in clusters with more than one database
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Role_Name(server_name TEXT)
+RETURNS NAME
+AS $$
+DECLARE
+    server_full_name text := @extschema@.__CDB_FS_Generate_Server_Name(server_name, check_existence := true);
+    hash_value text := md5(current_database()::text || '__' || server_full_name::text);
+    role_name text := format('%s%s%s', @extschema@.__CDB_FS_Name_Pattern(), 'role_', hash_value);
+BEGIN
+    RETURN role_name::name;
+END
+$$
+LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+
+-- Creates (if not exist) a schema to place the objects for a remote schema
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Create_Schema(server_name TEXT, schema_name TEXT)
+RETURNS NAME
+AS $$
+DECLARE
+    schema_name text := @extschema@.__CDB_FS_Generate_Schema_Name(server_name, schema_name);
+    role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_name);
+BEGIN
+    BEGIN
+        EXECUTE 'CREATE SCHEMA IF NOT EXISTS ' || quote_ident(schema_name) || ' AUTHORIZATION ' || quote_ident(role_name);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'TODO: This needs a better error handling after reviewing permissions';
+    END;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 -- List registered servers
@@ -57,7 +106,7 @@ DECLARE
 BEGIN
     RETURN QUERY SELECT 
         -- Name as shown to the user
-        @extschema@.__CDB_FS_Extract_Public_Name(s.srvname) AS "Name",
+        @extschema@.__CDB_FS_Extract_Server_Name(s.srvname) AS "Name",
 
         -- Which driver are we using (postgres_fdw, odbc_fdw...)
         f.fdwname::text AS "Driver",
@@ -123,7 +172,7 @@ RETURNS void
 AS $$
 DECLARE
     -- TODO: Check and handle existing servers (if needed)
-    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(input_name := server, check_existence := false);
+    final_name text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
     final_config jsonb := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
 BEGIN
     PERFORM @extschema@._CDB_SetUp_User_PG_FDW_Server(final_name, final_config::json);
@@ -135,7 +184,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TE
 RETURNS void
 AS $$
 DECLARE
-    final_name text := @extschema@.__CDB_FS_Generate_Object_Name(input_name := server, check_existence := true);
+    final_name text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
 BEGIN
     EXECUTE @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name := final_name, force := true);
 END
