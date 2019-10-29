@@ -84,7 +84,7 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(remote_server => '
     ORDER BY remote_table;
 
 \echo 'Test listing of remote tables from an unsupported server'
-SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'pglog', remote_schema => 'foo');
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(remote_server => 'pglog', remote_schema => 'foo');
 
 -- ===================================================================
 -- Cleanup
