@@ -5,3 +5,10 @@ information_schema
 public
 Test listing of schemas from an unsupported server
 ERROR:  Not implemented server type file_fdw for remote server pglog
+Test listing of remote tables (sunny day)
+T 1
+T 2
+T 3
+T 4
+Test listing of remote tables from an unsupported server
+ERROR:  function cartodb.cdb_federated_server_list_remote_schemas(remote_server => unknown, remote_schema => unknown) does not exist at character 15
