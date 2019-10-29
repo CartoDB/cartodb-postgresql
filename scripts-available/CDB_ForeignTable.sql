@@ -184,17 +184,15 @@ RETURNS void AS $$
 DECLARE
   row record;
   option record;
-  fdw_objects_name NAME := fdw_input_name;
+  fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
 BEGIN
   -- TODO: refactor with original function
   -- This function tries to be as idempotent as possible, by not creating anything more than once
   -- (not even using IF NOT EXIST to avoid throwing warnings)
   IF NOT EXISTS ( SELECT * FROM pg_extension WHERE extname = 'postgres_fdw') THEN
     CREATE EXTENSION postgres_fdw;
-    RAISE EXCEPTION 'postgres_fdw extension is not installed'
-        USING HINT = 'Please install it with "CREATE EXTENSION postgres_fdw"';
+    RAISE NOTICE 'Created postgres_fdw EXTENSION';
   END IF;
-
   -- Create FDW first if it does not exist
   IF NOT EXISTS ( SELECT * FROM pg_foreign_server WHERE srvname = fdw_objects_name)
     THEN
@@ -271,7 +269,7 @@ $$ LANGUAGE plpgsql VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name NAME, force boolean = false)
 RETURNS void AS $$
 DECLARE
-    fdw_objects_name NAME := fdw_input_name;
+    fdw_objects_name NAME := @extschema@.__CDB_User_FDW_Object_Names(fdw_input_name);
     cascade_clause NAME;
 BEGIN
     CASE force

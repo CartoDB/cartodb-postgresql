@@ -172,10 +172,68 @@ RETURNS void
 AS $$
 DECLARE
     -- TODO: Check and handle existing servers (if needed)
-    final_name text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
-    final_config jsonb := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
+    final_config json := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
+    role_name name;
+    row record;
+    option record;
 BEGIN
-    PERFORM @extschema@._CDB_SetUp_User_PG_FDW_Server(final_name, final_config::json);
+    IF NOT EXISTS (SELECT * FROM pg_extension WHERE extname = 'postgres_fdw') THEN
+        RAISE EXCEPTION 'postgres_fdw extension is not installed'
+            USING HINT = 'Please install it with `CREATE EXTENSION postgres_fdw`';
+    END IF;
+    
+    -- We only create server and roles if the server didn't exist before
+    IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = server_internal) THEN
+        BEGIN
+            EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', server_internal);
+            role_name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server);
+            EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
+            EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
+            EXECUTE FORMAT('GRANT USAGE ON FOREIGN SERVER %I TO %I', server_internal, role_name);
+            EXECUTE FORMAT('ALTER SERVER %I OWNER TO %I', server_internal, role_name);
+            -- NOTE: we use a PUBLIC user mapping but control access to the SERVER
+            -- so that we don't need to create a mapping for every user nor store credentials elsewhere
+            EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', server_internal);
+        EXCEPTION WHEN OTHERS THEN
+            RAISE EXCEPTION 'Could not create server %: %', server, SQLERRM
+                USING HINT = 'Please clean the remaining objects"';
+        END;
+    END IF;
+    
+    -- TODO: Drop existing options in server ?
+    
+    -- Add new options
+    FOR row IN SELECT p.key, p.value from lateral json_each_text(final_config->'server') p
+    LOOP
+        IF NOT EXISTS (
+            -- TODO: Use pg_options_to_table
+            WITH a AS (
+                SELECT split_part(unnest(srvoptions), '=', 1) AS options FROM pg_foreign_server WHERE srvname=server_internal
+            ) SELECT * from a where options = row.key)
+        THEN
+            EXECUTE FORMAT('ALTER SERVER %I OPTIONS (ADD %I %L)', server_internal, row.key, row.value);
+        ELSE
+            EXECUTE FORMAT('ALTER SERVER %I OPTIONS (SET %I %L)', server_internal, row.key, row.value);
+        END IF;
+    END LOOP;
+    
+    -- TODO: Drop existing user mappings ?
+    
+    -- Update user mapping settings
+    FOR option IN SELECT o.key, o.value from lateral json_each_text(final_config->'user_mapping') o
+    LOOP
+        IF NOT EXISTS (
+            -- TODO: Use pg_options_to_table
+            WITH a AS (
+                SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = 'public'
+            ) SELECT * from a where options = option.key)
+        THEN
+            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', server_internal, option.key, option.value);
+        ELSE
+            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', server_internal, option.key, option.value);
+        END IF;
+    END LOOP;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -184,9 +242,12 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TE
 RETURNS void
 AS $$
 DECLARE
-    final_name text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server);
 BEGIN
-    EXECUTE @extschema@._CDB_Drop_User_PG_FDW_Server(fdw_input_name := final_name, force := true);
+    EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', server_internal);
+    EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
+    EXECUTE FORMAT ('DROP ROLE %I', role_name);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
