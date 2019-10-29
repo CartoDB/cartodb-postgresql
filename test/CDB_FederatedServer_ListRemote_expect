@@ -1,0 +1,13 @@
+C1|
+C2|
+Test listing of remote schemas (sunny day)
+S 1
+information_schema
+public
+Test listing of remote tables (sunny day)
+T 1
+T 2
+T 3
+T 4
+D1|
+D2|
