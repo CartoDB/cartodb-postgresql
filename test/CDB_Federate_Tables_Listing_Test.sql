@@ -2,8 +2,10 @@
 -- create FDW objects
 -- ===================================================================
 \set QUIET on
+\set VERBOSITY terse
 SET client_min_messages TO warning;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+CREATE EXTENSION IF NOT EXISTS file_fdw;
 
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
 DO $d$
@@ -18,6 +20,8 @@ DO $d$
             )$$;
     END;
 $d$;
+
+CREATE SERVER pglog FOREIGN DATA WRAPPER file_fdw;
 
 CREATE USER MAPPING FOR CURRENT_USER SERVER loopback;
 CREATE USER MAPPING FOR CURRENT_USER SERVER loopback2;
@@ -67,10 +71,13 @@ ALTER TABLE "S 1"."T 4" SET (autovacuum_enabled = 'false');
 -- ===================================================================
 -- Test the listing functions
 -- ===================================================================
-\echo 'Test CDB_Federated_Server_List_Remote_Schemas (sunny day)'
+\echo 'Test listing of remote schemas (sunny day)'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback')
     WHERE remote_schema NOT LIKE 'pg_%' -- Exclude toast and temp schemas
     ORDER BY remote_schema;
+
+\echo 'Test listing of schemas from an unsupported server'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'pglog');
 
 -- ===================================================================
 -- Cleanup

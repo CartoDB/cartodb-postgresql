@@ -1,5 +1,7 @@
-Test CDB_Federated_Server_List_Remote_Schemas (sunny day)
+Test listing of remote schemas (sunny day)
 S 1
 cartodb
 information_schema
 public
+Test listing of schemas from an unsupported server
+ERROR:  Not implemented server type file_fdw for remote server pglog
