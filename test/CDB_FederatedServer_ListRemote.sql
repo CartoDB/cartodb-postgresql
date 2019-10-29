@@ -83,13 +83,10 @@ SET client_min_messages TO notice;
 -- Test the listing functions
 -- ===================================================================
 \echo 'Test listing of remote schemas (sunny day)'
-SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback')
-    WHERE remote_schema NOT LIKE 'pg_%' -- Exclude toast and temp schemas
-    ORDER BY remote_schema;
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback');
 
 \echo 'Test listing of remote tables (sunny day)'
-SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(remote_server => 'loopback', remote_schema => 'S 1')
-    ORDER BY remote_table;
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(remote_server => 'loopback', remote_schema => 'S 1');
 
 -- ===================================================================
 -- Cleanup

@@ -28,8 +28,12 @@ BEGIN
         EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_table, server_internal, local_schema);
     END IF;
 
-    -- Return the result we're interested in
-    RETURN QUERY EXECUTE format('SELECT schema_name::name AS remote_schema FROM %I.%I', local_schema, remote_table);
+    -- Return the result we're interested in. Exclude toast and temp schemas
+    RETURN QUERY EXECUTE format('
+        SELECT schema_name::name AS remote_schema FROM %I.%I
+        WHERE schema_name NOT LIKE %s
+        ORDER BY remote_schema
+    ', local_schema, remote_table, '''pg_%''');
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -63,7 +67,9 @@ BEGIN
 
     -- Return the result we're interested in
     -- Note: in this context, schema names are not to be quoted
-    RETURN QUERY EXECUTE format($q$SELECT table_name::name AS remote_table FROM %I.%I WHERE table_schema = '%s'$q$, local_schema, remote_table, remote_schema);
+    RETURN QUERY EXECUTE format($q$
+        SELECT table_name::name AS remote_table FROM %I.%I WHERE table_schema = '%s' ORDER BY table_name
+        $q$, local_schema, remote_table, remote_schema);
 END
 $func$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
