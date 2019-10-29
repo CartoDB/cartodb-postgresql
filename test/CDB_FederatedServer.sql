@@ -43,8 +43,22 @@ SELECT '2.3', cartodb.CDB_Federated_Server_List_Servers(server := 'myRemote');
 
 
 -- Re-register the second server
--- SELECT '3.1', cartodb.CDB_Federated_Server_Register_PG();
--- SELECT '3.2', cartodb.CDB_PG_Federated_Server_List_Servers();
+SELECT '3.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::text, config := '{
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": @@PGPORT@@,
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    },
+    "credentials": {
+        "username": "other_remote_user",
+        "password": "foobarino"
+    }
+}'::jsonb);
+SELECT '3.2', cartodb.CDB_Federated_Server_List_Servers();
 
 -- Unregister #1
 SELECT '4.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote'::text);
@@ -52,7 +66,6 @@ SELECT '4.2', cartodb.CDB_Federated_Server_List_Servers();
 
 -- Unregister a server that doesn't exist
 SELECT '5.1', cartodb.CDB_Federated_Server_Unregister(server := 'doesNotExist'::text);
-SELECT '5.2', cartodb.CDB_Federated_Server_List_Servers();
 
 -- Unregister #2
 SELECT '6.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote2'::text);

@@ -167,11 +167,11 @@ $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 
+-- Registers a new server
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Register_PG(server TEXT, config JSONB)
 RETURNS void
 AS $$
 DECLARE
-    -- TODO: Check and handle existing servers (if needed)
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
     final_config json := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
     role_name name;
@@ -200,14 +200,11 @@ BEGIN
                 USING HINT = 'Please clean the remaining objects"';
         END;
     END IF;
-    
-    -- TODO: Drop existing options in server ?
-    
+
     -- Add new options
     FOR row IN SELECT p.key, p.value from lateral json_each_text(final_config->'server') p
     LOOP
         IF NOT EXISTS (
-            -- TODO: Use pg_options_to_table
             WITH a AS (
                 SELECT split_part(unnest(srvoptions), '=', 1) AS options FROM pg_foreign_server WHERE srvname=server_internal
             ) SELECT * from a where options = row.key)
@@ -217,14 +214,11 @@ BEGIN
             EXECUTE FORMAT('ALTER SERVER %I OPTIONS (SET %I %L)', server_internal, row.key, row.value);
         END IF;
     END LOOP;
-    
-    -- TODO: Drop existing user mappings ?
-    
+
     -- Update user mapping settings
     FOR option IN SELECT o.key, o.value from lateral json_each_text(final_config->'user_mapping') o
     LOOP
         IF NOT EXISTS (
-            -- TODO: Use pg_options_to_table
             WITH a AS (
                 SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = 'public'
             ) SELECT * from a where options = option.key)
@@ -238,6 +232,7 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+-- Drops a registered server and all the objects associated with it
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TEXT)
 RETURNS void
 AS $$
