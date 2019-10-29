@@ -220,6 +220,6 @@ regress: legacy_tests
 	PGPORT=$(PGPORT) \
 	$(PGREGRESS) --inputdir=./ --bindir='$(PGBINDIR)' --dbname=$(PGREGRESSDATABASE) $(REGRESS)
 
-installcheck: test_extension_new test_organization regress
-	$(MAKE) -f ... -C regress
+installcheck: test_extension_new test_organization
+	$(MAKE) -C . regress
 
