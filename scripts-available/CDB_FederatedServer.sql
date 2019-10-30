@@ -1,9 +1,14 @@
+--------------------------------------------------------------------------------
+-- Private functions
+--------------------------------------------------------------------------------
 
+--
 -- This function is just a placement to store and use the pattern for
--- foreign server names
+-- foreign object names
 -- Servers:     cdb_fs_$(server_name)
 -- Schemas:     cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
 -- Owner role:  cdb_fs_$(md5sum(current_database() || server_name)
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Name_Pattern()
 RETURNS TEXT
 AS $$
@@ -11,7 +16,10 @@ AS $$
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
+--
 -- Produce a valid DB name for servers generated for the Federated Server
+-- If check_existence is true, it'll throw if the server doesn't exists
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Name(input_name TEXT, check_existence BOOL)
 RETURNS NAME
 AS $$
@@ -31,6 +39,10 @@ END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+--
+-- Given the internal name for a remote server, it returns the name used by the user
+-- Reverses __CDB_FS_Generate_Server_Name
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Extract_Server_Name(internal_server_name NAME)
 RETURNS TEXT
 AS $$
@@ -39,7 +51,9 @@ AS $$
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
+--
 -- Produce a valid name for a schema generated for the Federated Server 
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name TEXT, schema_name TEXT)
 RETURNS NAME
 AS $$
@@ -52,8 +66,10 @@ END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+--
 -- Produce a valid name for a role generated for the Federated Server
 -- This needs to include the current database in its hash to avoid collisions in clusters with more than one database
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name TEXT)
 RETURNS NAME
 AS $$
@@ -66,7 +82,10 @@ END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+--
 -- Creates (if not exist) a schema to place the objects for a remote schema
+-- The schema is with the same AUTHORIZATION as the server
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Create_Schema(internal_server_name TEXT, schema_name TEXT)
 RETURNS NAME
 AS $$
@@ -86,7 +105,10 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+--
 -- Returns the type of a server by internal name
+-- Currently all of them should be postgres_fdw
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_server_type(remote_server name)
 RETURNS name
 AS $$
@@ -97,50 +119,9 @@ AS $$
 $$
 LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
-
--- List registered servers
--- TODO: Decide whether we want to show extra config (extensions, fetch_size, use_remote_estimate)
--- TODO: Handle multiple user mappings in the same server
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Servers(server TEXT DEFAULT '%')
-RETURNS TABLE (
-    name        text,
-    driver      text,
-    host        text,
-    port        text,
-    dbname      text,
-    readmode    text,
-    username    text
-)
-AS $$
-DECLARE
-    server_name text := concat(@extschema@.__CDB_FS_Name_Pattern(), server);
-BEGIN
-    RETURN QUERY SELECT 
-        -- Name as shown to the user
-        @extschema@.__CDB_FS_Extract_Server_Name(s.srvname) AS "Name",
-
-        -- Which driver are we using (postgres_fdw, odbc_fdw...)
-        @extschema@.__CDB_FS_server_type(s.srvname)::text AS "Driver",
-
-        -- Read options from pg_foreign_server
-        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'host') AS "Host",
-        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'port') AS "Port",
-        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'dbname') AS "DBName",
-        CASE WHEN (SELECT NOT option_value::boolean FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'updatable') THEN 'read-only' ELSE 'read-write' END AS "ReadMode",
-
-        -- Read username from pg_user_mappings
-        (SELECT option_value FROM pg_options_to_table(u.umoptions) WHERE option_name LIKE 'user') AS "Username"
-    FROM pg_foreign_server s
-    LEFT JOIN pg_user_mappings u
-    ON u.srvid = s.oid
-    WHERE s.srvname ILIKE server_name
-    ORDER BY 1;
-END
-$$
-LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
-
--- Take a config jsonb and transform it to an input suitable for
--- _CDB_SetUp_User_PG_FDW_Server
+--
+-- Take a config jsonb and transform it to an input suitable for _CDB_SetUp_User_PG_FDW_Server
+-- 
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_credentials_to_user_mapping(input_config JSONB)
 RETURNS jsonb
 AS $$
@@ -180,7 +161,32 @@ $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 
--- Registers a new server
+--------------------------------------------------------------------------------
+-- Public functions
+--------------------------------------------------------------------------------
+
+
+--
+-- Registers a new PG server
+--
+-- Example config: '{
+--     "server": {
+--         "dbname": "fdw_target",
+--         "host": "localhost",
+--         "port": 5432,
+--         "extensions": "postgis",
+--         "updatable": "false",
+--         "use_remote_estimate": "true",
+--         "fetch_size": "1000"
+--     },
+--     "credentials": {
+--         "username": "fdw_user",
+--         "password": "foobarino"
+--     }
+-- }'
+--
+-- The configuration from __CDB_FS_add_default_options will be appended
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Register_PG(server TEXT, config JSONB)
 RETURNS void
 AS $$
@@ -244,7 +250,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+--
 -- Drops a registered server and all the objects associated with it
+-- 
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TEXT)
 RETURNS void
 AS $$
@@ -258,3 +266,46 @@ BEGIN
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+--
+-- List registered servers
+-- 
+-- TODO: Decide whether we want to show extra config (extensions, fetch_size, use_remote_estimate)
+-- TODO: Handle multiple user mappings in the same server
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Servers(server TEXT DEFAULT '%')
+RETURNS TABLE (
+    name        text,
+    driver      text,
+    host        text,
+    port        text,
+    dbname      text,
+    readmode    text,
+    username    text
+)
+AS $$
+DECLARE
+    server_name text := concat(@extschema@.__CDB_FS_Name_Pattern(), server);
+BEGIN
+    RETURN QUERY SELECT 
+        -- Name as shown to the user
+        @extschema@.__CDB_FS_Extract_Server_Name(s.srvname) AS "Name",
+
+        -- Which driver are we using (postgres_fdw, odbc_fdw...)
+        @extschema@.__CDB_FS_server_type(s.srvname)::text AS "Driver",
+
+        -- Read options from pg_foreign_server
+        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'host') AS "Host",
+        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'port') AS "Port",
+        (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'dbname') AS "DBName",
+        CASE WHEN (SELECT NOT option_value::boolean FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'updatable') THEN 'read-only' ELSE 'read-write' END AS "ReadMode",
+
+        -- Read username from pg_user_mappings
+        (SELECT option_value FROM pg_options_to_table(u.umoptions) WHERE option_name LIKE 'user') AS "Username"
+    FROM pg_foreign_server s
+    LEFT JOIN pg_user_mappings u
+    ON u.srvid = s.oid
+    WHERE s.srvname ILIKE server_name
+    ORDER BY 1;
+END
+$$
+LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
