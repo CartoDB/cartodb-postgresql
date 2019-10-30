@@ -14,4 +14,6 @@ V2| SELECT t.id AS cartodb_id,
     t.another_field
    FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom2 t;
 S2|3|POINT(3 3)|patata
+U1|
+ERROR:  relation "remote_geom" does not exist at character 71
 D1|
