@@ -66,10 +66,11 @@ $$ LANGUAGE SQL;
 -- Sets up a Federated Table
 --
 -- Precondition: the federated server has to be set up via
--- CDB_SetUp_PG_Federated_Server
+-- CDB_Federated_Server_Register_PG
 --
 -- Postcondition: it generates a view in the schema of the user that
 -- can be used through SQL and Maps API's.
+-- If the table was already exported, it will be dropped and re-imported
 --
 -- E.g:
 -- SELECT cartodb.CDB_SetUp_PG_Federated_Table(
@@ -113,6 +114,10 @@ BEGIN
     END IF;
 
     -- Import the foreign table
+    -- Drop the old view / table if there was one
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE  table_schema = local_schema AND table_name = remote_table) THEN
+        EXECUTE @extschema@.CDB_Federated_Table_Unregister(server, remote_schema, remote_table);
+    END IF;
     EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', remote_schema, remote_table, server_internal, local_schema);
     src_table := format('%I.%I', local_schema, remote_table);
     

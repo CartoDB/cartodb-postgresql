@@ -88,6 +88,22 @@ Select 'list_remotes2', CDB_Federated_Server_List_Registered_Tables(
     remote_schema => 'remote_schema'
 );
 
+-- Reregistering R2 with different parameters should work
+SELECT 'R3', cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom2',
+    id_column => 'id',
+    geom_column => 'geom',
+    local_name => 'different_name'
+    );
+
+-- The old view should dissapear
+SELECT 'S3_old', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM "myFullTable";
+-- And the new appear
+SELECT 'S3_new', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM different_name;
+
+-- Deregistering the first table
 SELECT 'U1', CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
