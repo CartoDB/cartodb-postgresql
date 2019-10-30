@@ -18,8 +18,8 @@ S2|3|POINT(3 3)|patata
 list_remotes2|(remote_geom2,"public.""myFullTable""")
 list_remotes2|(remote_geom,public.remote_geom)
 R3|
-ERROR:  relation "myFullTable" does not exist at character 82
-S3_new|3|POINT(333958.472379821 334111.17140196)|patata
+ERROR:  relation "myFullTable" does not exist at character 70
+S3_new|3|POINT(3 3)|patata
 U1|
 ERROR:  relation "remote_geom" does not exist at character 71
 list_remotes3|(remote_geom2,public.different_name)

@@ -81,7 +81,7 @@ SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     );
 
 SELECT 'V2', pg_get_viewdef('"myFullTable"');
-SELECT 'S2', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM "myFullTable";
+SELECT 'S2', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTable";
 
 Select 'list_remotes2', CDB_Federated_Server_List_Registered_Tables(
     server => 'loopback',
@@ -99,9 +99,9 @@ SELECT 'R3', cartodb.CDB_Federated_Table_Register(
     );
 
 -- The old view should dissapear
-SELECT 'S3_old', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM "myFullTable";
+SELECT 'S3_old', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTable";
 -- And the new appear
-SELECT 'S3_new', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM different_name;
+SELECT 'S3_new', cartodb_id, ST_AsText(the_geom), another_field FROM different_name;
 
 -- Deregistering the first table
 SELECT 'U1', CDB_Federated_Table_Unregister(
