@@ -65,6 +65,19 @@ SELECT 'R1', cartodb.CDB_Federated_Table_Register(
 SELECT 'V1', pg_get_viewdef('remote_geom');
 SELECT 'S1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
 
+SELECT 'R2', cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom2',
+    id_column => 'id',
+    geom_column => 'geom',
+    webmercator_column => 'geom_mercator',
+    local_name => 'myFullTable'
+    );
+
+SELECT 'V2', pg_get_viewdef('"myFullTable"');
+SELECT 'S2', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM "myFullTable";
+
 
 -- ===================================================================
 -- Cleanup

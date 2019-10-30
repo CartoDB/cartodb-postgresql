@@ -7,4 +7,11 @@ V1| SELECT t.id AS cartodb_id,
    FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom t;
 S1|1|POINT(1 1)|patata
 S1|2|POINT(2 2)|patata2
+R2|
+V2| SELECT t.id AS cartodb_id,
+    t.geom AS the_geom,
+    t.geom_mercator AS the_geom_webmercator,
+    t.another_field
+   FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom2 t;
+S2|3|POINT(3 3)|patata
 D1|
