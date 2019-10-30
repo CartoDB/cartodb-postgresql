@@ -1,6 +1,10 @@
 --------------------------------------------------------------------------------
 -- Private functions
 --------------------------------------------------------------------------------
+
+--
+-- List the schemas of a remote PG server
+-- 
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Schemas_PG(server_internal name)
 RETURNS TABLE(remote_schema name)
 AS $$
@@ -20,7 +24,7 @@ DECLARE
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, inf_schema);
     role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
-    -- Import the foreign schemata if not done
+    -- Import the foreign schemata table
     IF NOT EXISTS (
         SELECT * FROM pg_class
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
@@ -39,7 +43,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-
+--
+-- List the tables from a remote PG schema
+-- 
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Tables_PG(server_internal name, remote_schema name)
 RETURNS TABLE(remote_table name)
 AS $func$
