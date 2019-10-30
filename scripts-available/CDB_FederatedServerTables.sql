@@ -1,3 +1,10 @@
+--------------------------------------------------------------------------------
+-- Private functions
+--------------------------------------------------------------------------------
+
+--
+-- Checks if a column is of integer type
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Column_Is_Integer(input_table REGCLASS, colname NAME)
 RETURNS boolean
 AS $$
@@ -13,7 +20,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-
+--
+-- Checks if a column is of geometry type
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Column_Is_Geometry(input_table REGCLASS, colname NAME)
 RETURNS boolean
 AS $$
@@ -21,13 +30,15 @@ BEGIN
     PERFORM atttypid FROM pg_catalog.pg_attribute
         WHERE attrelid = input_table
            AND attname = colname
-           AND atttypid = 'geometry'::regtype;
+           AND atttypid = '@postgisschema@.geometry'::regtype;
     RETURN FOUND;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-
+--
+-- Returns the name of all the columns from a table
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_GetColumns(input_table REGCLASS)
 RETURNS SETOF NAME
 AS $$
@@ -47,9 +58,12 @@ AS $$
 $$ LANGUAGE SQL;
 
 
+--------------------------------------------------------------------------------
+-- Public functions
+--------------------------------------------------------------------------------
 
 --
--- Set up a Federated Table
+-- Sets up a Federated Table
 --
 -- Precondition: the federated server has to be set up via
 -- CDB_SetUp_PG_Federated_Server
@@ -65,6 +79,7 @@ $$ LANGUAGE SQL;
 --   'id',                      -- mandatory, name of the id column
 --   'geom',                    -- optional, name of the geom column, preferably in 4326
 --   'webmercator'              -- optional, should be in 3857 if present
+--   'local_name'               -- optional, name of the local view (uses the remote_name if not declared)
 -- );
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Table_Register(
@@ -172,7 +187,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
-
+--
+-- Unregisters a remote table. Any dependent object will be dropped
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Table_Unregister(
     server TEXT,
     remote_schema TEXT,
@@ -189,6 +206,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+--
+-- List all registered tables in a server + schema
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Registered_Tables(
     server TEXT,
     remote_schema TEXT
