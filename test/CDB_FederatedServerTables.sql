@@ -65,6 +65,11 @@ SELECT 'R1', cartodb.CDB_Federated_Table_Register(
 SELECT 'V1', pg_get_viewdef('remote_geom');
 SELECT 'S1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
 
+Select 'list_remotes1', CDB_Federated_Server_List_Registered_Tables(
+    server => 'loopback',
+    remote_schema => 'remote_schema'
+);
+
 SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -78,6 +83,11 @@ SELECT 'R2', cartodb.CDB_Federated_Table_Register(
 SELECT 'V2', pg_get_viewdef('"myFullTable"');
 SELECT 'S2', cartodb_id, ST_AsText(the_geom_webmercator), another_field FROM "myFullTable";
 
+Select 'list_remotes2', CDB_Federated_Server_List_Registered_Tables(
+    server => 'loopback',
+    remote_schema => 'remote_schema'
+);
+
 SELECT 'U1', CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -86,7 +96,10 @@ SELECT 'U1', CDB_Federated_Table_Unregister(
 -- Selecting from the created view should fail now
 SELECT 'UCheck1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
 
-
+Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
+    server => 'loopback',
+    remote_schema => 'remote_schema'
+);
 
 -- ===================================================================
 -- Cleanup

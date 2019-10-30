@@ -7,6 +7,7 @@ V1| SELECT t.id AS cartodb_id,
    FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom t;
 S1|1|POINT(1 1)|patata
 S1|2|POINT(2 2)|patata2
+list_remotes1|(remote_geom,public.remote_geom)
 R2|
 V2| SELECT t.id AS cartodb_id,
     t.geom AS the_geom,
@@ -14,6 +15,9 @@ V2| SELECT t.id AS cartodb_id,
     t.another_field
    FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom2 t;
 S2|3|POINT(3 3)|patata
+list_remotes2|(remote_geom2,"public.""myFullTable""")
+list_remotes2|(remote_geom,public.remote_geom)
 U1|
 ERROR:  relation "remote_geom" does not exist at character 71
+list_remotes3|(remote_geom2,"public.""myFullTable""")
 D1|

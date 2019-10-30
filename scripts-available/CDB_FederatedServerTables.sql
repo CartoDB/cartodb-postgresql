@@ -185,8 +185,39 @@ DECLARE
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
 BEGIN
     EXECUTE FORMAT ('DROP FOREIGN TABLE %I.%I CASCADE;', local_schema, remote_table);
-        
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Registered_Tables(
+    server TEXT,
+    remote_schema TEXT
+    )
+RETURNS TABLE(remote_name TEXT, local_name TEXT)
+AS $$
+DECLARE
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
+    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
+BEGIN
+    RETURN QUERY SELECT 
+        source_table::text as remote_table,
+        format('%I.%I', dependent_schema, dependent_view)::text as local_view
+    FROM
+    (
+        SELECT DISTINCT
+            dependent_ns.nspname as dependent_schema,
+            dependent_view.relname as dependent_view,
+            source_table.relname as source_table
+        FROM pg_depend 
+        JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid 
+        JOIN pg_class as dependent_view ON pg_rewrite.ev_class = dependent_view.oid 
+        JOIN pg_class as source_table ON pg_depend.refobjid = source_table.oid 
+        JOIN pg_namespace dependent_ns ON dependent_ns.oid = dependent_view.relnamespace
+        JOIN pg_namespace source_ns ON source_ns.oid = source_table.relnamespace
+        WHERE 
+        source_ns.nspname = local_schema
+        ORDER BY 1,2
+    ) _aux;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
