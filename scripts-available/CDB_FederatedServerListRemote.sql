@@ -18,6 +18,7 @@ DECLARE
     inf_schema name := 'information_schema';
     remote_table name := 'schemata';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, inf_schema);
+    role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     -- Import the foreign schemata if not done
     IF NOT EXISTS (
@@ -82,18 +83,18 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --
 -- List remote schemas in a federated server that the current user has access to.
 --
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Schemas(remote_server name)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Schemas(server TEXT)
 RETURNS TABLE(remote_schema name)
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := remote_server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
     CASE server_type
     WHEN 'postgres_fdw' THEN
         RETURN QUERY SELECT @extschema@.__CDB_FS_List_Foreign_Schemas_PG(server_internal);
     ELSE
-        RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
+        RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, server;
     END CASE;
 END
 $$
@@ -102,11 +103,11 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --
 -- List remote tables in a federated server that the current user has access to.
 --
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Tables(remote_server name, remote_schema name)
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Tables(server TEXT, remote_schema TEXT)
 RETURNS TABLE(remote_table name)
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := remote_server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
     CASE server_type

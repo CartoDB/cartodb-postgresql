@@ -83,10 +83,10 @@ SET client_min_messages TO notice;
 -- Test the listing functions
 -- ===================================================================
 \echo 'Test listing of remote schemas (sunny day)'
-SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(remote_server => 'loopback');
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 
 \echo 'Test listing of remote tables (sunny day)'
-SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(remote_server => 'loopback', remote_schema => 'S 1');
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 
 -- ===================================================================
 -- Cleanup
@@ -111,4 +111,5 @@ SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server := 'loopback'::text)
 SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server := 'loopback2'::text);
 DROP DATABASE cdb_fs_tester;
 DROP ROLE cdb_fs_tester;
+DROP EXTENSION postgres_fdw;
 \set QUIET off

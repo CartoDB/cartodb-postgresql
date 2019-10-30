@@ -209,7 +209,7 @@ BEGIN
             EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', server_internal);
         EXCEPTION WHEN OTHERS THEN
             RAISE EXCEPTION 'Could not create server %: %', server, SQLERRM
-                USING HINT = 'Please clean the remaining objects"';
+                USING HINT = 'Please clean the left over objects';
         END;
     END IF;
 
