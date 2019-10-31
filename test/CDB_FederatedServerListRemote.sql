@@ -88,6 +88,9 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopba
 \echo 'Test listing of remote tables (sunny day)'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 
+\echo 'Test listing of remote columns (sunny day)'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
+
 -- ===================================================================
 -- Cleanup
 -- ===================================================================

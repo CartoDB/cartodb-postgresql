@@ -67,7 +67,7 @@ BEGIN
     IF NOT EXISTS (
         SELECT * FROM pg_class
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
-        AND relname = 'tables'
+        AND relname = remote_table
     ) THEN
         EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_table, server_internal, local_schema);
     END IF;
@@ -81,6 +81,46 @@ END
 $func$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+
+--
+-- List the columns from a remote PG table
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal name, remote_schema name, remote_table name)
+RETURNS TABLE(column_name name)
+AS $func$
+DECLARE
+    -- Import `columns` from the information schema
+    --
+    -- "The view columns contains information about all table columns (or view columns)
+    -- in the database. System columns (oid, etc.) are not included. Only those columns 
+    -- are shown that the current user has access to (by way of being the owner or having some privilege)."
+    -- https://www.postgresql.org/docs/11/infoschema-columns.html
+
+    -- Create local target schema if it does not exists
+    inf_schema name := 'information_schema';
+    remote_col_table name := 'columns';
+    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, inf_schema);
+    sql_q text;
+BEGIN
+    -- Import the foreign `columns` if not done
+    IF NOT EXISTS (
+        SELECT * FROM pg_class
+        WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
+        AND relname = remote_col_table
+    ) THEN
+        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_col_table, server_internal, local_schema);
+    END IF;
+
+    -- Return the result we're interested in
+    -- Note: in this context, remote schema and remote table names are not to be quoted
+    RETURN QUERY EXECUTE format($q$
+        SELECT column_name::name FROM %I.%I
+        WHERE table_schema = '%s' AND table_name = '%s'
+        ORDER BY column_name$q$,
+        local_schema, remote_col_table, remote_schema, remote_table);
+END
+$func$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --------------------------------------------------------------------------------
 -- Public functions
@@ -119,6 +159,26 @@ BEGIN
     CASE server_type
     WHEN 'postgres_fdw' THEN
         RETURN QUERY SELECT @extschema@.__CDB_FS_List_Foreign_Tables_PG(server_internal, remote_schema);
+    ELSE
+        RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
+    END CASE;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Columns(
+    server TEXT,
+    remote_schema TEXT,
+    remote_table TEXT)
+RETURNS TABLE(column_name name)
+AS $$
+DECLARE
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_type name := @extschema@.__CDB_FS_server_type(server_internal);
+BEGIN
+    CASE server_type
+    WHEN 'postgres_fdw' THEN
+        RETURN QUERY SELECT @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema, remote_table);
     ELSE
         RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
     END CASE;
