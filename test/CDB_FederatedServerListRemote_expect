@@ -4,11 +4,16 @@ Test listing of remote schemas (sunny day)
 S 1
 information_schema
 public
+Test listing of remote schemas (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
 Test listing of remote tables (sunny day)
 T 1
 T 2
 T 3
 T 4
+Test listing of remote tables (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
+Test listing of remote tables (rainy day): Remote schema does not exist
 Test listing of remote columns (sunny day)
 NOTICE:  Could not find Postgis installation in the remote "public" schema
 C 1|integer
@@ -19,6 +24,10 @@ c5|timestamp without time zone
 c6|character varying
 c7|character
 c8|USER-DEFINED
+Test listing of remote columns (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
+Test listing of remote columns (rainy day): Remote schema does not exist
+Test listing of remote columns (rainy day): Remote table does not exist
 Test listing of remote geometry columns (sunny day)
 geo_nosrid|GEOMETRY,0
 geog|Geometry,0

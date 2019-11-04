@@ -85,11 +85,27 @@ SET client_min_messages TO notice;
 \echo 'Test listing of remote schemas (sunny day)'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 
+\echo 'Test listing of remote schemas (rainy day): Server does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'Does Not Exist');
+
 \echo 'Test listing of remote tables (sunny day)'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 
+\echo 'Test listing of remote tables (rainy day): Server does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'Does Not Exist', remote_schema => 'S 1');
+\echo 'Test listing of remote tables (rainy day): Remote schema does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'Does Not Exist');
+
 \echo 'Test listing of remote columns (sunny day)'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
+
+\echo 'Test listing of remote columns (rainy day): Server does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'Does Not Exist', remote_schema => 'S 1', remote_table => 'T 1');
+\echo 'Test listing of remote columns (rainy day): Remote schema does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'Does Not Exist', remote_table => 'T 1');
+\echo 'Test listing of remote columns (rainy day): Remote table does not exist'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'Does Not Exist');
+
 
 -- ===================================================================
 -- Cleanup 1
