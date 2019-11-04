@@ -11,3 +11,13 @@
 4.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
 ERROR:  Server "doesNotExist" does not exist
 6.1|
+ERROR:  Server information is mandatory
+ERROR:  Credentials are mandatory
+7.3|
+7.4|(empty,postgres_fdw,localhost,5432,fdw_target,read-only,)
+7.5|
+ERROR:  Server information is mandatory
+8.1|
+8.2|("myRemote"" or'not",postgres_fdw,localhost,5432,"fdw target",read-only,"fdw user")
+8.3|
+ERROR:  Server "Does not exist" does not exist

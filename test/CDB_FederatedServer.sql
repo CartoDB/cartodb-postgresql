@@ -71,15 +71,64 @@ SELECT '5.1', cartodb.CDB_Federated_Server_Unregister(server := 'doesNotExist'::
 SELECT '6.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote2'::text);
 SELECT '6.2', cartodb.CDB_Federated_Server_List_Servers();
 
--- Should show the appropiate output (database, read-write, user, pass)
+-- Test empty config
+SELECT '7.1', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{}');
+-- Test without passing credentials
+SELECT '7.2', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": @@PGPORT@@,
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    }
+}'::jsonb);
+-- Test with empty credentials
+SELECT '7.3', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
+    "server": {
+        "dbname": "fdw_target",
+        "host": "localhost",
+        "port": @@PGPORT@@,
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    },
+    "credentials": { }
+}'::jsonb);
+SELECT '7.4', cartodb.CDB_Federated_Server_List_Servers();
+SELECT '7.5', cartodb.CDB_Federated_Server_Unregister(server := 'empty'::text);
+-- Test without without server options
+SELECT '7.6', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
+    "credentials": {
+        "username": "other_remote_user",
+        "password": "foobarino"
+    }
+}'::jsonb);
 
--- Test multiple user mappings
+-- Should work ok with special characters
+SELECT '8.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote" or''not'::text, config := '{
+    "server": {
+        "dbname": "fdw target",
+        "host": "localhost",
+        "port": @@PGPORT@@,
+        "extensions": "postgis",
+        "updatable": "false",
+        "use_remote_estimate": "true",
+        "fetch_size": "1000"
+    },
+    "credentials": {
+        "username": "fdw user",
+        "password": "foo barino"
+    }
+}'::jsonb);
+SELECT '8.2', cartodb.CDB_Federated_Server_List_Servers();
+SELECT '8.3', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote" or''not'::text);
 
--- Should work ok with special characters in the name
-
--- Should throw with invalid or NULL config
-
--- -- List works with multiple and single server
+-- Should throw when trying to unregistering a server that doesn't exists
+SELECT '8.4', cartodb.CDB_Federated_Server_Unregister(server := 'Does not exist'::text);
 
 -- Cleanup
 \set QUIET on

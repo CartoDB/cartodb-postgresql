@@ -126,16 +126,21 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_credentials_to_user_mapping(inpu
 RETURNS jsonb
 AS $$
 DECLARE
-    user_mapping jsonb := json_build_object(
-        'user_mapping',
-        jsonb_build_object( 'user', input_config->'credentials'->'username',
-                            'password', input_config->'credentials'->'password')
-        );
+    mapping jsonb := '{}'::jsonb;
 BEGIN
     IF NOT (input_config ? 'credentials') THEN
         RAISE EXCEPTION 'Credentials are mandatory';
     END IF;
-    RETURN (input_config - 'credentials')::jsonb || user_mapping;
+    
+    -- For now, allow not passing username or password
+    IF input_config->'credentials'->'username' IS NOT NULL THEN
+        mapping := jsonb_build_object('user', input_config->'credentials'->'username');
+    END IF;
+    IF input_config->'credentials'->'password' IS NOT NULL THEN
+        mapping := mapping || jsonb_build_object('password', input_config->'credentials'->'password');
+    END IF;
+    
+    RETURN (input_config - 'credentials')::jsonb || jsonb_build_object('user_mapping', mapping);
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -154,6 +159,9 @@ DECLARE
     }';
     server_config jsonb;
 BEGIN
+    IF NOT (input_config ? 'server') THEN
+        RAISE EXCEPTION 'Server information is mandatory';
+    END IF;
     server_config := default_options || to_jsonb(input_config->'server');
     RETURN jsonb_set(input_config, '{server}'::text[], server_config);
 END
