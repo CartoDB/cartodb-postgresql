@@ -5,7 +5,6 @@
 -- Requires configuration parameter. Example: SELECT @extschema@.CDB_Conf_SetConf('groups_api', '{ "host": "127.0.0.1", "port": 3000, "timeout": 10, "username": "extension", "password": "elephant" }');
 ----------------------------------
 
--- TODO: delete this development cleanup before final merge
 DROP FUNCTION IF EXISTS @extschema@.CDB_Group_AddMember(group_name text, username text);
 DROP FUNCTION IF EXISTS @extschema@.CDB_Group_RemoveMember(group_name text, username text);
 DROP FUNCTION IF EXISTS @extschema@._CDB_Group_AddMember_API(group_name text, username text);

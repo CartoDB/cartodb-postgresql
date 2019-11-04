@@ -133,7 +133,7 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG
 RETURNS TABLE(column_name name, column_type text)
 AS $func$
 DECLARE
-    -- Import `geometry_columns` and geography_columns from the postgis schema
+    -- Import `geometry_columns` and `geography_columns` from the postgis schema
     -- We assume that postgis is installed in the public schema
 
     -- Create local target schema if it does not exists
@@ -220,6 +220,9 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+--
+-- List the columns of a remote table in a federated server that the current user has access to.
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Columns(
     server TEXT,
     remote_schema TEXT,

@@ -278,8 +278,6 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --
 -- List registered servers
 -- 
--- TODO: Decide whether we want to show extra config (extensions, fetch_size, use_remote_estimate)
--- TODO: Handle multiple user mappings in the same server
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Servers(server TEXT DEFAULT '%')
 RETURNS TABLE (
     name        text,
