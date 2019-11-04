@@ -32,7 +32,7 @@ SELECT 'C2', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback2'::tex
 }'::jsonb);
 
 -- ===================================================================
--- create objects used through FDW loopback server
+-- Setup 1
 -- ===================================================================
 \c cdb_fs_tester cdb_fs_tester
 
@@ -92,7 +92,7 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopbac
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
 
 -- ===================================================================
--- Cleanup
+-- Cleanup 1
 -- ===================================================================
 \set QUIET on
 
@@ -105,6 +105,51 @@ DROP TABLE "S 1". "T 4";
 DROP SCHEMA "S 1";
 DROP TYPE user_enum;
 
+
+-- ===================================================================
+-- Setup 2: Using Postgis too
+-- ===================================================================
+
+\c cdb_fs_tester postgres
+
+CREATE EXTENSION postgis;
+
+\c cdb_fs_tester cdb_fs_tester
+
+CREATE SCHEMA "S 1";
+CREATE TABLE "S 1"."T 5" (
+	geom       geometry(Geometry,4326),
+	geom_wm    geometry(GeometryZ,3857),
+	geo_nosrid geometry,
+	geog       geography
+);
+
+\c contrib_regression postgres
+SET client_min_messages TO notice;
+\set VERBOSITY terse
+\set QUIET off
+
+
+-- ===================================================================
+-- Test the listing functions
+-- ===================================================================
+
+\echo 'Test listing of remote geometry columns (sunny day)'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 5');
+\echo 'Test listing of remote geometry columns (sunny day) - Rerun'
+-- Rerun should be ok
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 5');
+
+-- ===================================================================
+-- Cleanup 2
+-- ===================================================================
+\set QUIET on
+
+\c cdb_fs_tester cdb_fs_tester
+DROP TABLE "S 1". "T 5";
+
+DROP SCHEMA "S 1";
+
 \c contrib_regression postgres
 \set QUIET on
 SET client_min_messages TO error;
@@ -112,6 +157,7 @@ SET client_min_messages TO error;
 
 SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server := 'loopback'::text);
 SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server := 'loopback2'::text);
+
 DROP DATABASE cdb_fs_tester;
 DROP ROLE cdb_fs_tester;
 DROP EXTENSION postgres_fdw;

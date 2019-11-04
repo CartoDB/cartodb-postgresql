@@ -86,7 +86,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- List the columns from a remote PG table
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal name, remote_schema name, remote_table name)
-RETURNS TABLE(column_name name)
+RETURNS TABLE(column_name name, column_type text)
 AS $func$
 DECLARE
     -- Import `columns` from the information schema
@@ -100,7 +100,6 @@ DECLARE
     inf_schema name := 'information_schema';
     remote_col_table name := 'columns';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, inf_schema);
-    sql_q text;
 BEGIN
     -- Import the foreign `columns` if not done
     IF NOT EXISTS (
@@ -114,13 +113,68 @@ BEGIN
     -- Return the result we're interested in
     -- Note: in this context, remote schema and remote table names are not to be quoted
     RETURN QUERY EXECUTE format($q$
-        SELECT column_name::name FROM %I.%I
+        SELECT 
+            a.column_name::name, COALESCE(b.column_type, a.data_type)::TEXT as column_type
+        FROM %I.%I a
+        LEFT JOIN @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG('%s', '%s', '%s') b ON a.column_name = b.column_name
         WHERE table_schema = '%s' AND table_name = '%s'
         ORDER BY column_name$q$,
-        local_schema, remote_col_table, remote_schema, remote_table);
+        local_schema, remote_col_table,
+        server_internal, remote_schema, remote_table,
+        remote_schema, remote_table);
 END
 $func$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+--
+-- List the columns from a remote PG table
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG(server_internal name, remote_schema name, remote_table name, postgis_schema name DEFAULT 'public')
+RETURNS TABLE(column_name name, column_type text)
+AS $func$
+DECLARE
+    -- Import `geometry_columns` and geography_columns from the postgis schema
+    -- We assume that postgis is installed in the public schema
+
+    -- Create local target schema if it does not exists
+    remote_geometry_view name := 'geometry_columns';
+    remote_geography_view name := 'geography_columns';
+    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, postgis_schema);
+BEGIN
+    -- Import the foreign `geometry_columns` and `geography_columns` if not done
+    IF NOT EXISTS (
+        SELECT * FROM pg_class
+        WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
+        AND relname = remote_geometry_view
+    ) THEN
+        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I, %I) FROM SERVER %I INTO %I',
+                    postgis_schema, remote_geometry_view, remote_geography_view, server_internal, local_schema);
+    END IF;
+
+    BEGIN
+    -- Note: We return both the type and srid as the type
+        RETURN QUERY EXECUTE format($q$
+            SELECT  f_geometry_column::NAME as column_name,
+                    type::TEXT || ',' || srid::TEXT as column_type
+                FROM
+                (
+                    SELECT * FROM %I.%I UNION ALL SELECT * FROM %I.%I
+                ) _geo_views
+                WHERE
+                    f_table_schema = '%s' AND
+                    f_table_name = '%s'
+        $q$,
+            local_schema, remote_geometry_view,
+            local_schema, remote_geography_view,
+            remote_schema, remote_table);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not find Postgis installation in the remote "%" schema', postgis_schema;
+        RETURN;
+    END;
+END
+$func$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
 
 --------------------------------------------------------------------------------
 -- Public functions
@@ -170,7 +224,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Columns(
     server TEXT,
     remote_schema TEXT,
     remote_table TEXT)
-RETURNS TABLE(column_name name)
+RETURNS TABLE(column_name name, column_type text)
 AS $$
 DECLARE
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
@@ -178,7 +232,7 @@ DECLARE
 BEGIN
     CASE server_type
     WHEN 'postgres_fdw' THEN
-        RETURN QUERY SELECT @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema, remote_table);
+        RETURN QUERY SELECT * FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema, remote_table);
     ELSE
         RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
     END CASE;

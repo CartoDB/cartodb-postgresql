@@ -10,13 +10,24 @@ T 2
 T 3
 T 4
 Test listing of remote columns (sunny day)
-C 1
-c2
-c3
-c4
-c5
-c6
-c7
-c8
+NOTICE:  Could not find Postgis installation in the remote "public" schema
+C 1|integer
+c2|integer
+c3|text
+c4|timestamp with time zone
+c5|timestamp without time zone
+c6|character varying
+c7|character
+c8|USER-DEFINED
+Test listing of remote geometry columns (sunny day)
+geo_nosrid|GEOMETRY,0
+geog|Geometry,0
+geom|GEOMETRY,4326
+geom_wm|GEOMETRY,3857
+Test listing of remote geometry columns (sunny day) - Rerun
+geo_nosrid|GEOMETRY,0
+geog|Geometry,0
+geom|GEOMETRY,4326
+geom_wm|GEOMETRY,3857
 D1|
 D2|
