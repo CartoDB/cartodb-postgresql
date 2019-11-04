@@ -26,15 +26,20 @@ AS $$
 DECLARE
     internal_server_name text := format('%s%s', @extschema@.__CDB_FS_Name_Pattern(), input_name);
 BEGIN
-    -- We discard anything that would be truncated
-    IF (char_length(internal_server_name) < 64) THEN
-        IF (check_existence AND (NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = internal_server_name))) THEN
-            RAISE EXCEPTION 'Server "%" does not exist', input_name;
-        END IF;
-        RETURN internal_server_name::name;
-    ELSE
-        RAISE EXCEPTION 'Server name is too long to be used as identifier';
+    IF input_name IS NULL THEN
+        RAISE EXCEPTION 'Server name cannot be NULL';
     END IF;
+
+    -- We discard anything that would be truncated
+    IF (char_length(internal_server_name) >= 64) THEN
+        RAISE EXCEPTION 'Server name (%) is too long to be used as identifier', input_name;
+    END IF;
+
+    IF (check_existence AND (NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = internal_server_name))) THEN
+        RAISE EXCEPTION 'Server "%" does not exist', input_name;
+    END IF;
+
+    RETURN internal_server_name::name;
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -315,3 +320,52 @@ BEGIN
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+
+
+--
+-- Grant access to a server
+--
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server TEXT, usernames text[])
+RETURNS void
+AS $$
+DECLARE
+    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
+    user_role TEXT;
+    username TEXT;
+BEGIN
+    FOREACH username IN ARRAY usernames
+    LOOP
+        user_role := @extschema@._CDB_User_RoleFromUsername(username);
+        IF (user_role IS NULL) THEN
+            RAISE EXCEPTION 'User role "%" does not exists', username;
+        END IF;
+        EXECUTE format('GRANT %I TO %I', server_role_name, user_role);
+    END loop;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+--
+-- Revoke access to a server
+--
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Revoke_Access(server TEXT, usernames text[])
+RETURNS void
+AS $$
+DECLARE
+    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
+    user_role TEXT;
+    username TEXT;
+BEGIN
+    FOREACH username IN ARRAY usernames
+    LOOP
+        user_role := @extschema@._CDB_User_RoleFromUsername(username);
+        IF (user_role IS NULL) THEN
+            RAISE EXCEPTION 'User role "%" does not exists', username;
+        END IF;
+        EXECUTE format('REVOKE %I FROM %I', server_role_name, user_role);
+    END loop;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

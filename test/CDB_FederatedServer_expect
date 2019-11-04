@@ -11,6 +11,7 @@
 4.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
 ERROR:  Server "doesNotExist" does not exist
 6.1|
+ERROR:  Server name cannot be NULL
 ERROR:  Server information is mandatory
 ERROR:  Credentials are mandatory
 7.3|
@@ -21,3 +22,17 @@ ERROR:  Server information is mandatory
 8.2|("myRemote"" or'not",postgres_fdw,localhost,5432,"fdw target",read-only,"fdw user")
 8.3|
 ERROR:  Server "Does not exist" does not exist
+
+9.1|
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+9.2|(myRemote3,postgres_fdw,localhost,5432,,read-only,)
+ERROR:  Could not create server myRemote4: permission denied for foreign-data wrapper postgres_fdw
+You are now connected to database "contrib_regression" as user "postgres".
+9.5|
+ERROR:  Server "does not exist" does not exist
+ERROR:  User role "does not exist" does not exists
+NOTICE:  role "cdb_fs_tester" is already a member of role "cdb_fs_role_95b63382aabca4433e7bd9cba6c30368"
+9.8|
+9.9|
+9.10|
+9.11|

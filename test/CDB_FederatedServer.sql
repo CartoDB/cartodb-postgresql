@@ -72,6 +72,7 @@ SELECT '6.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote2'::tex
 SELECT '6.2', cartodb.CDB_Federated_Server_List_Servers();
 
 -- Test empty config
+SELECT '7.0', cartodb.CDB_Federated_Server_Register_PG(server := NULL::text, config := '{ "server": {}, "credentials" : {}}');
 SELECT '7.1', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{}');
 -- Test without passing credentials
 SELECT '7.2', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
@@ -130,8 +131,67 @@ SELECT '8.3', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote" or''n
 -- Should throw when trying to unregistering a server that doesn't exists
 SELECT '8.4', cartodb.CDB_Federated_Server_Unregister(server := 'Does not exist'::text);
 
+-- Test permissions
+\set QUIET on
+
+-- We create a username following the same steps as organization members
+CREATE ROLE cdb_fs_tester LOGIN PASSWORD 'cdb_fs_passwd';
+GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester;
+CREATE SCHEMA cdb_fs_tester AUTHORIZATION cdb_fs_tester;
+SELECT cartodb.CDB_Organization_Create_Member('cdb_fs_tester');
+ALTER ROLE cdb_fs_tester SET search_path TO cdb_fs_tester,cartodb,public;
+
+\set QUIET off
+
+SELECT '9.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote3'::text, config := '{
+    "server": {
+        "host": "localhost",
+        "port": @@PGPORT@@
+    },
+    "credentials": {
+        "username": "fdw_user",
+        "password": "foobarino"
+    }
+}'::jsonb);
+
+\c contrib_regression cdb_fs_tester
+
+-- A normal user can list existing servers
+SELECT '9.2', cartodb.CDB_Federated_Server_List_Servers();
+-- Creating a server without superadmin should fail
+SELECT '9.3', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote4'::text, config := '{
+    "server": {
+        "host": "localhost",
+        "port": @@PGPORT@@
+    },
+    "credentials": {
+        "username": "fdw_user",
+        "password": "foobarino"
+    }
+}'::jsonb);
+
+
+\c contrib_regression postgres
+
+SELECT '9.5', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
+SELECT '9.6', cartodb.CDB_Federated_Server_Grant_Access(server := 'does not exist', usernames := ARRAY['cdb_fs_tester']);
+SELECT '9.7', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['does not exist']);
+
+-- Grant again raises a notice
+SELECT '9.8', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
+
+-- Revoke works
+SELECT '9.9', cartodb.CDB_Federated_Server_Revoke_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
+SELECT '9.10', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
+
+-- Dropping the server without revoking access works
+SELECT '9.11', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote3'::text);
+
 -- Cleanup
 \set QUIET on
+DROP SCHEMA cdb_fs_tester CASCADE;
+REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester;
+DROP ROLE cdb_fs_tester;
 DROP EXTENSION postgres_fdw;
 \set QUIET off
 
