@@ -61,4 +61,41 @@ CREATE VIEW
 ERROR:  Could not import table "remote_geom" as "localtable2": "localtable2" already exists
 DROP VIEW
 DROP TABLE
+## Registering tables does not work without permissions
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+## Listing registered tables does not work without permissions
+ERROR:  Not enough permissions to access the server "loopback"
+## Registering tables works with granted permissions
+You are now connected to database "contrib_regression" as user "postgres".
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+
+## Listing registered tables works with granted permissions
+(remote_geom2,public.different_name)
+(remote_geom,public.localtable)
+## Selecting from a registered table with granted permissions works
+1|POINT(1 1)
+2|POINT(2 2)
+## Selecting from a registered table without permissions does not work
+You are now connected to database "contrib_regression" as user "cdb_fs_tester2".
+ERROR:  permission denied for view localtable
+## Deleting a registered table without permissions does not work
+ERROR:  Not enough permissions to access the server "loopback"
+## Only the owner can grant permissions over the server
+ERROR:  You do not have rights to grant access on "loopback"
+## Everything works for a different user when granted permissions
+You are now connected to database "contrib_regression" as user "postgres".
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester2".
+(remote_geom2,public.different_name)
+(remote_geom,public.localtable)
+1|POINT(1 1)
+2|POINT(2 2)
+## A different user can unregister a table
+NOTICE:  drop cascades to view localtable
+
+(remote_geom2,public.different_name)
+## Only the owner can revoke permissions over the server
+ERROR:  You do not have rights to revoke access on "loopback"
 D1|

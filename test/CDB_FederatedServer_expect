@@ -48,7 +48,7 @@ You are now connected to database "contrib_regression" as user "postgres".
 ## Granting access to a user works
 9.5|
 ERROR:  Server "does not exist" does not exist
-ERROR:  role "does not exist" does not exist
+ERROR:  Could not grant access on "myRemote3" to "does not exist": role "does not exist" does not exist
 ## Granting access again raises a notice
 NOTICE:  role "cdb_fs_tester" is already a member of role "cdb_fs_role_95b63382aabca4433e7bd9cba6c30368"
 9.8|

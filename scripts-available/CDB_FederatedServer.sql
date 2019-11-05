@@ -357,7 +357,14 @@ BEGIN
     IF (db_role IS NULL) THEN
         RAISE EXCEPTION 'User role "%" cannot be NULL', username;
     END IF;
-    EXECUTE format('GRANT %I TO %I', server_role_name, db_role);
+    BEGIN
+        EXECUTE format('GRANT %I TO %I', server_role_name, db_role);
+    EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION 'You do not have rights to grant access on "%"', server;
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Could not grant access on "%" to "%": %', server, db_role, SQLERRM;
+    END;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -375,7 +382,14 @@ BEGIN
     IF (db_role IS NULL) THEN
         RAISE EXCEPTION 'User role "%" cannot be NULL', username;
     END IF;
-    EXECUTE format('REVOKE %I FROM %I', server_role_name, db_role);
+    BEGIN
+        EXECUTE format('REVOKE %I FROM %I', server_role_name, db_role);
+    EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION 'You do not have rights to revoke access on "%"', server;
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Could not revoke access on "%" to "%": %', server, db_role, SQLERRM;
+    END;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
