@@ -6,9 +6,13 @@ SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
 \set QUIET off
 
--- Register a new server
+\echo "List empty servers shows nothing"
 SELECT '1.1', cartodb.CDB_Federated_Server_List_Servers();
+
+\echo "List non-existent server shows nothing"
 SELECT '1.2', cartodb.CDB_Federated_Server_List_Servers(server := 'doesNotExist');
+
+\echo "Create and list a server works"
 SELECT '1.3', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote'::text, config := '{
     "server": {
         "host": "localhost",
@@ -21,7 +25,7 @@ SELECT '1.3', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote'::tex
 }'::jsonb);
 SELECT '1.4', cartodb.CDB_Federated_Server_List_Servers();
 
--- Register a second server
+\echo "Create and list a second server works"
 SELECT '2.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::text, config := '{
     "server": {
         "dbname": "fdw_target",
@@ -38,11 +42,12 @@ SELECT '2.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::te
     }
 }'::jsonb);
 SELECT '2.2', cartodb.CDB_Federated_Server_List_Servers();
--- Check that CDB_Federated_Server_List_Servers works with name
+
+\echo "List server by name works"
 SELECT '2.3', cartodb.CDB_Federated_Server_List_Servers(server := 'myRemote');
 
 
--- Re-register the second server
+\echo "Re-register a second server works"
 SELECT '3.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::text, config := '{
     "server": {
         "dbname": "fdw_target",
@@ -60,21 +65,24 @@ SELECT '3.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote2'::te
 }'::jsonb);
 SELECT '3.2', cartodb.CDB_Federated_Server_List_Servers();
 
--- Unregister #1
+\echo "Unregister server 1 works"
 SELECT '4.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote'::text);
 SELECT '4.2', cartodb.CDB_Federated_Server_List_Servers();
 
--- Unregister a server that doesn't exist
+\echo "Unregistering a server that doesn't exist fails"
 SELECT '5.1', cartodb.CDB_Federated_Server_Unregister(server := 'doesNotExist'::text);
 
--- Unregister #2
+\echo "Unregister the second server works"
 SELECT '6.1', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote2'::text);
 SELECT '6.2', cartodb.CDB_Federated_Server_List_Servers();
 
--- Test empty config
+\echo "Create a server with NULL name fails"
 SELECT '7.0', cartodb.CDB_Federated_Server_Register_PG(server := NULL::text, config := '{ "server": {}, "credentials" : {}}');
+\echo "Create a server with NULL config fails"
+SELECT '7.01', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := NULL::jsonb);
+\echo "Create a server with empty config fails"
 SELECT '7.1', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{}');
--- Test without passing credentials
+\echo "Create a server without credentials fails"
 SELECT '7.2', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
     "server": {
         "dbname": "fdw_target",
@@ -86,7 +94,7 @@ SELECT '7.2', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, 
         "fetch_size": "1000"
     }
 }'::jsonb);
--- Test with empty credentials
+\echo "Create a server with empty credentials works"
 SELECT '7.3', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
     "server": {
         "dbname": "fdw_target",
@@ -101,7 +109,7 @@ SELECT '7.3', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, 
 }'::jsonb);
 SELECT '7.4', cartodb.CDB_Federated_Server_List_Servers();
 SELECT '7.5', cartodb.CDB_Federated_Server_Unregister(server := 'empty'::text);
--- Test without without server options
+\echo "Create a server without options fails"
 SELECT '7.6', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, config := '{
     "credentials": {
         "username": "other_remote_user",
@@ -109,7 +117,7 @@ SELECT '7.6', cartodb.CDB_Federated_Server_Register_PG(server := 'empty'::text, 
     }
 }'::jsonb);
 
--- Should work ok with special characters
+\echo "Create a server with special characters works"
 SELECT '8.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote" or''not'::text, config := '{
     "server": {
         "dbname": "fdw target",
@@ -127,9 +135,6 @@ SELECT '8.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote" or''
 }'::jsonb);
 SELECT '8.2', cartodb.CDB_Federated_Server_List_Servers();
 SELECT '8.3', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote" or''not'::text);
-
--- Should throw when trying to unregistering a server that doesn't exists
-SELECT '8.4', cartodb.CDB_Federated_Server_Unregister(server := 'Does not exist'::text);
 
 -- Test permissions
 \set QUIET on
@@ -156,9 +161,10 @@ SELECT '9.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote3'::te
 
 \c contrib_regression cdb_fs_tester
 
--- A normal user can list existing servers
+\echo "All users are able to list servers"
 SELECT '9.2', cartodb.CDB_Federated_Server_List_Servers();
--- Creating a server without superadmin should fail
+
+\echo "Only superadmins can create servers"
 SELECT '9.3', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote4'::text, config := '{
     "server": {
         "host": "localhost",
@@ -173,19 +179,41 @@ SELECT '9.3', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote4'::te
 
 \c contrib_regression postgres
 
+\echo "Granting access to a user works"
 SELECT '9.5', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
 SELECT '9.6', cartodb.CDB_Federated_Server_Grant_Access(server := 'does not exist', usernames := ARRAY['cdb_fs_tester']);
 SELECT '9.7', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['does not exist']);
 
--- Grant again raises a notice
+\echo "Granting access again raises a notice"
 SELECT '9.8', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
 
--- Revoke works
+\echo "Revoking access to a user works"
 SELECT '9.9', cartodb.CDB_Federated_Server_Revoke_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
 SELECT '9.10', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote3', usernames := ARRAY['cdb_fs_tester']);
 
--- Dropping the server without revoking access works
+\echo "Unregistering a server with active grants works"
 SELECT '9.11', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote3'::text);
+
+
+\echo "A user with granted access can't drop a server"
+SELECT '10.1', cartodb.CDB_Federated_Server_Register_PG(server := 'myRemote4'::text, config := '{
+    "server": {
+        "host": "localhost",
+        "port": @@PGPORT@@
+    },
+    "credentials": {
+        "username": "fdw_user",
+        "password": "foobarino"
+    }
+}'::jsonb);
+SELECT '10.2', cartodb.CDB_Federated_Server_Grant_Access(server := 'myRemote4', usernames := ARRAY['cdb_fs_tester']);
+
+\c contrib_regression cdb_fs_tester
+SELECT '10.3', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote4'::text);
+
+\c contrib_regression postgres
+SELECT '10.4', cartodb.CDB_Federated_Server_Unregister(server := 'myRemote4'::text);
+
 
 -- Cleanup
 \set QUIET on
@@ -194,5 +222,3 @@ REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester;
 DROP ROLE cdb_fs_tester;
 DROP EXTENSION postgres_fdw;
 \set QUIET off
-
-

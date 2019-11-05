@@ -273,9 +273,13 @@ DECLARE
     server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
-    EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', server_internal);
-    EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
-    EXECUTE FORMAT ('DROP ROLE %I', role_name);
+    BEGIN
+        EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', server_internal);
+        EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
+        EXECUTE FORMAT ('DROP ROLE %I', role_name);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'Unnecessary permissions to drop the server "%": %', server, SQLERRM;
+    END;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
