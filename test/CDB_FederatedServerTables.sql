@@ -54,6 +54,7 @@ SET client_min_messages TO error;
 \set VERBOSITY terse
 \set QUIET off
 
+\echo '## Registering an existing table works'
 SELECT 'R1', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -70,6 +71,7 @@ Select 'list_remotes1', CDB_Federated_Server_List_Registered_Tables(
     remote_schema => 'remote_schema'
 );
 
+\echo '## Registering another existing table works'
 SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -88,7 +90,8 @@ Select 'list_remotes2', CDB_Federated_Server_List_Registered_Tables(
     remote_schema => 'remote_schema'
 );
 
--- Reregistering R2 with different parameters should work
+
+\echo '## Re-registering a table works'
 SELECT 'R3', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -103,6 +106,7 @@ SELECT 'S3_old', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTabl
 -- And the new appear
 SELECT 'S3_new', cartodb_id, ST_AsText(the_geom), another_field FROM different_name;
 
+\echo '## Unregistering works'
 -- Deregistering the first table
 SELECT 'U1', CDB_Federated_Table_Unregister(
     server => 'loopback',
@@ -116,6 +120,18 @@ Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
 );
+
+-- Try to register with invalid / NULL server
+-- Try to register with invalid / NULL schema
+-- Try to register with invalid / NULL table
+-- Try to register with invalid / NULL id
+-- Try to register with invalid / NULL geom_column
+-- Try to register with invalid / NULL webmercator_column
+-- Try to register the same table twice (different name) should fail
+-- Check that conflict is handled nicely (target view already exists)
+
+-- Try permissions tricks
+
 
 -- ===================================================================
 -- Cleanup

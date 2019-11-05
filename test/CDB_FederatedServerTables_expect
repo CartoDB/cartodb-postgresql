@@ -1,4 +1,5 @@
 C1|
+## Registering an existing table works
 R1|
 V1| SELECT t.id AS cartodb_id,
     t.geom AS the_geom,
@@ -8,6 +9,7 @@ V1| SELECT t.id AS cartodb_id,
 S1|1|POINT(1 1)|patata
 S1|2|POINT(2 2)|patata2
 list_remotes1|(remote_geom,public.remote_geom)
+## Registering another existing table works
 R2|
 V2| SELECT t.id AS cartodb_id,
     t.geom AS the_geom,
@@ -17,9 +19,11 @@ V2| SELECT t.id AS cartodb_id,
 S2|3|POINT(3 3)|patata
 list_remotes2|(remote_geom2,"public.""myFullTable""")
 list_remotes2|(remote_geom,public.remote_geom)
+## Re-registering a table works
 R3|
 ERROR:  relation "myFullTable" does not exist at character 70
 S3_new|3|POINT(3 3)|patata
+## Unregistering works
 U1|
 ERROR:  relation "remote_geom" does not exist at character 71
 list_remotes3|(remote_geom2,public.different_name)
