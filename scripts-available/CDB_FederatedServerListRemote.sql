@@ -41,8 +41,8 @@ BEGIN
             ORDER BY remote_schema
         ', local_schema, remote_table, '''pg_%''');
     EXCEPTION WHEN OTHERS THEN
-        RAISE EXCEPTION 'Not enough permissions to access the server "%": %',
-                        @extschema@.__CDB_FS_Extract_Server_Name(server_internal), SQLERRM;
+        RAISE EXCEPTION 'Not enough permissions to access the server "%"',
+                        @extschema@.__CDB_FS_Extract_Server_Name(server_internal);
     END;
 END
 $$
@@ -238,6 +238,10 @@ DECLARE
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
+    IF remote_table IS NULL THEN
+        RAISE EXCEPTION 'Remote table name cannot be NULL';
+    END IF;
+
     CASE server_type
     WHEN 'postgres_fdw' THEN
         RETURN QUERY SELECT * FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema, remote_table);

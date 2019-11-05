@@ -97,6 +97,8 @@ You are now connected to database "contrib_regression" as user "postgres".
 ERROR:  Server "Does Not Exist" does not exist
 ## Test listing of remote columns (rainy day): Remote schema does not exist
 ## Test listing of remote columns (rainy day): Remote table does not exist
+## Test listing of remote columns (rainy day): Remote table is NULL
+ERROR:  Remote table name cannot be NULL
 ## Test listing of remote objects with permissions (sunny day)
 
 You are now connected to database "contrib_regression" as user "cdb_fs_tester2".

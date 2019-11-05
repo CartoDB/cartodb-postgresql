@@ -200,6 +200,9 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 \echo '## Test listing of remote columns (rainy day): Remote table does not exist'
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'Does Not Exist');
 
+\echo '## Test listing of remote columns (rainy day): Remote table is NULL'
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => NULL::text);
+
 
 -- ===================================================================
 -- Test that using a different user to list tables and dropping it

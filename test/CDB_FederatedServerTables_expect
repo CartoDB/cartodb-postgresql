@@ -27,4 +27,30 @@ S3_new|3|POINT(3 3)|patata
 U1|
 ERROR:  relation "remote_geom" does not exist at character 71
 list_remotes3|(remote_geom2,public.different_name)
+## Registering a table: Invalid server fails
+ERROR:  Server "Does not exist" does not exist
+## Registering a table: NULL server fails
+ERROR:  Server name cannot be NULL
+## Registering a table: Invalid schema fails
+ERROR:  schema "Does not exist" is not present on foreign server "cdb_fs_loopback"
+## Registering a table: NULL schema fails
+ERROR:  Schema name cannot be NULL
+## Registering a table: Invalid table fails
+ERROR:  relation "cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.Does not exist" does not exist
+## Registering a table: NULL table fails
+ERROR:  Remote table name cannot be NULL
+## Registering a table: Invalid id fails
+ERROR:  non integer id_column "Does not exist"
+## Registering a table: NULL id fails
+ERROR:  non integer id_column "<NULL>"
+## Registering a table: Invalid geom_column fails
+ERROR:  non geometry column "Does not exists"
+## Registering a table: NULL geom_column is OK
+
+
+## Registering a table: Invalid webmercator_column fails
+ERROR:  non geometry column "Does not exists"
+## Registering a table: NULL webmercator_column is OK
+
+
 D1|

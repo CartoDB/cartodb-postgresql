@@ -4,6 +4,7 @@
 \set QUIET on
 SET client_min_messages TO error;
 \set VERBOSITY terse
+
 SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
 CREATE ROLE cdb_fs_tester SUPERUSER LOGIN PASSWORD 'cdb_fs_passwd';
@@ -121,9 +122,126 @@ Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
     remote_schema => 'remote_schema'
 );
 
--- Try to register with invalid / NULL server
--- Try to register with invalid / NULL schema
--- Try to register with invalid / NULL table
+\echo '## Registering a table: Invalid server fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'Does not exist',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: NULL server fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => NULL::text,
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: Invalid schema fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'Does not exist',
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: NULL schema fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => NULL::text,
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: Invalid table fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'Does not exist',
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: NULL table fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => NULL::text,
+    id_column => 'id',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: Invalid id fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column => 'Does not exist',
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: NULL id fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column =>  NULL::text,
+    geom_column => 'geom'
+    );
+
+\echo '## Registering a table: Invalid geom_column fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'Does not exists'
+    );
+
+\echo '## Registering a table: NULL geom_column is OK'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column =>  'id',
+    geom_column => NULL::text
+    );
+SELECT cartodb.CDB_Federated_Table_Unregister(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom'
+    );
+
+\echo '## Registering a table: Invalid webmercator_column fails'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column => 'id',
+    geom_column => 'geom',
+    webmercator_column => 'Does not exists'
+    );
+
+\echo '## Registering a table: NULL webmercator_column is OK'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column =>  'id',
+    geom_column => 'geom',
+    webmercator_column => NULL::text
+    );
+SELECT cartodb.CDB_Federated_Table_Unregister(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom'
+    );
+
 -- Try to register with invalid / NULL id
 -- Try to register with invalid / NULL geom_column
 -- Try to register with invalid / NULL webmercator_column
@@ -131,6 +249,12 @@ Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
 -- Check that conflict is handled nicely (target view already exists)
 
 -- Try permissions tricks
+
+-- Try registering and accessing a table as normal user
+
+-- Try register with one user and reading it with other
+-- Try register with one user and deleting it with another
+
 
 
 -- ===================================================================

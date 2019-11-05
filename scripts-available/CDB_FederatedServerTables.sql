@@ -104,6 +104,10 @@ DECLARE
     webmercator_expression TEXT;
     carto_columns_expression TEXT[];
 BEGIN
+    IF remote_table IS NULL THEN
+        RAISE EXCEPTION 'Remote table name cannot be NULL';
+    END IF;
+
     -- Use geom_column as default for webmercator_column
     IF webmercator_column IS NULL THEN
         webmercator_column := geom_column;

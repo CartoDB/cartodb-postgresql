@@ -64,9 +64,11 @@ RETURNS NAME
 AS $$
 DECLARE
     hash_value text := md5(internal_server_name::text || '__' || schema_name::text);
-    schema_name text := format('%s%s%s', @extschema@.__CDB_FS_Name_Pattern(), 'schema_', hash_value);
 BEGIN
-    RETURN schema_name::name;
+    IF schema_name IS NULL THEN
+        RAISE EXCEPTION 'Schema name cannot be NULL';
+    END IF;
+    RETURN format('%s%s%s', @extschema@.__CDB_FS_Name_Pattern(), 'schema_', hash_value)::name;
 END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -102,7 +104,11 @@ BEGIN
     -- easy way to check for permissions and keep all objects under the same owner
     BEGIN
         EXECUTE 'SET LOCAL ROLE ' || quote_ident(role_name);
-    EXCEPTION WHEN OTHERS THEN
+    EXCEPTION
+    WHEN invalid_parameter_value THEN
+        RAISE EXCEPTION 'Server "%" does not exist',
+                        @extschema@.__CDB_FS_Extract_Server_Name(internal_server_name);
+    WHEN OTHERS THEN
         RAISE EXCEPTION 'Not enough permissions to access the server "%"',
                         @extschema@.__CDB_FS_Extract_Server_Name(internal_server_name);
     END;
