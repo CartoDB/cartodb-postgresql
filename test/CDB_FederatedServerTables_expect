@@ -79,7 +79,9 @@ You are now connected to database "contrib_regression" as user "cdb_fs_tester".
 2|POINT(2 2)
 ## Selecting from a registered table without permissions does not work
 You are now connected to database "contrib_regression" as user "cdb_fs_tester2".
-ERROR:  permission denied for view localtable
+CREATE FUNCTION
+t
+DROP FUNCTION
 ## Deleting a registered table without permissions does not work
 ERROR:  Not enough permissions to access the server "loopback"
 ## Only the owner can grant permissions over the server

@@ -319,7 +319,22 @@ Select cartodb_id, ST_AsText(the_geom) from localtable;
 
 \echo '## Selecting from a registered table without permissions does not work'
 \c contrib_regression cdb_fs_tester2
-Select cartodb_id, ST_AsText(the_geom) from localtable;
+CREATE OR REPLACE FUNCTION catch_permission_error(query text)
+RETURNS bool
+AS $$
+BEGIN
+    EXECUTE query;
+    RETURN FALSE;
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RETURN TRUE;
+    WHEN OTHERS THEN
+        RAISE WARNING 'Exception %', sqlstate;
+        RETURN FALSE;
+END
+$$ LANGUAGE 'plpgsql';
+Select catch_permission_error($$SELECT cartodb_id, ST_AsText(the_geom) from localtable$$);
+DROP FUNCTION catch_permission_error(text);
 
 \echo '## Deleting a registered table without permissions does not work'
 SELECT CDB_Federated_Table_Unregister(
