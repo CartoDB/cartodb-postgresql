@@ -34,11 +34,16 @@ BEGIN
     END IF;
 
     -- Return the result we're interested in. Exclude toast and temp schemas
-    RETURN QUERY EXECUTE format('
-        SELECT schema_name::name AS remote_schema FROM %I.%I
-        WHERE schema_name NOT LIKE %s
-        ORDER BY remote_schema
-    ', local_schema, remote_table, '''pg_%''');
+    BEGIN
+        RETURN QUERY EXECUTE format('
+            SELECT schema_name::name AS remote_schema FROM %I.%I
+            WHERE schema_name NOT LIKE %s
+            ORDER BY remote_schema
+        ', local_schema, remote_table, '''pg_%''');
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'Not enough permissions to access the server "%": %',
+                        @extschema@.__CDB_FS_Extract_Server_Name(server_internal), SQLERRM;
+    END;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

@@ -98,12 +98,17 @@ DECLARE
     schema_name text := @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name, schema_name);
     role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name);
 BEGIN
+    -- By changing the local role to the owner of the server we have an
+    -- easy way to check for permissions and keep all objects under the same owner
+    BEGIN
+        EXECUTE 'SET LOCAL ROLE ' || quote_ident(role_name);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'Not enough permissions to access the server "%"',
+                        @extschema@.__CDB_FS_Extract_Server_Name(internal_server_name);
+    END;
+
     IF NOT EXISTS (SELECT oid FROM pg_namespace WHERE nspname = schema_name) THEN
-        BEGIN
-            EXECUTE 'CREATE SCHEMA IF NOT EXISTS ' || quote_ident(schema_name) || ' AUTHORIZATION ' || quote_ident(role_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE EXCEPTION 'TODO: This needs a better error handling after reviewing permissions: %', SQLERRM;
-        END;
+        EXECUTE 'CREATE SCHEMA ' || quote_ident(schema_name) || ' AUTHORIZATION ' || quote_ident(role_name);
     END IF;
     RETURN schema_name;
 END
@@ -219,13 +224,19 @@ BEGIN
     IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = server_internal) THEN
         BEGIN
             EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', server_internal);
-            EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
+            -- TODO: Delete this IF before merging to make sure nobody creates a role
+            -- that is later used automatically by us granting them all permissions in the foreign server
+            -- TODO: This is here to help debugging during development (so failures to destroy objects are allowed)
+            -- TODO
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+                EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
+            END IF;
+            EXECUTE FORMAT('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', current_database(), role_name);
+            EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN SERVER %I TO %I', server_internal, role_name);
             EXECUTE FORMAT('ALTER SERVER %I OWNER TO %I', server_internal, role_name);
-            -- NOTE: we use a PUBLIC user mapping but control access to the SERVER
-            -- so that we don't need to create a mapping for every user nor store credentials elsewhere
-            EXECUTE FORMAT ('CREATE USER MAPPING FOR public SERVER %I', server_internal);
+            EXECUTE FORMAT ('CREATE USER MAPPING FOR %I SERVER %I', role_name, server_internal);
         EXCEPTION WHEN OTHERS THEN
             RAISE EXCEPTION 'Could not create server %: %', server, SQLERRM
                 USING HINT = 'Please clean the left over objects';
@@ -251,12 +262,12 @@ BEGIN
     LOOP
         IF NOT EXISTS (
             WITH a AS (
-                SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = 'public'
+                SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = role_name
             ) SELECT * from a where options = option.key)
         THEN
-            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', server_internal, option.key, option.value);
+            EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (ADD %I %L)', role_name, server_internal, option.key, option.value);
         ELSE
-            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', server_internal, option.key, option.value);
+            EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (SET %I %L)', role_name, server_internal, option.key, option.value);
         END IF;
     END LOOP;
 END
@@ -275,7 +286,7 @@ DECLARE
 BEGIN
     SET client_min_messages = ERROR;
     BEGIN
-        EXECUTE FORMAT ('DROP USER MAPPING FOR public SERVER %I', server_internal);
+        EXECUTE FORMAT ('DROP USER MAPPING FOR %I SERVER %I', role_name, server_internal);
         EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
         EXECUTE FORMAT ('DROP ROLE %I', role_name);
     EXCEPTION WHEN OTHERS THEN
