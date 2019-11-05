@@ -347,23 +347,17 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 --
 -- Grant access to a server
 --
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server TEXT, usernames text[])
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server TEXT, db_role NAME)
 RETURNS void
 AS $$
 DECLARE
     server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
-    user_role TEXT;
-    username TEXT;
 BEGIN
-    FOREACH username IN ARRAY usernames
-    LOOP
-        user_role := @extschema@._CDB_User_RoleFromUsername(username);
-        IF (user_role IS NULL) THEN
-            RAISE EXCEPTION 'User role "%" does not exists', username;
-        END IF;
-        EXECUTE format('GRANT %I TO %I', server_role_name, user_role);
-    END loop;
+    IF (db_role IS NULL) THEN
+        RAISE EXCEPTION 'User role "%" cannot be NULL', username;
+    END IF;
+    EXECUTE format('GRANT %I TO %I', server_role_name, db_role);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -371,23 +365,17 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 --
 -- Revoke access to a server
 --
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Revoke_Access(server TEXT, usernames text[])
+CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Revoke_Access(server TEXT, db_role NAME)
 RETURNS void
 AS $$
 DECLARE
     server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
-    user_role TEXT;
-    username TEXT;
 BEGIN
-    FOREACH username IN ARRAY usernames
-    LOOP
-        user_role := @extschema@._CDB_User_RoleFromUsername(username);
-        IF (user_role IS NULL) THEN
-            RAISE EXCEPTION 'User role "%" does not exists', username;
-        END IF;
-        EXECUTE format('REVOKE %I FROM %I', server_role_name, user_role);
-    END loop;
+    IF (db_role IS NULL) THEN
+        RAISE EXCEPTION 'User role "%" cannot be NULL', username;
+    END IF;
+    EXECUTE format('REVOKE %I FROM %I', server_role_name, db_role);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

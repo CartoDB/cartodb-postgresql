@@ -7,22 +7,13 @@ SET client_min_messages TO error;
 SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
 
--- We create a username following the same steps as organization members
 CREATE ROLE cdb_fs_tester LOGIN PASSWORD 'cdb_fs_passwd';
 GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester;
-CREATE SCHEMA cdb_fs_tester AUTHORIZATION cdb_fs_tester;
-SELECT cartodb.CDB_Organization_Create_Member('cdb_fs_tester');
-ALTER ROLE cdb_fs_tester SET search_path TO cdb_fs_tester,cartodb,public;
-
 CREATE ROLE cdb_fs_tester2 LOGIN PASSWORD 'cdb_fs_passwd2';
 GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester2;
-CREATE SCHEMA cdb_fs_tester2 AUTHORIZATION cdb_fs_tester2;
-SELECT cartodb.CDB_Organization_Create_Member('cdb_fs_tester2');
-ALTER ROLE cdb_fs_tester2 SET search_path TO cdb_fs_tester2,cartodb,public;
 
 -- Create database to be used as remote
 CREATE DATABASE cdb_fs_tester OWNER cdb_fs_tester;
-
 
 SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback'::text, config := '{
     "server": {
@@ -111,13 +102,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopba
 \c contrib_regression postgres
 
 \echo '## Test listing of remote schemas with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote schemas without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 \c contrib_regression postgres
@@ -144,13 +135,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopbac
 \c contrib_regression postgres
 
 \echo '## Test listing of remote tables with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote tables without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 \c contrib_regression postgres
@@ -180,13 +171,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 \c contrib_regression postgres
 
 \echo '## Test listing of remote columns with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote columns without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
 \c contrib_regression postgres
@@ -211,7 +202,7 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 
 
 \echo '## Test listing of remote objects with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', usernames := ARRAY['cdb_fs_tester2']);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', db_role := 'cdb_fs_tester2'::name);
 \c contrib_regression cdb_fs_tester2
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback2');
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback2', remote_schema => 'S 1');
@@ -219,12 +210,11 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 
 \c contrib_regression postgres
 \echo '## Test that dropping the granted user works fine (sunny day)'
-DROP SCHEMA cdb_fs_tester2 CASCADE;
 REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester2;
 DROP ROLE cdb_fs_tester2;
 
 \echo '## Test listing of remote objects with other user still works (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', usernames := ARRAY['cdb_fs_tester']);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', db_role := 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback2');
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback2', remote_schema => 'S 1');
@@ -301,7 +291,6 @@ SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server := 'loopback2'::text
 DROP DATABASE cdb_fs_tester;
 
 -- Drop role
-DROP SCHEMA cdb_fs_tester CASCADE;
 REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester;
 DROP ROLE cdb_fs_tester;
 

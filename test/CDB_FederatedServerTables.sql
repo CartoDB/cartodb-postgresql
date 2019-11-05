@@ -7,7 +7,15 @@ SET client_min_messages TO error;
 
 SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
-CREATE ROLE cdb_fs_tester SUPERUSER LOGIN PASSWORD 'cdb_fs_passwd';
+
+-- We create a username following the same steps as organization members
+CREATE ROLE cdb_fs_tester LOGIN PASSWORD 'cdb_fs_passwd';
+GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester;
+
+CREATE ROLE cdb_fs_tester2 LOGIN PASSWORD 'cdb_fs_passwd2';
+GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester2;
+
+-- Create database to be used as remote
 CREATE DATABASE cdb_fs_tester OWNER cdb_fs_tester;
 
 SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback'::text, config := '{
@@ -121,6 +129,10 @@ Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
 );
+
+-- ===================================================================
+-- Test input
+-- ===================================================================
 
 \echo '## Registering a table: Invalid server fails'
 SELECT cartodb.CDB_Federated_Table_Register(
@@ -242,6 +254,9 @@ SELECT cartodb.CDB_Federated_Table_Unregister(
     remote_table => 'remote_geom'
     );
 
+-- ===================================================================
+-- Test conflicts
+-- ===================================================================
 
 \echo '## Target conflict is handled nicely: Table'
 CREATE TABLE localtable (a integer);
@@ -266,6 +281,10 @@ SELECT cartodb.CDB_Federated_Table_Register(
 DROP VIEW localtable2;
 DROP TABLE localtable;
 
+-- ===================================================================
+-- Test permissions
+-- ===================================================================
+
 -- Try permissions tricks
 
 -- Try registering and accessing a table as normal user
@@ -284,8 +303,12 @@ DROP TABLE localtable;
 SET client_min_messages TO error;
 \set VERBOSITY terse
 
+REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester2;
+DROP ROLE cdb_fs_tester2;
+
 SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server := 'loopback'::text);
 DROP DATABASE cdb_fs_tester;
+REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester;
 DROP ROLE cdb_fs_tester;
 DROP EXTENSION postgres_fdw;
 \set QUIET off

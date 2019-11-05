@@ -1,5 +1,3 @@
-
-
 C1|
 C2|
 ## Test listing of remote schemas without permissions before the first instantiation (rainy day)
@@ -120,7 +118,6 @@ c7|character
 c8|USER-DEFINED
 You are now connected to database "contrib_regression" as user "postgres".
 ## Test that dropping the granted user works fine (sunny day)
-DROP SCHEMA
 REVOKE
 DROP ROLE
 ## Test listing of remote objects with other user still works (sunny day)

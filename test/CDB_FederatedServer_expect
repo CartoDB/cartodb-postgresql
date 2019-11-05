@@ -38,7 +38,6 @@ ERROR:  Server information is mandatory
 8.1|
 8.2|("myRemote"" or'not",postgres_fdw,localhost,5432,"fdw target",read-only,"fdw user")
 8.3|
-
 9.1|
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
 ## All users are able to list servers
@@ -49,7 +48,7 @@ You are now connected to database "contrib_regression" as user "postgres".
 ## Granting access to a user works
 9.5|
 ERROR:  Server "does not exist" does not exist
-ERROR:  User role "does not exist" does not exists
+ERROR:  role "does not exist" does not exist
 ## Granting access again raises a notice
 NOTICE:  role "cdb_fs_tester" is already a member of role "cdb_fs_role_95b63382aabca4433e7bd9cba6c30368"
 9.8|
