@@ -1,68 +1,67 @@
-"List empty servers shows nothing"
-"List non-existent server shows nothing"
-"Create and list a server works"
+## List empty servers shows nothing
+## List non-existent server shows nothing
+## Create and list a server works
 1.3|
 1.4|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
-"Create and list a second server works"
+## Create and list a second server works
 2.1|
 2.2|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
 2.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,fdw_user)
-"List server by name works"
+## List server by name works
 2.3|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
-"Re-register a second server works"
+## Re-register a second server works
 3.1|
 3.2|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
 3.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
-"Unregister server 1 works"
+## Unregister server 1 works
 4.1|
 4.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
-"Unregistering a server that doesn't exist fails"
+## Unregistering a server that does not exist fails
 ERROR:  Server "doesNotExist" does not exist
-"Unregister the second server works"
+## Unregister the second server works
 6.1|
-"Create a server with NULL name fails"
+## Create a server with NULL name fails
 ERROR:  Server name cannot be NULL
-"Create a server with NULL config fails"
+## Create a server with NULL config fails
 7.01|
-"Create a server with empty config fails"
+## Create a server with empty config fails
 ERROR:  Server information is mandatory
-"Create a server without credentials fails"
+## Create a server without credentials fails
 ERROR:  Credentials are mandatory
-"Create a server with empty credentials works"
+## Create a server with empty credentials works
 7.3|
 7.4|(empty,postgres_fdw,localhost,5432,fdw_target,read-only,)
 7.5|
-"Create a server without options fails"
+## Create a server without options fails
 ERROR:  Server information is mandatory
-"Create a server with special characters works"
+## Create a server with special characters works
 8.1|
 8.2|("myRemote"" or'not",postgres_fdw,localhost,5432,"fdw target",read-only,"fdw user")
 8.3|
 
 9.1|
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
-"All users are able to list servers"
+## All users are able to list servers
 9.2|(myRemote3,postgres_fdw,localhost,5432,,read-only,)
-"Only superadmins can create servers"
+## Only superadmins can create servers
 ERROR:  Could not create server myRemote4: permission denied for foreign-data wrapper postgres_fdw
 You are now connected to database "contrib_regression" as user "postgres".
-"Granting access to a user works"
+## Granting access to a user works
 9.5|
 ERROR:  Server "does not exist" does not exist
 ERROR:  User role "does not exist" does not exists
-"Granting access again raises a notice"
+## Granting access again raises a notice
 NOTICE:  role "cdb_fs_tester" is already a member of role "cdb_fs_role_95b63382aabca4433e7bd9cba6c30368"
 9.8|
-"Revoking access to a user works"
+## Revoking access to a user works
 9.9|
 9.10|
-"Unregistering a server with active grants works"
+## Unregistering a server with active grants works
 9.11|
-"A user with granted access can't drop a server"
+## A user with granted access can not drop a server
 10.1|
 10.2|
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
-WARNING:  no privileges could be revoked for "postgres_fdw"
-ERROR:  Unnecessary permissions to drop the server "myRemote4": permission denied to drop role
+ERROR:  Not enough permissions to drop the server "myRemote4"
 You are now connected to database "contrib_regression" as user "postgres".
 10.4|
