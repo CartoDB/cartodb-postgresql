@@ -242,11 +242,29 @@ SELECT cartodb.CDB_Federated_Table_Unregister(
     remote_table => 'remote_geom'
     );
 
--- Try to register with invalid / NULL id
--- Try to register with invalid / NULL geom_column
--- Try to register with invalid / NULL webmercator_column
--- Try to register the same table twice (different name) should fail
--- Check that conflict is handled nicely (target view already exists)
+
+\echo '## Target conflict is handled nicely: Table'
+CREATE TABLE localtable (a integer);
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column =>  'id',
+    geom_column => 'geom',
+    local_name => 'localtable');
+
+\echo '## Target conflict is handled nicely: View'
+CREATE VIEW localtable2 AS Select * from localtable;
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom',
+    id_column =>  'id',
+    geom_column => 'geom',
+    local_name => 'localtable2');
+
+DROP VIEW localtable2;
+DROP TABLE localtable;
 
 -- Try permissions tricks
 

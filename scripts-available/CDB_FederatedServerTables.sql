@@ -186,7 +186,10 @@ BEGIN
             array_to_string(carto_columns_expression || rest_of_cols, ','),
             src_table
         );
-    EXCEPTION WHEN OTHERS THEN
+    EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE EXCEPTION 'Could not import table "%" as "%": "%" already exists', remote_table, local_name, local_name;
+    WHEN OTHERS THEN
         RAISE EXCEPTION 'Could not import table "%" as "%": %', remote_table, local_name, SQLERRM;
     END;
 
