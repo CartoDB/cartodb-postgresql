@@ -284,7 +284,13 @@ BEGIN
 
     CASE server_type
     WHEN 'postgres_fdw' THEN
-        RETURN QUERY SELECT column_name, column_type FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema) where table_name = remote_table;
+        RETURN QUERY
+        SELECT 
+            column_name,
+            column_type
+        FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema)
+        WHERE table_name = remote_table
+        ORDER BY column_name;
     ELSE
         RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
     END CASE;
