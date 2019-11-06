@@ -270,6 +270,27 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 -- Rerun should be ok
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 5');
 
+
+-- ===================================================================
+-- Test invalid password
+-- ===================================================================
+
+\echo '## Check error message with invalid password (rainy day)'
+SELECT cartodb.CDB_Federated_Server_Register_PG(server := 'loopback_invalid'::text, config := '{
+    "server": {
+        "host": "localhost",
+        "port": @@PGPORT@@
+    },
+    "credentials": {
+        "username": "cdb_fs_tester",
+        "password": "wrong password"
+    }
+}'::jsonb);
+
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback_invalid');
+
+SELECT cartodb.CDB_Federated_Server_Unregister(server := 'loopback_invalid'::text);
+
 -- ===================================================================
 -- Cleanup 2
 -- ===================================================================

@@ -149,5 +149,9 @@ geo_nosrid|GEOMETRY,0
 geog|Geometry,0
 geom|GEOMETRY,4326
 geom_wm|GEOMETRY,3857
+## Check error message with invalid password (rainy day)
+
+ERROR:  could not connect to server "cdb_fs_loopback_invalid"
+
 D1|
 D2|
