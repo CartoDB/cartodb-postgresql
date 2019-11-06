@@ -4,7 +4,7 @@ SET client_min_messages TO error;
 
 -- The permission error changed between pre PG11 and post 11 (before everythin "relation", now it's "view", "table" and so on
 CREATE OR REPLACE FUNCTION catch_permission_error(query text)
-RETURNS bool
+    RETURNS bool
 AS $$
 BEGIN
     EXECUTE query;
@@ -43,7 +43,7 @@ SELECT * FROM test_tablesas;
 SELECT * FROM test_view;
 SELECT * FROM test_mview;
 SELECT * FROM test_selectinto;
-DROP FUNCTION test_function;
+SELECT test_function();
 
 \set QUIET on
 SET SESSION AUTHORIZATION "ownership_role";
@@ -54,7 +54,7 @@ SELECT 'denied_tableas', catch_permission_error($$SELECT * FROM test_tablesas;$$
 SELECT 'denied_view', catch_permission_error($$SELECT * FROM test_view;$$);
 SELECT 'denied_mview', catch_permission_error($$SELECT * FROM test_mview;$$);
 SELECT 'denied_selectinto', catch_permission_error($$SELECT * FROM test_selectinto;$$);
-SELECT 'denied_function', catch_permission_error($$DROP FUNCTION test_function;$$);
+SELECT 'denied_function', catch_permission_error($$SELECT test_function();$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -65,7 +65,7 @@ DROP VIEW test_view;
 DROP MATERIALIZED VIEW test_mview;
 DROP TABLE test_selectinto;
 DROP TABLE test;
-DROP FUNCTION test_function;
+DROP FUNCTION test_function();
 
 -- Second part with event trigger but without ownership_role_name in cdb_conf
 
@@ -88,10 +88,9 @@ SELECT * FROM test2_tablesas;
 SELECT * FROM test2_view;
 SELECT * FROM test2_mview;
 SELECT * FROM test2_selectinto;
-DROP FUNCTION test2_function;
+SELECT test2_function();
 
 \set QUIET on
-CREATE FUNCTION test2_function() RETURNS integer AS $$ BEGIN RETURN 1; END; $$ LANGUAGE PLPGSQL;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
@@ -100,7 +99,7 @@ SELECT 'denied_tableas2', catch_permission_error($$SELECT * FROM test2_tablesas;
 SELECT 'denied_view2', catch_permission_error($$SELECT * FROM test2_view;$$);
 SELECT 'denied_mview2', catch_permission_error($$SELECT * FROM test2_mview;$$);
 SELECT 'denied_selectinto2', catch_permission_error($$SELECT * FROM test2_selectinto;$$);
-SELECT 'denied_function2', catch_permission_error($$DROP FUNCTION public.test2_function;$$);
+SELECT 'denied_function2', catch_permission_error($$SELECT test2_function();$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -111,7 +110,7 @@ DROP VIEW test2_view;
 DROP MATERIALIZED VIEW test2_mview;
 DROP TABLE test2_selectinto;
 DROP TABLE test2;
-DROP FUNCTION test2_function;
+DROP FUNCTION test2_function();
 
 -- Third part with event trigger but with empty ownership_role_name in cdb_conf
 
@@ -134,10 +133,9 @@ SELECT * FROM test3_tablesas;
 SELECT * FROM test3_view;
 SELECT * FROM test3_mview;
 SELECT * FROM test3_selectinto;
-DROP FUNCTION test3_function;
+SELECT test3_function();
 
 \set QUIET on
-CREATE FUNCTION test3_function() RETURNS integer AS $$ BEGIN RETURN 1; END; $$ LANGUAGE PLPGSQL;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
@@ -146,7 +144,7 @@ SELECT 'denied_tableas3', catch_permission_error($$SELECT * FROM test3_tablesas;
 SELECT 'denied_view3', catch_permission_error($$SELECT * FROM test3_view;$$);
 SELECT 'denied_mview3', catch_permission_error($$SELECT * FROM test3_mview;$$);
 SELECT 'denied_selectinto3', catch_permission_error($$SELECT * FROM test3_selectinto;$$);
-SELECT 'denied_function3', catch_permission_error($$DROP FUNCTION public.test3_function;$$);
+SELECT 'denied_function3', catch_permission_error($$SELECT test3_function();$$);
 
 \set QUIET on
 SET SESSION AUTHORIZATION "creator_role";
@@ -157,7 +155,7 @@ DROP VIEW test3_view;
 DROP MATERIALIZED VIEW test3_mview;
 DROP TABLE test3_selectinto;
 DROP TABLE test3;
-DROP FUNCTION test3_function;
+DROP FUNCTION test3_function();
 
 -- Fourth part with the event trigger active and configured
 
@@ -180,10 +178,9 @@ SELECT * FROM test4_tablesas;
 SELECT * FROM test4_view;
 SELECT * FROM test4_mview;
 SELECT * FROM test4_selectinto;
-DROP FUNCTION test4_function;
+SELECT test4_function();
 
 \set QUIET on
-CREATE FUNCTION test4_function() RETURNS integer AS $$ BEGIN RETURN 1; END; $$ LANGUAGE PLPGSQL;
 SET SESSION AUTHORIZATION "ownership_role";
 \set QUIET off
 
@@ -200,7 +197,7 @@ DROP VIEW test4_view;
 DROP MATERIALIZED VIEW test4_mview;
 DROP TABLE test4_selectinto;
 DROP TABLE test4;
-DROP FUNCTION test4_function;
+DROP FUNCTION test4_function();
 
 -- Cleanup
 \set QUIET on
