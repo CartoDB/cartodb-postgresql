@@ -134,9 +134,9 @@ DROP TABLE t;
 -- table with single non-geometrical column
 CREATE TABLE t AS SELECT ST_SetSRID(ST_MakePoint(-1,-1),4326) as the_geom, 1::int as cartodb_id, 'this is a sentence' as description;
 SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
-SELECT * FROM t;
+SELECT cartodb_id, the_geom, description FROM t;
 SELECT CDB_CartodbfyTableCheck('t', 'check function idempotence');
-SELECT * FROM t;
+SELECT cartodb_id, the_geom, description FROM t;
 DROP TABLE t;
 
 -- table with existing srid-unconstrained (but type-constrained) the_geom
