@@ -11,7 +11,7 @@ CREATE FUNCTION
 1
 1
 1
-1
+DROP FUNCTION
 denied_table|t
 denied_tableas|t
 denied_view|t
@@ -38,7 +38,7 @@ CREATE FUNCTION
 1
 1
 1
-1
+DROP FUNCTION
 denied_table2|t
 denied_tableas2|t
 denied_view2|t
@@ -64,7 +64,7 @@ CREATE FUNCTION
 1
 1
 1
-1
+DROP FUNCTION
 denied_table3|t
 denied_tableas3|t
 denied_view3|t
@@ -90,13 +90,13 @@ CREATE FUNCTION
 1
 1
 1
+DROP FUNCTION
 1
 1
 1
 1
 1
-1
-1
+DROP FUNCTION
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
