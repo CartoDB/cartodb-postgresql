@@ -215,7 +215,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Register_PG(server T
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => false);
     final_config json := @extschema@.__CDB_FS_credentials_to_user_mapping(@extschema@.__CDB_FS_add_default_options(config));
     role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
     row record;
@@ -287,13 +287,13 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TE
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     SET client_min_messages = ERROR;
     BEGIN
         EXECUTE FORMAT ('DROP USER MAPPING FOR %I SERVER %I', role_name, server_internal);
-        EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
+        EXECUTE FORMAT ('DROP OWNED BY %I', role_name);
         EXECUTE FORMAT ('DROP ROLE %I', role_name);
     EXCEPTION WHEN OTHERS THEN
         RAISE EXCEPTION 'Not enough permissions to drop the server "%"', server;
@@ -351,7 +351,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server 
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     IF (db_role IS NULL) THEN
@@ -376,7 +376,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Revoke_Access(server
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     IF (db_role IS NULL) THEN

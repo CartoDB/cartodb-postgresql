@@ -201,7 +201,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Schemas(
 RETURNS TABLE(remote_schema name)
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
     CASE server_type
@@ -230,7 +230,7 @@ RETURNS TABLE(
     )
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
     CASE server_type
@@ -275,7 +275,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Columns(
 RETURNS TABLE(column_n name, column_t text)
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => true);
     server_type name := @extschema@.__CDB_FS_server_type(server_internal);
 BEGIN
     IF remote_table IS NULL THEN

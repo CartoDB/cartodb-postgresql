@@ -14,7 +14,7 @@ GRANT CONNECT ON DATABASE contrib_regression TO cdb_fs_tester2;
 -- Create database to be used as remote
 CREATE DATABASE cdb_fs_tester OWNER cdb_fs_tester;
 
-SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback'::text, config := '{
+SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server => 'loopback'::text, config => '{
     "server": {
         "host": "localhost",
         "port": @@PGPORT@@
@@ -25,7 +25,7 @@ SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback'::text
     }
 }'::jsonb);
 
-SELECT 'C2', cartodb.CDB_Federated_Server_Register_PG(server := 'loopback2'::text, config := '{
+SELECT 'C2', cartodb.CDB_Federated_Server_Register_PG(server => 'loopback2'::text, config => '{
     "server": {
         "host": "localhost",
         "port": @@PGPORT@@
@@ -101,13 +101,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopba
 \c contrib_regression postgres
 
 \echo '## Test listing of remote schemas with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote schemas without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback');
 \c contrib_regression postgres
@@ -134,13 +134,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopbac
 \c contrib_regression postgres
 
 \echo '## Test listing of remote tables with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote tables without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'S 1');
 \c contrib_regression postgres
@@ -170,13 +170,13 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 \c contrib_regression postgres
 
 \echo '## Test listing of remote columns with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
 \c contrib_regression postgres
 
 \echo '## Test listing of remote columns without permissions after revoking access (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Revoke_Access(server => 'loopback', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopback', remote_schema => 'S 1', remote_table => 'T 1');
 \c contrib_regression postgres
@@ -201,7 +201,7 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 
 
 \echo '## Test listing of remote objects with permissions (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', db_role := 'cdb_fs_tester2'::name);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server => 'loopback2', db_role => 'cdb_fs_tester2'::name);
 \c contrib_regression cdb_fs_tester2
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback2');
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback2', remote_schema => 'S 1');
@@ -213,7 +213,7 @@ REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_fs_tester2;
 DROP ROLE cdb_fs_tester2;
 
 \echo '## Test listing of remote objects with other user still works (sunny day)'
-SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback2', db_role := 'cdb_fs_tester'::name);
+SELECT cartodb.CDB_Federated_Server_Grant_Access(server => 'loopback2', db_role => 'cdb_fs_tester'::name);
 \c contrib_regression cdb_fs_tester
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback2');
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback2', remote_schema => 'S 1');
@@ -275,7 +275,7 @@ SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Columns(server => 'loopba
 -- ===================================================================
 
 \echo '## Check error message with invalid password (rainy day)'
-SELECT cartodb.CDB_Federated_Server_Register_PG(server := 'loopback_invalid'::text, config := '{
+SELECT cartodb.CDB_Federated_Server_Register_PG(server => 'loopback_invalid'::text, config => '{
     "server": {
         "host": "localhost",
         "port": @@PGPORT@@
@@ -288,7 +288,7 @@ SELECT cartodb.CDB_Federated_Server_Register_PG(server := 'loopback_invalid'::te
 
 SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Schemas(server => 'loopback_invalid');
 
-SELECT cartodb.CDB_Federated_Server_Unregister(server := 'loopback_invalid'::text);
+SELECT cartodb.CDB_Federated_Server_Unregister(server => 'loopback_invalid'::text);
 
 -- ===================================================================
 -- Cleanup 2
@@ -305,8 +305,8 @@ DROP SCHEMA "S 1";
 SET client_min_messages TO error;
 \set VERBOSITY terse
 
-SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server := 'loopback'::text);
-SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server := 'loopback2'::text);
+SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server => 'loopback'::text);
+SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server => 'loopback2'::text);
 
 DROP DATABASE cdb_fs_tester;
 

@@ -196,7 +196,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Table_Register(
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => false);
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
     src_table REGCLASS;
 
@@ -315,7 +315,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Table_Unregister(
 RETURNS void
 AS $$
 DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => false);
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
 BEGIN
     EXECUTE FORMAT ('DROP FOREIGN TABLE %I.%I CASCADE;', local_schema, remote_table);
