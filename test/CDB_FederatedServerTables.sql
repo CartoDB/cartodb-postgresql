@@ -113,7 +113,7 @@ SELECT 'S3_new', cartodb_id, another_field FROM different_name;
 
 \echo '## Unregistering works'
 -- Deregistering the first table
-SELECT 'U1', CDB_Federated_Table_Unregister(
+SELECT 'U1', cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom'
@@ -293,7 +293,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
     local_name => 'localtable');
 
 \echo '## Listing remote tables does not work without permissions'
-Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Registering tables works with granted permissions'
 \c contrib_regression postgres
@@ -308,7 +308,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
     local_name => 'localtable');
 
 \echo '## Listing remote tables works with granted permissions'
-Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Selecting from a registered table with granted permissions works'
 Select cartodb_id, ST_AsText(the_geom) from localtable;
@@ -333,7 +333,7 @@ Select catch_permission_error($$SELECT cartodb_id, ST_AsText(the_geom) from loca
 DROP FUNCTION catch_permission_error(text);
 
 \echo '## Deleting a registered table without permissions does not work'
-SELECT CDB_Federated_Table_Unregister(
+SELECT cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom'
@@ -346,16 +346,16 @@ SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role :
 \c contrib_regression postgres
 SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester2'::name);
 \c contrib_regression cdb_fs_tester2
-Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 Select cartodb_id, ST_AsText(the_geom) from localtable;
 
 \echo '## A different user can unregister a table'
-SELECT CDB_Federated_Table_Unregister(
+SELECT cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom'
     );
-Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Only the owner can revoke permissions over the server'
 SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
