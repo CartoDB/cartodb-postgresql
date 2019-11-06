@@ -22,7 +22,7 @@ DECLARE
     inf_schema name := 'information_schema';
     remote_table name := 'schemata';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, inf_schema);
-    role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
+    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     -- Import the foreign schemata table
     IF NOT EXISTS (

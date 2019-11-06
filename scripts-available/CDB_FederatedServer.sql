@@ -59,7 +59,7 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 --
 -- Produce a valid name for a schema generated for the Federated Server 
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name TEXT, schema_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name NAME, schema_name TEXT)
 RETURNS NAME
 AS $$
 DECLARE
@@ -77,7 +77,7 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- Produce a valid name for a role generated for the Federated Server
 -- This needs to include the current database in its hash to avoid collisions in clusters with more than one database
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name NAME)
 RETURNS NAME
 AS $$
 DECLARE
@@ -93,12 +93,12 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 -- Creates (if not exist) a schema to place the objects for a remote schema
 -- The schema is with the same AUTHORIZATION as the server
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Create_Schema(internal_server_name TEXT, schema_name TEXT)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Create_Schema(internal_server_name NAME, schema_name TEXT)
 RETURNS NAME
 AS $$
 DECLARE
-    schema_name text := @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name, schema_name);
-    role_name text := @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name);
+    schema_name name := @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name, schema_name);
+    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name);
 BEGIN
     -- By changing the local role to the owner of the server we have an
     -- easy way to check for permissions and keep all objects under the same owner
@@ -125,13 +125,13 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- Returns the type of a server by internal name
 -- Currently all of them should be postgres_fdw
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_server_type(remote_server name)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_server_type(internal_server_name NAME)
 RETURNS name
 AS $$
     SELECT f.fdwname
         FROM pg_foreign_server s
         JOIN pg_foreign_data_wrapper f ON s.srvfdw = f.oid
-        WHERE s.srvname = remote_server;
+        WHERE s.srvname = internal_server_name;
 $$
 LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
@@ -287,7 +287,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Unregister(server TE
 RETURNS void
 AS $$
 DECLARE
-    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     SET client_min_messages = ERROR;
@@ -351,7 +351,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server 
 RETURNS void
 AS $$
 DECLARE
-    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     IF (db_role IS NULL) THEN
@@ -376,7 +376,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Revoke_Access(server
 RETURNS void
 AS $$
 DECLARE
-    server_internal text := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
+    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
     server_role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
 BEGIN
     IF (db_role IS NULL) THEN
