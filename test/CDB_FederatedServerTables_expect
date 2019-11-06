@@ -1,42 +1,37 @@
 C1|
 ## Registering an existing table works
 R1|
-V1| SELECT t.id AS cartodb_id,
-    t.geom AS the_geom,
-    st_transform(t.geom, 3857) AS the_geom_webmercator,
-    t.another_field
-   FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom t;
 S1|1|POINT(1 1)|patata
 S1|2|POINT(2 2)|patata2
-list_remotes1|(remote_geom,public.remote_geom)
+t|remote_geom|public.remote_geom|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+f|remote_geom2|||||[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 ## Registering another existing table works
 R2|
-V2| SELECT t.id AS cartodb_id,
-    t.geom AS the_geom,
-    t.geom_mercator AS the_geom_webmercator,
-    t.another_field
-   FROM cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.remote_geom2 t;
 S2|3|POINT(3 3)|patata
-list_remotes2|(remote_geom2,"public.""myFullTable""")
-list_remotes2|(remote_geom,public.remote_geom)
+t|remote_geom|public.remote_geom|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+t|remote_geom2|public."myFullTable"|id|geom|geom_mercator|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 ## Re-registering a table works
 R3|
-ERROR:  relation "myFullTable" does not exist at character 70
-S3_new|3|POINT(3 3)|patata
+ERROR:  relation "myFullTable" does not exist at character 49
+S3_new|3|patata
 ## Unregistering works
 U1|
 ERROR:  relation "remote_geom" does not exist at character 71
-list_remotes3|(remote_geom2,public.different_name)
+f|remote_geom|||||[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+t|remote_geom2|public.different_name|id|geom_mercator|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 ## Registering a table: Invalid server fails
 ERROR:  Server "Does not exist" does not exist
 ## Registering a table: NULL server fails
 ERROR:  Server name cannot be NULL
 ## Registering a table: Invalid schema fails
-ERROR:  schema "Does not exist" is not present on foreign server "cdb_fs_loopback"
+ERROR:  Could not import schema "Does not exist" of server "loopback"
 ## Registering a table: NULL schema fails
 ERROR:  Schema name cannot be NULL
 ## Registering a table: Invalid table fails
-ERROR:  relation "cdb_fs_schema_b904664b5208433cd85a1693ba4f7570.Does not exist" does not exist
+ERROR:  Could not import table "remote_schema.Does not exist" of server "loopback"
 ## Registering a table: NULL table fails
 ERROR:  Remote table name cannot be NULL
 ## Registering a table: Invalid id fails
@@ -64,16 +59,17 @@ DROP TABLE
 ## Registering tables does not work without permissions
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
 ERROR:  Not enough permissions to access the server "loopback"
-## Listing registered tables does not work without permissions
+## Listing remote tables does not work without permissions
 ERROR:  Not enough permissions to access the server "loopback"
 ## Registering tables works with granted permissions
 You are now connected to database "contrib_regression" as user "postgres".
 
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
 
-## Listing registered tables works with granted permissions
-(remote_geom2,public.different_name)
-(remote_geom,public.localtable)
+## Listing remote tables works with granted permissions
+t|remote_geom|public.localtable|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+t|remote_geom2|public.different_name|id|geom_mercator|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 ## Selecting from a registered table with granted permissions works
 1|POINT(1 1)
 2|POINT(2 2)
@@ -90,14 +86,17 @@ ERROR:  You do not have rights to grant access on "loopback"
 You are now connected to database "contrib_regression" as user "postgres".
 
 You are now connected to database "contrib_regression" as user "cdb_fs_tester2".
-(remote_geom2,public.different_name)
-(remote_geom,public.localtable)
+t|remote_geom|public.localtable|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+t|remote_geom2|public.different_name|id|geom_mercator|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 1|POINT(1 1)
 2|POINT(2 2)
 ## A different user can unregister a table
 NOTICE:  drop cascades to view localtable
 
-(remote_geom2,public.different_name)
+f|remote_geom|||||[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
+t|remote_geom2|public.different_name|id|geom_mercator|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "geom_mercator", "Type" : "GEOMETRY,3857"}, {"Name" : "id", "Type" : "bigint"}]
+f|remote_other|||||[{"Name" : "field", "Type" : "text"}, {"Name" : "field2", "Type" : "text"}, {"Name" : "id", "Type" : "bigint"}]
 ## Only the owner can revoke permissions over the server
 ERROR:  You do not have rights to revoke access on "loopback"
 D1|

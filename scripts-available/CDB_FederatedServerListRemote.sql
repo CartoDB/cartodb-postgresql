@@ -30,7 +30,8 @@ BEGIN
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
         AND relname = remote_table
     ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_table, server_internal, local_schema);
+        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
+                    inf_schema, remote_table, server_internal, local_schema);
     END IF;
 
     -- Return the result we're interested in. Exclude toast and temp schemas
@@ -49,7 +50,7 @@ $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --
--- List the tables from a remote PG schema
+-- List the names of the tables in a remote PG schema
 -- 
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Tables_PG(server_internal name, remote_schema name)
 RETURNS TABLE(remote_table name)
@@ -74,10 +75,10 @@ BEGIN
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
         AND relname = remote_table
     ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_table, server_internal, local_schema);
+        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
+                    inf_schema, remote_table, server_internal, local_schema);
     END IF;
 
-    -- Return the result we're interested in
     -- Note: in this context, schema names are not to be quoted
     RETURN QUERY EXECUTE format($q$
         SELECT table_name::name AS remote_table FROM %I.%I WHERE table_schema = '%s' ORDER BY table_name
@@ -88,10 +89,10 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --
--- List the columns from a remote PG table
+-- List the columns in a remote PG schema
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal name, remote_schema name, remote_table name)
-RETURNS TABLE(column_name name, column_type text)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal name, remote_schema name)
+RETURNS TABLE(table_name name, column_name name, column_type text)
 AS $func$
 DECLARE
     -- Import `columns` from the information schema
@@ -112,30 +113,37 @@ BEGIN
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
         AND relname = remote_col_table
     ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I', inf_schema, remote_col_table, server_internal, local_schema);
+        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
+                    inf_schema, remote_col_table, server_internal, local_schema);
     END IF;
 
-    -- Return the result we're interested in
-    -- Note: in this context, remote schema and remote table names are not to be quoted
+    -- Note: in this context, schema names are not to be quoted
+    -- We join with the geometry columns to change the type `USER-DEFINED` 
+    -- by its appropiate geometry and srid
     RETURN QUERY EXECUTE format($q$
         SELECT 
-            a.column_name::name, COALESCE(b.column_type, a.data_type)::TEXT as column_type
-        FROM %I.%I a
-        LEFT JOIN @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG('%s', '%s', '%s') b ON a.column_name = b.column_name
-        WHERE table_schema = '%s' AND table_name = '%s'
-        ORDER BY column_name$q$,
+            a.table_name::name,
+            a.column_name::name,
+            COALESCE(b.column_type, a.data_type)::TEXT as column_type
+        FROM
+            %I.%I a
+        LEFT JOIN
+            @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG('%s', '%s') b
+        ON a.table_name = b.table_name AND a.column_name = b.column_name
+        WHERE table_schema = '%s'
+        ORDER BY a.table_name, a.column_name $q$,
         local_schema, remote_col_table,
-        server_internal, remote_schema, remote_table,
-        remote_schema, remote_table);
+        server_internal, remote_schema,
+        remote_schema);
 END
 $func$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --
--- List the columns from a remote PG table
+-- List the geometry columns in a remote PG schema
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG(server_internal name, remote_schema name, remote_table name, postgis_schema name DEFAULT 'public')
-RETURNS TABLE(column_name name, column_type text)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Foreign_Geometry_Columns_PG(server_internal name, remote_schema name, postgis_schema name DEFAULT 'public')
+RETURNS TABLE(table_name name, column_name name, column_type text)
 AS $func$
 DECLARE
     -- Import `geometry_columns` and `geography_columns` from the postgis schema
@@ -159,21 +167,22 @@ BEGIN
     BEGIN
     -- Note: We return both the type and srid as the type
         RETURN QUERY EXECUTE format($q$
-            SELECT  f_geometry_column::NAME as column_name,
-                    type::TEXT || ',' || srid::TEXT as column_type
-                FROM
-                (
-                    SELECT * FROM %I.%I UNION ALL SELECT * FROM %I.%I
-                ) _geo_views
-                WHERE
-                    f_table_schema = '%s' AND
-                    f_table_name = '%s'
+            SELECT 
+                f_table_name::NAME as table_name,
+                f_geometry_column::NAME as column_name,
+                type::TEXT || ',' || srid::TEXT as column_type
+            FROM
+            (
+                SELECT * FROM %I.%I UNION ALL SELECT * FROM %I.%I
+            ) _geo_views
+            WHERE f_table_schema = '%s'
         $q$,
             local_schema, remote_geometry_view,
             local_schema, remote_geography_view,
-            remote_schema, remote_table);
+            remote_schema);
     EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not find Postgis installation in the remote "%" schema', postgis_schema;
+        RAISE INFO 'Could not find Postgis installation in the remote "%" schema in server "%"',
+                    postgis_schema, @extschema@.__CDB_FS_Extract_Server_Name(server_internal);
         RETURN;
     END;
 END
@@ -207,9 +216,18 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --
 -- List remote tables in a federated server that the current user has access to.
+-- For registered tables it returns also the associated configuration
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Tables(server TEXT, remote_schema TEXT)
-RETURNS TABLE(remote_table name)
+RETURNS TABLE(
+    registered boolean,
+    remote_table TEXT,
+    local_qualified_name TEXT,
+    id_column_name TEXT,
+    geom_column_name TEXT,
+    webmercator_column_name TEXT,
+    columns JSON
+    )
 AS $$
 DECLARE
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
@@ -217,7 +235,29 @@ DECLARE
 BEGIN
     CASE server_type
     WHEN 'postgres_fdw' THEN
-        RETURN QUERY SELECT @extschema@.__CDB_FS_List_Foreign_Tables_PG(server_internal, remote_schema);
+        RETURN QUERY
+            SELECT
+                coalesce(registered_tables.registered, false)::boolean as registered,
+                foreign_tables.remote_table::text as remote_table,
+                registered_tables.local_qualified_name as local_qualified_name,
+                registered_tables.id_column_name as id_column_name,
+                registered_tables.geom_column_name as geom_column_name,
+                registered_tables.webmercator_column_name as webmercator_column_name,
+                remote_columns.columns as columns
+            FROM
+                @extschema@.__CDB_FS_List_Foreign_Tables_PG(server_internal, remote_schema) foreign_tables
+            LEFT JOIN
+                @extschema@.__CDB_FS_List_Registered_Tables(server_internal, remote_schema) registered_tables
+            ON foreign_tables.remote_table = registered_tables.remote_table
+            LEFT JOIN
+                (   -- Extract and group columns with their remote table
+                    SELECT  table_name,
+                            json_agg(json_build_object('Name', column_name, 'Type', column_type)) as columns
+                    FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema)
+                    GROUP BY table_name
+                ) remote_columns
+            ON foreign_tables.remote_table = remote_columns.table_name
+            ORDER BY foreign_tables.remote_table;
     ELSE
         RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
     END CASE;
@@ -232,7 +272,7 @@ CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Remote_Columns(
     server TEXT,
     remote_schema TEXT,
     remote_table TEXT)
-RETURNS TABLE(column_name name, column_type text)
+RETURNS TABLE(column_n name, column_t text)
 AS $$
 DECLARE
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := true);
@@ -244,7 +284,7 @@ BEGIN
 
     CASE server_type
     WHEN 'postgres_fdw' THEN
-        RETURN QUERY SELECT * FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema, remote_table);
+        RETURN QUERY SELECT column_name, column_type FROM @extschema@.__CDB_FS_List_Foreign_Columns_PG(server_internal, remote_schema) where table_name = remote_table;
     ELSE
         RAISE EXCEPTION 'Not implemented server type % for remote server %', server_type, remote_server;
     END CASE;

@@ -18,7 +18,7 @@ BEGIN
     RETURN FOUND;
 END
 $$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+LANGUAGE PLPGSQL STABLE PARALLEL UNSAFE;
 
 --
 -- Checks if a column is of geometry type
@@ -34,7 +34,7 @@ BEGIN
     RETURN FOUND;
 END
 $$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+LANGUAGE PLPGSQL STABLE PARALLEL UNSAFE;
 
 --
 -- Returns the name of all the columns from a table
@@ -55,7 +55,108 @@ AS $$
                 WHERE c.oid = input_table::oid
             )
     ORDER BY a.attnum;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL STABLE PARALLEL UNSAFE;
+
+--
+-- Returns the id column from a view definition
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_id_column(view_def TEXT)
+RETURNS TEXT
+AS $$
+    WITH column_definitions AS
+    (
+        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+    )
+    SELECT split_part(col_def[array_length(col_def, 1) - 2], '.', 2)
+    FROM column_definitions where col_def[array_length(col_def, 1)] = 'cartodb_id,'
+    LIMIT 1;
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+--
+-- Returns the geom column from a view definition
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_geom_column(view_def TEXT)
+RETURNS TEXT
+AS $$
+    WITH column_definitions AS
+    (
+        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+    )
+    SELECT trim(trailing ',' FROM split_part(
+            CASE WHEN col_def[array_length(col_def, 1) - 2] = '4326)' THEN col_def[array_length(col_def, 1) - 3]
+            ELSE col_def[array_length(col_def, 1) - 2]
+            END, '.', 2))
+    FROM column_definitions
+    WHERE col_def[array_length(col_def, 1)] = 'the_geom,'
+    LIMIT 1;
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+--
+-- Returns the webmercatorcolumn from a view definition
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_webmercator_column(view_def TEXT)
+RETURNS TEXT
+AS $$
+    WITH column_definitions AS
+    (
+        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+    )
+    SELECT trim(trailing ',' FROM split_part(
+            CASE WHEN col_def[array_length(col_def, 1) - 2] = '3857)' THEN col_def[array_length(col_def, 1) - 3]
+            ELSE col_def[array_length(col_def, 1) - 2]
+            END, '.', 2))
+    FROM column_definitions
+    WHERE col_def[array_length(col_def, 1)] = 'the_geom_webmercator,'
+    LIMIT 1;
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+
+--
+-- List all registered tables in a server + schema
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_List_Registered_Tables(
+    server_internal NAME,
+    remote_schema TEXT
+    )
+RETURNS TABLE(
+    registered boolean,
+    remote_table TEXT,
+    local_qualified_name TEXT,
+    id_column_name TEXT,
+    geom_column_name TEXT,
+    webmercator_column_name TEXT
+    )
+AS $$
+DECLARE
+    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
+BEGIN
+    RETURN QUERY SELECT
+        true as registered,
+        source_table::text as remote_table,
+        format('%I.%I', dependent_schema, dependent_view)::text as local_qualified_name,
+        @extschema@.__CDB_FS_Get_View_id_column(view_definition) as id_column_name,
+        @extschema@.__CDB_FS_Get_View_geom_column(view_definition) as geom_column_name,
+        @extschema@.__CDB_FS_Get_View_webmercator_column(view_definition) as webmercator_column_name
+    FROM
+    (
+        SELECT DISTINCT
+            dependent_ns.nspname as dependent_schema,
+            dependent_view.relname as dependent_view,
+            source_table.relname as source_table,
+            pg_get_viewdef(dependent_view.oid) as view_definition
+        FROM pg_depend
+        JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid
+        JOIN pg_class as dependent_view ON pg_rewrite.ev_class = dependent_view.oid
+        JOIN pg_class as source_table ON pg_depend.refobjid = source_table.oid
+        JOIN pg_namespace dependent_ns ON dependent_ns.oid = dependent_view.relnamespace
+        JOIN pg_namespace source_ns ON source_ns.oid = source_table.relnamespace
+        WHERE
+        source_ns.nspname = local_schema
+        ORDER BY 1,2
+    ) _aux;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --------------------------------------------------------------------------------
@@ -119,15 +220,22 @@ BEGIN
 
     -- Import the foreign table
     -- Drop the old view / table if there was one
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE  table_schema = local_schema AND table_name = remote_table) THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = local_schema AND table_name = remote_table) THEN
         EXECUTE @extschema@.CDB_Federated_Table_Unregister(server, remote_schema, remote_table);
     END IF;
-    EXECUTE FORMAT ('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;', remote_schema, remote_table, server_internal, local_schema);
-    src_table := format('%I.%I', local_schema, remote_table);
+    BEGIN
+        EXECUTE FORMAT('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;',
+                        remote_schema, remote_table, server_internal, local_schema);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'Could not import schema "%" of server "%"', remote_schema, server;
+    END;
     
-    --- Grant SELECT to fdw role (TODO: Re-enable if needed)
-    --- EXECUTE FORMAT ('GRANT SELECT ON %I.%I TO %I;', fdw_objects_name, table_name, fdw_objects_name);
-    
+    BEGIN
+        src_table := format('%I.%I', local_schema, remote_table);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'Could not import table "%.%" of server "%"', remote_schema, remote_table, server;
+    END;
+
     -- Check id_column is numeric
     IF NOT @extschema@.__CDB_FS_Column_Is_Integer(src_table, id_column) THEN
         RAISE EXCEPTION 'non integer id_column "%"', id_column;
@@ -155,7 +263,7 @@ BEGIN
         geom_expression := format('t.%I AS the_geom', geom_column);
     ELSE
         -- It needs an ST_Transform to 4326
-        geom_expression := format('@postgisschema@.ST_Transform(t.%I, 4326) AS the_geom', geom_column);
+        geom_expression := format('@postgisschema@.ST_Transform(t.%I,4326) AS the_geom', geom_column);
     END IF;
 
     IF webmercator_column IS NULL
@@ -166,7 +274,7 @@ BEGIN
         webmercator_expression := format('t.%I AS the_geom_webmercator', webmercator_column);
     ELSE
         -- It needs an ST_Transform to 3857
-        webmercator_expression := format('@postgisschema@.ST_Transform(t.%I, 3857) AS the_geom_webmercator', webmercator_column);
+        webmercator_expression := format('@postgisschema@.ST_Transform(t.%I,3857) AS the_geom_webmercator', webmercator_column);
     END IF;
 
     -- CARTO columns expressions
@@ -192,9 +300,6 @@ BEGIN
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Could not import table "%" as "%": %', remote_table, local_name, SQLERRM;
     END;
-
-    -- TODO: Handle this Grant perms to the view
-    -- EXECUTE format('GRANT SELECT ON %I TO %s', table_name, fdw_objects_name);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
@@ -214,42 +319,6 @@ DECLARE
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
 BEGIN
     EXECUTE FORMAT ('DROP FOREIGN TABLE %I.%I CASCADE;', local_schema, remote_table);
-END
-$$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
-
---
--- List all registered tables in a server + schema
---
-CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Registered_Tables(
-    server TEXT,
-    remote_schema TEXT
-    )
-RETURNS TABLE(remote_name TEXT, local_name TEXT)
-AS $$
-DECLARE
-    server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name := server, check_existence := false);
-    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
-BEGIN
-    RETURN QUERY SELECT 
-        source_table::text as remote_table,
-        format('%I.%I', dependent_schema, dependent_view)::text as local_view
-    FROM
-    (
-        SELECT DISTINCT
-            dependent_ns.nspname as dependent_schema,
-            dependent_view.relname as dependent_view,
-            source_table.relname as source_table
-        FROM pg_depend 
-        JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid 
-        JOIN pg_class as dependent_view ON pg_rewrite.ev_class = dependent_view.oid 
-        JOIN pg_class as source_table ON pg_depend.refobjid = source_table.oid 
-        JOIN pg_namespace dependent_ns ON dependent_ns.oid = dependent_view.relnamespace
-        JOIN pg_namespace source_ns ON source_ns.oid = source_table.relnamespace
-        WHERE 
-        source_ns.nspname = local_schema
-        ORDER BY 1,2
-    ) _aux;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

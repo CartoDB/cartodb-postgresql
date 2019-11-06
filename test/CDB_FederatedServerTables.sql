@@ -5,7 +5,6 @@
 SET client_min_messages TO error;
 \set VERBOSITY terse
 
-SET SESSION AUTHORIZATION postgres;
 CREATE EXTENSION postgres_fdw;
 
 -- We create a username following the same steps as organization members
@@ -72,10 +71,8 @@ SELECT 'R1', cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom'
     );
 
-SELECT 'V1', pg_get_viewdef('remote_geom');
 SELECT 'S1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
-
-Select 'list_remotes1', CDB_Federated_Server_List_Registered_Tables(
+Select * FROM CDB_Federated_Server_List_Remote_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
 );
@@ -91,14 +88,11 @@ SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     local_name => 'myFullTable'
     );
 
-SELECT 'V2', pg_get_viewdef('"myFullTable"');
 SELECT 'S2', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTable";
-
-Select 'list_remotes2', CDB_Federated_Server_List_Registered_Tables(
+Select * FROM CDB_Federated_Server_List_Remote_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
 );
-
 
 \echo '## Re-registering a table works'
 SELECT 'R3', cartodb.CDB_Federated_Table_Register(
@@ -106,14 +100,16 @@ SELECT 'R3', cartodb.CDB_Federated_Table_Register(
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom2',
     id_column => 'id',
-    geom_column => 'geom',
+    -- Switch geom and geom_column on purpose to force ST_Transform to be used
+    geom_column => 'geom_mercator',
+    webmercator_column => 'geom',
     local_name => 'different_name'
     );
 
 -- The old view should dissapear
-SELECT 'S3_old', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTable";
+SELECT 'S3_old', cartodb_id, another_field FROM "myFullTable";
 -- And the new appear
-SELECT 'S3_new', cartodb_id, ST_AsText(the_geom), another_field FROM different_name;
+SELECT 'S3_new', cartodb_id, another_field FROM different_name;
 
 \echo '## Unregistering works'
 -- Deregistering the first table
@@ -125,7 +121,7 @@ SELECT 'U1', CDB_Federated_Table_Unregister(
 -- Selecting from the created view should fail now
 SELECT 'UCheck1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
 
-Select 'list_remotes3', CDB_Federated_Server_List_Registered_Tables(
+Select * FROM CDB_Federated_Server_List_Remote_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
 );
@@ -296,8 +292,8 @@ SELECT cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom',
     local_name => 'localtable');
 
-\echo '## Listing registered tables does not work without permissions'
-Select CDB_Federated_Server_List_Registered_Tables(server => 'loopback', remote_schema => 'remote_schema');
+\echo '## Listing remote tables does not work without permissions'
+Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Registering tables works with granted permissions'
 \c contrib_regression postgres
@@ -311,8 +307,8 @@ SELECT cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom',
     local_name => 'localtable');
 
-\echo '## Listing registered tables works with granted permissions'
-Select CDB_Federated_Server_List_Registered_Tables(server => 'loopback', remote_schema => 'remote_schema');
+\echo '## Listing remote tables works with granted permissions'
+Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Selecting from a registered table with granted permissions works'
 Select cartodb_id, ST_AsText(the_geom) from localtable;
@@ -350,7 +346,7 @@ SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role :
 \c contrib_regression postgres
 SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester2'::name);
 \c contrib_regression cdb_fs_tester2
-Select CDB_Federated_Server_List_Registered_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 Select cartodb_id, ST_AsText(the_geom) from localtable;
 
 \echo '## A different user can unregister a table'
@@ -359,7 +355,7 @@ SELECT CDB_Federated_Table_Unregister(
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom'
     );
-Select CDB_Federated_Server_List_Registered_Tables(server => 'loopback', remote_schema => 'remote_schema');
+Select * FROM CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Only the owner can revoke permissions over the server'
 SELECT cartodb.CDB_Federated_Server_Revoke_Access(server := 'loopback', db_role := 'cdb_fs_tester'::name);
