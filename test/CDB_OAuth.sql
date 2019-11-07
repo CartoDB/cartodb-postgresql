@@ -2,7 +2,7 @@
 \set QUIET on
 SET client_min_messages TO error;
 
--- The permission error changed between pre PG11 and post 11 (before everythin "relation", now it's "view", "table" and so on
+-- The permission error changed between pre PG11 and post 11 (before everything was "relation", now it's "view", "table" and so on
 CREATE OR REPLACE FUNCTION catch_permission_error(query text)
     RETURNS bool
 AS $$
@@ -44,6 +44,8 @@ SELECT * FROM test_view;
 SELECT * FROM test_mview;
 SELECT * FROM test_selectinto;
 SELECT test_function();
+-- Postgres grants default execute privilege on functions to PUBLIC. So in order to check the different permissions
+-- between creator and owner roles is not enough with performing a selection, we need to DROP the table (which only the owner can do)
 DROP FUNCTION test_function();
 
 \set QUIET on
