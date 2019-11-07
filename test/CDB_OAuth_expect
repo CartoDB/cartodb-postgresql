@@ -12,12 +12,14 @@ CREATE FUNCTION
 1
 1
 1
+DROP FUNCTION
 denied_table|t
 denied_tableas|t
 denied_view|t
 denied_mview|t
 denied_selectinto|t
-denied_function|f
+1
+denied_function|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
@@ -39,12 +41,14 @@ CREATE FUNCTION
 1
 1
 1
+DROP FUNCTION
 denied_table2|t
 denied_tableas2|t
 denied_view2|t
 denied_mview2|t
 denied_selectinto2|t
-denied_function2|f
+1
+denied_function2|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
@@ -65,12 +69,14 @@ CREATE FUNCTION
 1
 1
 1
+DROP FUNCTION
 denied_table3|t
 denied_tableas3|t
 denied_view3|t
 denied_mview3|t
 denied_selectinto3|t
-denied_function3|f
+1
+denied_function3|t
 DROP TABLE
 DROP VIEW
 DROP MATERIALIZED VIEW
@@ -91,6 +97,7 @@ CREATE FUNCTION
 1
 1
 1
+denied_function4|t
 1
 1
 1
