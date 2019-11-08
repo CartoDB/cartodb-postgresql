@@ -44,6 +44,8 @@ SELECT '1.3', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> 
 -- ===================================================================
 \set QUIET on
 SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server => 'loopback'::text);
+-- Reconnect, using a new session in order to close FDW connections
+\connect
 DROP DATABASE cdb_fs_tester;
 
 -- Drop role
