@@ -22,6 +22,10 @@ SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server => 'loopback'::text
         "password": "cdb_fs_passwd"
     }
 }'::jsonb);
+
+\c cdb_fs_tester postgres
+CREATE EXTENSION postgis;
+\c contrib_regression postgres
 \set QUIET off
 
 
