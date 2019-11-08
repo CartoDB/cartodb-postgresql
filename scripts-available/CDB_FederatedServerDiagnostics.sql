@@ -2,11 +2,24 @@
 -- Private functions
 --------------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Server_Version_PG(server_internal name)
+RETURNS text
+AS $$
+BEGIN
+    -- TODO Implement
+    RETURN '14.0';
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Server_Diagnostics_PG(server_internal name)
 RETURNS jsonb
 AS $$
+DECLARE
+    remote_server_version text := @extschema@.__CDB_FS_Server_Version_PG(server_internal);
 BEGIN
-    RETURN '{}'::jsonb;
+    RETURN jsonb_build_object('server_version', remote_server_version);
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
