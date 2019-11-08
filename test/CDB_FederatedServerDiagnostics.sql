@@ -35,7 +35,8 @@ SELECT '1.1', cartodb.CDB_Federated_Server_Diagnostics(server => 'doesNotExist')
 SELECT '1.2', pg_typeof(cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback'));
 
 \echo '%% It returns the server version'
-SELECT '1.3', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_version": "14.0"}'::jsonb;
+SELECT '1.3', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> format('{"server_version": "%s"}', setting)::jsonb
+    FROM pg_settings WHERE name = 'server_version';
 
 
 -- ===================================================================
