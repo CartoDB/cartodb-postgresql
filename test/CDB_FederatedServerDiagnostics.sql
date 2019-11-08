@@ -38,6 +38,10 @@ SELECT '1.2', pg_typeof(cartodb.CDB_Federated_Server_Diagnostics(server => 'loop
 SELECT '1.3', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> format('{"server_version": "%s"}', setting)::jsonb
     FROM pg_settings WHERE name = 'server_version';
 
+\echo '%% It returns the postgis version'
+SELECT '1.4', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> format('{"postgis_version": "%s"}', extversion)::jsonb
+    FROM pg_extension WHERE extname = 'postgis';
+
 
 -- ===================================================================
 -- Cleanup
