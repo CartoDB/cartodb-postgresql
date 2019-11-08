@@ -13,7 +13,6 @@ DECLARE
     remote_schema name := 'pg_catalog';
     remote_table name := 'pg_settings';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
-    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
     remote_server_version text;
 BEGIN
     -- Import the foreign pg_settings table
@@ -52,7 +51,6 @@ DECLARE
     remote_schema name := 'pg_catalog';
     remote_table name := 'pg_extension';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
-    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
     remote_postgis_version text;
 BEGIN
     -- Import the foreign pg_extension table
