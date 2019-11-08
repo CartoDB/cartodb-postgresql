@@ -3,19 +3,14 @@
 --------------------------------------------------------------------------------
 
 --
--- Get the version of a remote PG server
+-- Import a foreign table if it does not exist
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal name)
-RETURNS text
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Import_If_Not_Exists(server_internal name, remote_schema name, remote_table name)
+RETURNS void
 AS $$
 DECLARE
-    -- Import pg_settings from pg_catalog
-    remote_schema name := 'pg_catalog';
-    remote_table name := 'pg_settings';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
-    remote_server_version text;
 BEGIN
-    -- Import the foreign pg_settings table
     IF NOT EXISTS (
         SELECT * FROM pg_class
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
@@ -24,6 +19,23 @@ BEGIN
         EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
                     remote_schema, remote_table, server_internal, local_schema);
     END IF;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+--
+-- Get the version of a remote PG server
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal name)
+RETURNS text
+AS $$
+DECLARE
+    remote_schema name := 'pg_catalog';
+    remote_table name := 'pg_settings';
+    local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
+    remote_server_version text;
+BEGIN
+    PERFORM @extschema@.__CDB_FS_Import_If_Not_Exists(server_internal, remote_schema, remote_table);
 
     BEGIN
         EXECUTE format('
@@ -47,21 +59,12 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(serve
 RETURNS text
 AS $$
 DECLARE
-    -- Import pg_settings from pg_catalog
     remote_schema name := 'pg_catalog';
     remote_table name := 'pg_extension';
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
     remote_postgis_version text;
 BEGIN
-    -- Import the foreign pg_extension table
-    IF NOT EXISTS (
-        SELECT * FROM pg_class
-        WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
-        AND relname = remote_table
-    ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
-                    remote_schema, remote_table, server_internal, local_schema);
-    END IF;
+    PERFORM @extschema@.__CDB_FS_Import_If_Not_Exists(server_internal, remote_schema, remote_table);
 
     BEGIN
         EXECUTE format('
