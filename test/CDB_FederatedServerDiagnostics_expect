@@ -1,2 +1,6 @@
+C1|
 %% It raises an error if the server does not exist
-1.1|{}
+ERROR:  Server "doesNotExist" does not exist
+%% It returns a jsonb object
+1.2|jsonb
+D1|
