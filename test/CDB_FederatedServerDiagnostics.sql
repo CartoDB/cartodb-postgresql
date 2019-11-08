@@ -46,6 +46,14 @@ SELECT '1.3', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> 
 SELECT '1.4', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> format('{"postgis_version": "%s"}', extversion)::jsonb
     FROM pg_extension WHERE extname = 'postgis';
 
+\echo '%% It returns null as the postgis version if it is not installed'
+\set QUIET on
+\c cdb_fs_tester postgres
+DROP EXTENSION postgis;
+\c contrib_regression postgres
+\set QUIET off
+SELECT '1.5', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"postgis_version": null}'::jsonb;
+
 
 -- ===================================================================
 -- Cleanup
