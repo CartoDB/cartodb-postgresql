@@ -93,8 +93,6 @@ DECLARE
 BEGIN
     -- See https://www.postgresql.org/docs/current/catalog-pg-foreign-server.html
     -- See https://www.postgresql.org/docs/current/functions-info.html
-
-    -- SELECT jsonb_build_object(opt.option_name, opt.option_value) FROM (SELECT (pg_options_to_table(srvoptions)).* FROM pg_foreign_server WHERE srvname = 'cdb_fdw_local_pg11') opt;
     FOR opt IN
         SELECT (pg_options_to_table(srvoptions)).* FROM pg_foreign_server WHERE srvname = server_internal
     LOOP
