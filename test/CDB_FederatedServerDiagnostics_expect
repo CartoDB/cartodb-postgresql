@@ -9,4 +9,6 @@ ERROR:  Server "doesNotExist" does not exist
 1.4|t
 %% It returns null as the postgis version if it is not installed
 1.5|t
+%% It returns the remote server options
+1.6|t
 D1|

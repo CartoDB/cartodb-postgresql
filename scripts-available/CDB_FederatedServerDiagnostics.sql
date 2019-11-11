@@ -82,6 +82,22 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --
+-- Get the foreign server options of a remote PG server
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal name)
+RETURNS jsonb
+AS $$
+    -- See https://www.postgresql.org/docs/current/catalog-pg-foreign-server.html
+    SELECT jsonb_object(server_options) FROM (
+        SELECT ARRAY(SELECT regexp_split_to_table(opts, '=')
+        FROM pg_foreign_server, unnest(srvoptions) opts
+        WHERE srvname = cartodb.__CDB_FS_Generate_Server_Name(input_name => 'loopback', check_existence => true)) server_options
+    ) q;
+$$
+LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
+
+
+--
 -- Collect and return diagnostics info from a remote PG into a jsonb
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Server_Diagnostics_PG(server_internal name)
@@ -90,10 +106,12 @@ AS $$
 DECLARE
     remote_server_version  text := @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal);
     remote_postgis_version text := @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(server_internal);
+    remote_server_options jsonb := @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal);
 BEGIN
     RETURN jsonb_build_object(
         'server_version', remote_server_version,
-        'postgis_version', remote_postgis_version
+        'postgis_version', remote_postgis_version,
+        'server_options', remote_server_options
     );
 END
 $$
