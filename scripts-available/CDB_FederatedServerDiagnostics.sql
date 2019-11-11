@@ -87,14 +87,23 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal name)
 RETURNS jsonb
 AS $$
+DECLARE
+    res jsonb := '{}';
+    opt record;
+BEGIN
     -- See https://www.postgresql.org/docs/current/catalog-pg-foreign-server.html
-    SELECT jsonb_object(server_options) FROM (
-        SELECT ARRAY(SELECT regexp_split_to_table(opts, '=')
-        FROM pg_foreign_server, unnest(srvoptions) opts
-        WHERE srvname = server_internal) server_options
-    ) q;
+    -- See https://www.postgresql.org/docs/current/functions-info.html
+
+    -- SELECT jsonb_build_object(opt.option_name, opt.option_value) FROM (SELECT (pg_options_to_table(srvoptions)).* FROM pg_foreign_server WHERE srvname = 'cdb_fdw_local_pg11') opt;
+    FOR opt IN
+        SELECT (pg_options_to_table(srvoptions)).* FROM pg_foreign_server WHERE srvname = server_internal
+    LOOP
+        res := res || jsonb_build_object(opt.option_name, opt.option_value);
+    END LOOP;
+    RETURN res;
+END
 $$
-LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --
