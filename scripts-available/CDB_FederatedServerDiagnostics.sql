@@ -91,7 +91,7 @@ AS $$
     SELECT jsonb_object(server_options) FROM (
         SELECT ARRAY(SELECT regexp_split_to_table(opts, '=')
         FROM pg_foreign_server, unnest(srvoptions) opts
-        WHERE srvname = cartodb.__CDB_FS_Generate_Server_Name(input_name => 'loopback', check_existence => true)) server_options
+        WHERE srvname = server_internal) server_options
     ) q;
 $$
 LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
