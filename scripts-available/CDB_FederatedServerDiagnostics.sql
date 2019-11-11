@@ -97,14 +97,57 @@ AS $$
 $$
 LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
+
+--
+-- Get a foreign PG server hostname from the catalog
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Host_PG(server_internal name)
+RETURNS text
+AS $$
+BEGIN
+    -- TODO: implement
+    RETURN 'localhost';
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+--
+-- Get a foreign PG server port from the catalog
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal name)
+RETURNS integer
+AS $$
+BEGIN
+    -- TODO: implement
+    RETURN 5432;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+--
+-- Get one measure of network latency to a remote TCP server
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Network_Latency(host text, port integer)
+RETURNS float
+AS $$
+  #--TODO implement
+  return 0.0
+$$
+LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
+
 --
 -- Get the network latency to a remote PG server
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal name)
 RETURNS float
 AS $$
+DECLARE
+    remote_server_host text := @extschema@.__CDB_FS_Foreign_Server_Host_PG(server_internal);
+    remote_server_port integer := @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal); -- TODO: best type for ports
+    latency float;
 BEGIN
-    RETURN 0.0;
+    latency := @extschema@.__CDB_FS_TCP_Network_Latency(host => remote_server_host, port => remote_server_port);
+    RETURN latency;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
