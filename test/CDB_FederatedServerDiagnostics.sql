@@ -55,7 +55,7 @@ DROP EXTENSION postgis;
 SELECT '1.5', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"postgis_version": null}'::jsonb;
 
 \echo '%% It returns the remote server options'
-SELECT '1.6', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_options": {"host": "localhost", "port": "5432", "updatable": "false", "extensions": "postgis", "fetch_size": "1000", "use_remote_estimate": "true"}}'::jsonb;
+SELECT '1.6', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_options": {"host": "localhost", "port": "@@PGPORT@@", "updatable": "false", "extensions": "postgis", "fetch_size": "1000", "use_remote_estimate": "true"}}'::jsonb;
 
 
 -- ===================================================================
