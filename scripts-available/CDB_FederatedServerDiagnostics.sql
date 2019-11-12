@@ -148,16 +148,19 @@ AS $$
         t_stop = timer()
         s.shutdown(socket.SHUT_RD)
     except (socket.timeout, OSError, socket.error):
+        plpy.warning('could not connect to server: %s:%d' % (host, port))
         return None
 
-    return (t_stop - t_start) * 1000.0
+    t_total = (t_stop - t_start) * 1000.0
+    plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_total))
+    return t_total
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
 --
 -- Get the network latency to a remote PG server
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal name)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal name, n_samples integer DEFAULT 10)
 RETURNS float
 AS $$
 DECLARE
@@ -165,7 +168,10 @@ DECLARE
     remote_server_port integer := @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal);
     latency float;
 BEGIN
-    latency := @extschema@.__CDB_FS_TCP_Network_Latency(host => remote_server_host, port => remote_server_port);
+    latency := avg(sample) FROM (
+        SELECT @extschema@.__CDB_FS_TCP_Network_Latency(host => remote_server_host, port => remote_server_port) sample
+        FROM generate_series(1, n_samples)
+    ) q;
     RETURN latency;
 END
 $$
