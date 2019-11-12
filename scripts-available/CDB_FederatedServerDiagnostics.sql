@@ -104,12 +104,12 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Host_PG(server_internal name)
 RETURNS text
 AS $$
-BEGIN
-    -- TODO: implement
-    RETURN 'localhost';
-END
+    SELECT option_value FROM (
+        SELECT (pg_options_to_table(srvoptions)).*
+        FROM pg_foreign_server WHERE srvname = server_internal
+    ) AS opt WHERE opt.option_name = 'host';
 $$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 
 --
