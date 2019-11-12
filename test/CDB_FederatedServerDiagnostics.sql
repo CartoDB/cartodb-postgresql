@@ -58,7 +58,8 @@ SELECT '1.5', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> 
 SELECT '1.6', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_options": {"host": "localhost", "port": "@@PGPORT@@", "updatable": "false", "extensions": "postgis", "fetch_size": "1000", "use_remote_estimate": "true"}}'::jsonb;
 
 \echo '%% It returns the network latency to the remote server'
-SELECT '1.7', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_latency": 0.0}'::jsonb;
+SELECT '1.7', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float > 0.0;
+SELECT '1.8', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float < 1000.0;
 
 
 -- ===================================================================

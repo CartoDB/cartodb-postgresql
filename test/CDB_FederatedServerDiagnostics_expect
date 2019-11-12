@@ -11,4 +11,7 @@ ERROR:  Server "doesNotExist" does not exist
 1.5|t
 %% It returns the remote server options
 1.6|t
+%% It returns the network latency to the remote server
+1.7|t
+1.8|t
 D1|
