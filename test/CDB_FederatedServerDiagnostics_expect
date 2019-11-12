@@ -1,0 +1,14 @@
+C1|
+%% It raises an error if the server does not exist
+ERROR:  Server "doesNotExist" does not exist
+%% It returns a jsonb object
+1.2|jsonb
+%% It returns the server version
+1.3|t
+%% It returns the postgis version
+1.4|t
+%% It returns null as the postgis version if it is not installed
+1.5|t
+%% It returns the remote server options
+1.6|t
+D1|
