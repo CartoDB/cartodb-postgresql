@@ -87,7 +87,7 @@ BEGIN
     RETURN role_name::name;
 END
 $$
-LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+LANGUAGE PLPGSQL STABLE PARALLEL SAFE;
 
 --
 -- Creates (if not exist) a schema to place the objects for a remote schema
