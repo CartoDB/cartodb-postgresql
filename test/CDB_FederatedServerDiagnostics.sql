@@ -58,8 +58,22 @@ SELECT '1.5', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> 
 SELECT '1.6', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_options": {"host": "localhost", "port": "@@PGPORT@@", "updatable": "false", "extensions": "postgis", "fetch_size": "1000", "use_remote_estimate": "true"}}'::jsonb;
 
 \echo '%% It returns the network latency to the remote server'
-SELECT '1.7', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float > 0.0;
-SELECT '1.8', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float < 1000.0;
+SELECT '2.1', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float > 0.0;
+SELECT '2.2', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'server_latency')::float < 1000.0;
+
+\echo '%% It raises an error if the wrong port is provided'
+SELECT 'C2', cartodb.CDB_Federated_Server_Register_PG(server => 'wrong-port'::text, config => '{
+    "server": {
+        "host": "localhost",
+        "port": "12345"
+    },
+    "credentials": {
+        "username": "cdb_fs_tester",
+        "password": "cdb_fs_passwd"
+    }
+}'::jsonb);
+SELECT '3.0', cartodb.CDB_Federated_Server_Diagnostics(server => 'wrong-port');
+
 
 
 -- ===================================================================
@@ -67,6 +81,7 @@ SELECT '1.8', (cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback')->'
 -- ===================================================================
 \set QUIET on
 SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server => 'loopback'::text);
+SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server => 'wrong-port'::text);
 -- Reconnect, using a new session in order to close FDW connections
 \connect
 DROP DATABASE cdb_fs_tester;

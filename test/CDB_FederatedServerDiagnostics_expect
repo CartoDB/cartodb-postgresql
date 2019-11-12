@@ -12,6 +12,10 @@ ERROR:  Server "doesNotExist" does not exist
 %% It returns the remote server options
 1.6|t
 %% It returns the network latency to the remote server
-1.7|t
-1.8|t
+2.1|t
+2.2|t
+%% It raises an error if the wrong port is provided
+C2|
+ERROR:  could not connect to server "cdb_fs_wrong-port"
 D1|
+D2|
