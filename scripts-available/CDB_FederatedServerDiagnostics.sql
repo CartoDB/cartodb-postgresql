@@ -126,12 +126,31 @@ $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --
--- Get one measure of network latency to a remote TCP server
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Network_Latency(host text, port integer)
+-- Get one measure of network latency in ms to a remote TCP server
+--
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Network_Latency(
+    host text,
+    port integer DEFAULT 5432,
+    timeout_seconds float DEFAULT 5.0
+)
 RETURNS float
 AS $$
-  #--TODO implement
-  return 0.0
+    import socket
+    from timeit import default_timer as timer
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(timeout_seconds)
+
+    t_start = timer()
+
+    try:
+        s.connect((host, int(port)))
+        t_stop = timer()
+        s.shutdown(socket.SHUT_RD)
+    except (socket.timeout, OSError, socket.error):
+        return None
+
+    return (t_stop - t_start) * 1000.0
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
@@ -143,7 +162,7 @@ RETURNS float
 AS $$
 DECLARE
     remote_server_host text := @extschema@.__CDB_FS_Foreign_Server_Host_PG(server_internal);
-    remote_server_port integer := @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal); -- TODO: best type for ports
+    remote_server_port integer := @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal);
     latency float;
 BEGIN
     latency := @extschema@.__CDB_FS_TCP_Network_Latency(host => remote_server_host, port => remote_server_port);
