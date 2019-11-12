@@ -188,13 +188,13 @@ DECLARE
     remote_server_version  text := @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal);
     remote_postgis_version text := @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(server_internal);
     remote_server_options jsonb := @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal);
-    remote_server_latency float := @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal);
+    remote_server_latency_ms float := @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal);
 BEGIN
     RETURN jsonb_build_object(
         'server_version', remote_server_version,
         'postgis_version', remote_postgis_version,
         'server_options', remote_server_options,
-        'server_latency', remote_server_latency
+        'server_latency_ms', remote_server_latency_ms
     );
 END
 $$
