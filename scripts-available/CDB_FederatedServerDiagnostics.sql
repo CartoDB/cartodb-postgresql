@@ -118,12 +118,12 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal name)
 RETURNS integer
 AS $$
-BEGIN
-    -- TODO: implement
-    RETURN 5432;
-END
+    SELECT option_value::integer FROM (
+        SELECT (pg_options_to_table(srvoptions)).*
+        FROM pg_foreign_server WHERE srvname = server_internal
+    ) AS opt WHERE opt.option_name = 'port';
 $$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 --
 -- Get one measure of network latency in ms to a remote TCP server
