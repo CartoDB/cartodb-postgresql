@@ -130,7 +130,7 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Network_Latency(
     host text,
-    port integer DEFAULT 5432,
+    port integer,
     timeout_seconds float DEFAULT 5.0
 )
 RETURNS float
