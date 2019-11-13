@@ -171,21 +171,25 @@ AS $$
         plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_connect))
         samples.append(t_connect)
 
-    # --stats
-    n = len(samples)
-    mean = sum(samples) / n
-    var = sum([ (x - mean)**2 for x in samples ]) / (n-1)
-    stdev = math.sqrt(var)
-
-    ret = {
+    stats = {
         'n_samples': n_samples,
         'n_errors': n_errors,
-        'avg': round(mean, 3),
-        'min': round(min(samples), 3),
-        'max': round(max(samples), 3),
-        'stdev': round(stdev, 3)
     }
-    return json.dumps(ret)
+    n = len(samples)
+    if n >= 1:
+        mean = sum(samples) / n
+        stats.update({
+            'avg': round(mean, 3),
+            'min': round(min(samples), 3),
+            'max': round(max(samples), 3)
+        })
+    if n >= 2:
+        var = sum([ (x - mean)**2 for x in samples ]) / (n-1)
+        stdev = math.sqrt(var)
+        stats.update({
+            'stdev': round(stdev, 3)
+        })
+    return json.dumps(stats)
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
