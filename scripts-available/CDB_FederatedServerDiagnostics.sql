@@ -133,9 +133,11 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(
     timeout_seconds float DEFAULT 5.0,
     n_samples integer DEFAULT 10
 )
-RETURNS float
+RETURNS jsonb
 AS $$
     import socket
+    import json
+    import math
     from timeit import default_timer as timer
 
     plan = plpy.prepare("SELECT @extschema@.__CDB_FS_Foreign_Server_Host_PG($1) AS host", ['name'])
@@ -169,7 +171,21 @@ AS $$
         plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_connect))
         samples.append(t_connect)
 
-    return sum(samples) / len(samples)
+    # --stats
+    n = len(samples)
+    mean = sum(samples) / n
+    var = sum([ (x - mean)**2 for x in samples ]) / (n-1)
+    stdev = math.sqrt(var)
+
+    ret = {
+        'n_samples': n_samples,
+        'n_errors': n_errors,
+        'avg': round(mean, 3),
+        'min': round(min(samples), 3),
+        'max': round(max(samples), 3),
+        'stdev': round(stdev, 3)
+    }
+    return json.dumps(ret)
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
@@ -184,7 +200,7 @@ DECLARE
     remote_server_version  text    := @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal);
     remote_postgis_version text    := @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(server_internal);
     remote_server_options jsonb    := @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal);
-    remote_server_latency_ms float := @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(server_internal);
+    remote_server_latency_ms jsonb := @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(server_internal);
 BEGIN
     RETURN jsonb_build_object(
         'server_version', remote_server_version,
