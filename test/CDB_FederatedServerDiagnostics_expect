@@ -11,9 +11,12 @@ ERROR:  Server "doesNotExist" does not exist
 1.5|t
 %% It returns the remote server options
 1.6|t
-%% It returns the network latency to the remote server
-2.1|t
-2.2|t
+%% It returns network latency stats to the remote server: min <= avg <= max
+2.1|t|t
+%% Latency stats: 0 <= min <= max <= 1000 ms (local connection)
+2.2|t|t
+%% Latency stats: stdev > 0
+2.3|t
 %% It raises an error if the wrong port is provided
 C2|
 ERROR:  could not connect to server "cdb_fs_wrong-port"
