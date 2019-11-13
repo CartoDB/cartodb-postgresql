@@ -158,8 +158,8 @@ AS $$
             s.connect((host, int(port)))
             t_stop = timer()
             s.shutdown(socket.SHUT_RD)
-        except (socket.timeout, OSError, socket.error), ex:
-            #-- TODO uncomment & fix: plpy.warning('could not connect to server %s:%d, %s' % (host, port, str(ex)))
+        except (socket.timeout, OSError, socket.error) as ex:
+            plpy.warning('could not connect to server %s:%d, %s' % (host, port, str(ex)))
             n_errors += 1
         finally:
             s.close()
