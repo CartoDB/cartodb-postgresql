@@ -130,7 +130,7 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(
     server_internal name,
-    timeout_seconds integer DEFAULT 5.0,
+    timeout_seconds float DEFAULT 5.0,
     n_samples integer DEFAULT 10
 )
 RETURNS float
@@ -150,18 +150,22 @@ AS $$
     s.settimeout(timeout_seconds)
 
     t_start = timer()
+    samples = []
 
-    try:
-        s.connect((host, int(port)))
-        t_stop = timer()
-        s.shutdown(socket.SHUT_RD)
-    except (socket.timeout, OSError, socket.error):
-        plpy.warning('could not connect to server: %s:%d' % (host, port))
-        return None
+    for i in xrange(n_samples):
+        try:
+            s.connect((host, int(port)))
+            t_stop = timer()
+            s.shutdown(socket.SHUT_RD)
+        except (socket.timeout, OSError, socket.error), ex:
+            plpy.warning('could not connect to server %s:%d, %s' % (host, port, str(ex)))
+            samples.append(None)
 
-    t_total = (t_stop - t_start) * 1000.0
-    plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_total))
-    return t_total
+        t_connect = (t_stop - t_start) * 1000.0
+        plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_connect))
+        samples.append(t_connect)
+
+    return sum(samples) / n_samples
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
