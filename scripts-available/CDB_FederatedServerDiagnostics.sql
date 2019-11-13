@@ -161,6 +161,8 @@ AS $$
         except (socket.timeout, OSError, socket.error), ex:
             plpy.warning('could not connect to server %s:%d, %s' % (host, port, str(ex)))
             n_errors += 1
+        finally:
+            s.close()
 
         t_connect = (t_stop - t_start) * 1000.0
         plpy.debug('TCP connection %s:%d time=%.2f ms' % (host, port, t_connect))
