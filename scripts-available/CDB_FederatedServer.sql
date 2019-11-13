@@ -238,6 +238,8 @@ BEGIN
                 EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
             END IF;
             EXECUTE FORMAT('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', current_database(), role_name);
+            EXECUTE FORMAT('GRANT ALL ON SCHEMA %I TO %I', '@extschema@', role_name);
+            EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS in SCHEMA %I TO %I', '@extschema@', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN SERVER %I TO %I', server_internal, role_name);
