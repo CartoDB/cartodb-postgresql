@@ -146,14 +146,14 @@ AS $$
     rv = plpy.execute(plan, [server_internal], 1)
     port = rv[0]['port']
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(timeout_seconds)
-
-    t_start = timer()
-    samples = []
-    n_errors = 0
-
     for i in xrange(n_samples):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout_seconds)
+
+        t_start = timer()
+        samples = []
+        n_errors = 0
+
         try:
             s.connect((host, int(port)))
             t_stop = timer()
