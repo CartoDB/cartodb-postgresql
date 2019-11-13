@@ -128,15 +128,23 @@ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 --
 -- Get one measure of network latency in ms to a remote TCP server
 --
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Network_Latency(
-    host text,
-    port integer,
-    timeout_seconds float DEFAULT 5.0
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(
+    server_internal name,
+    timeout_seconds integer DEFAULT 5.0,
+    n_samples integer DEFAULT 10
 )
 RETURNS float
 AS $$
     import socket
     from timeit import default_timer as timer
+
+    plan = plpy.prepare("SELECT @extschema@.__CDB_FS_Foreign_Server_Host_PG($1) AS host", ['name'])
+    rv = plpy.execute(plan, [server_internal], 1)
+    host = rv[0]['host']
+
+    plan = plpy.prepare("SELECT @extschema@.__CDB_FS_Foreign_Server_Port_PG($1) AS port", ['name'])
+    rv = plpy.execute(plan, [server_internal], 1)
+    port = rv[0]['port']
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(timeout_seconds)
@@ -157,26 +165,6 @@ AS $$
 $$
 LANGUAGE plpythonu VOLATILE PARALLEL UNSAFE;
 
---
--- Get the network latency to a remote PG server
---
-CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal name, n_samples integer DEFAULT 10)
-RETURNS float
-AS $$
-DECLARE
-    remote_server_host text := @extschema@.__CDB_FS_Foreign_Server_Host_PG(server_internal);
-    remote_server_port integer := @extschema@.__CDB_FS_Foreign_Server_Port_PG(server_internal);
-    latency float;
-BEGIN
-    latency := avg(sample) FROM (
-        SELECT @extschema@.__CDB_FS_TCP_Network_Latency(host => remote_server_host, port => remote_server_port) sample
-        FROM generate_series(1, n_samples)
-    ) q;
-    RETURN latency;
-END
-$$
-LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
-
 
 --
 -- Collect and return diagnostics info from a remote PG into a jsonb
@@ -185,10 +173,10 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Server_Diagnostics_PG(server_int
 RETURNS jsonb
 AS $$
 DECLARE
-    remote_server_version  text := @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal);
-    remote_postgis_version text := @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(server_internal);
-    remote_server_options jsonb := @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal);
-    remote_server_latency_ms float := @extschema@.__CDB_FS_Foreign_Server_Latency_PG(server_internal);
+    remote_server_version  text    := @extschema@.__CDB_FS_Foreign_Server_Version_PG(server_internal);
+    remote_postgis_version text    := @extschema@.__CDB_FS_Foreign_PostGIS_Version_PG(server_internal);
+    remote_server_options jsonb    := @extschema@.__CDB_FS_Foreign_Server_Options_PG(server_internal);
+    remote_server_latency_ms float := @extschema@.__CDB_FS_TCP_Foreign_Server_Latency(server_internal);
 BEGIN
     RETURN jsonb_build_object(
         'server_version', remote_server_version,
