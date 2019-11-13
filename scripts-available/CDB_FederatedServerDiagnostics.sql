@@ -146,7 +146,7 @@ AS $$
     rv = plpy.execute(plan, [server_internal], 1)
     port = rv[0]['port']
 
-    for i in xrange(n_samples):
+    for i in range(n_samples):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout_seconds)
 
