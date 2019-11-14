@@ -71,7 +71,8 @@ SELECT 'R1', cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom'
     );
 
-SELECT 'S1', cartodb_id, ST_AsText(the_geom), another_field FROM remote_geom;
+SELECT 'S1', cartodb_id, ST_AsText(the_geom), another_field FROM cdb_fs_loopback.remote_geom;
+
 Select * FROM CDB_Federated_Server_List_Remote_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
@@ -88,7 +89,7 @@ SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     local_name => 'myFullTable'
     );
 
-SELECT 'S2', cartodb_id, ST_AsText(the_geom), another_field FROM "myFullTable";
+SELECT 'S2', cartodb_id, ST_AsText(the_geom), another_field FROM cdb_fs_loopback."myFullTable";
 Select * FROM CDB_Federated_Server_List_Remote_Tables(
     server => 'loopback',
     remote_schema => 'remote_schema'
@@ -107,9 +108,9 @@ SELECT 'R3', cartodb.CDB_Federated_Table_Register(
     );
 
 -- The old view should dissapear
-SELECT 'S3_old', cartodb_id, another_field FROM "myFullTable";
+SELECT 'S3_old', cartodb_id, another_field FROM cdb_fs_loopback."myFullTable";
 -- And the new appear
-SELECT 'S3_new', cartodb_id, another_field FROM different_name;
+SELECT 'S3_new', cartodb_id, another_field FROM cdb_fs_loopback.different_name;
 
 \echo '## Unregistering works'
 -- Deregistering the first table
@@ -255,7 +256,7 @@ SELECT cartodb.CDB_Federated_Table_Unregister(
 -- ===================================================================
 
 \echo '## Target conflict is handled nicely: Table'
-CREATE TABLE localtable (a integer);
+CREATE TABLE cdb_fs_loopback.localtable (a integer);
 SELECT cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -265,7 +266,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
     local_name => 'localtable');
 
 \echo '## Target conflict is handled nicely: View'
-CREATE VIEW localtable2 AS Select * from localtable;
+CREATE VIEW cdb_fs_loopback.localtable2 AS Select * from cdb_fs_loopback.localtable;
 SELECT cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -274,8 +275,8 @@ SELECT cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom',
     local_name => 'localtable2');
 
-DROP VIEW localtable2;
-DROP TABLE localtable;
+DROP VIEW cdb_fs_loopback.localtable2;
+DROP TABLE cdb_fs_loopback.localtable;
 
 -- ===================================================================
 -- Test permissions
@@ -291,6 +292,9 @@ SELECT cartodb.CDB_Federated_Table_Register(
     id_column =>  'id',
     geom_column => 'geom',
     local_name => 'localtable');
+
+\echo '## Normal users can not write in the import schema'
+CREATE TABLE cdb_fs_loopback.localtable (a integer);
 
 \echo '## Listing remote tables does not work without permissions'
 Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
@@ -311,7 +315,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
 Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
 
 \echo '## Selecting from a registered table with granted permissions works'
-Select cartodb_id, ST_AsText(the_geom) from localtable;
+Select cartodb_id, ST_AsText(the_geom) from cdb_fs_loopback.localtable;
 
 \echo '## Selecting from a registered table without permissions does not work'
 \c contrib_regression cdb_fs_tester2
@@ -329,7 +333,7 @@ EXCEPTION
         RETURN FALSE;
 END
 $$ LANGUAGE 'plpgsql';
-Select catch_permission_error($$SELECT cartodb_id, ST_AsText(the_geom) from localtable$$);
+Select catch_permission_error($$SELECT cartodb_id, ST_AsText(the_geom) from cdb_fs_loopback.localtable$$);
 DROP FUNCTION catch_permission_error(text);
 
 \echo '## Deleting a registered table without permissions does not work'
@@ -347,7 +351,7 @@ SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role :
 SELECT cartodb.CDB_Federated_Server_Grant_Access(server := 'loopback', db_role := 'cdb_fs_tester2'::name);
 \c contrib_regression cdb_fs_tester2
 Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema');
-Select cartodb_id, ST_AsText(the_geom) from localtable;
+Select cartodb_id, ST_AsText(the_geom) from cdb_fs_loopback.localtable;
 
 \echo '## A different user can unregister a table'
 SELECT cartodb.CDB_Federated_Table_Unregister(

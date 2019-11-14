@@ -5,9 +5,16 @@
 --
 -- This function is just a placement to store and use the pattern for
 -- foreign object names
--- Servers:     cdb_fs_$(server_name)
--- Schemas:     cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
--- Owner role:  cdb_fs_$(md5sum(current_database() || server_name)
+-- Servers:         cdb_fs_$(server_name)
+-- View schema:     cdb_fs_$(server_name)
+--  > This is where all views created when importing tables are placed
+--  > One server has only one view schema
+-- Import Schemas:  cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
+--  > This is where the foreign tables are placed
+--  > One server has one import schema per remote schema plus auxiliar ones used
+--      to access the remote catalog (pg_catalog, information_schema...)
+-- Owner role:      cdb_fs_$(md5sum(current_database() || server_name)
+--  > This is the role than owns all schemas and tables related to the server
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Name_Pattern()
 RETURNS TEXT
@@ -19,6 +26,7 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 --
 -- Produce a valid DB name for servers generated for the Federated Server
 -- If check_existence is true, it'll throw if the server doesn't exists
+-- This name is also used to
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Name(input_name TEXT, check_existence BOOL)
 RETURNS NAME
