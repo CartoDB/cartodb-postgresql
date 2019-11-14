@@ -146,7 +146,7 @@ AS $$
 
     plan = plpy.prepare("SELECT @extschema@.__CDB_FS_Foreign_Server_Port_PG($1) AS port", ['name'])
     rv = plpy.execute(plan, [server_internal], 1)
-    port = rv[0]['port']
+    port = rv[0]['port'] or 5432
 
     n_errors = 0
     samples = []

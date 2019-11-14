@@ -1,4 +1,6 @@
 C1|
+C2|
+C3|
 %% It raises an error if the server does not exist
 ERROR:  Server "doesNotExist" does not exist
 %% It returns a jsonb object
@@ -18,7 +20,9 @@ ERROR:  Server "doesNotExist" does not exist
 %% Latency stats: stdev > 0
 2.3|t
 %% It raises an error if the wrong port is provided
-C2|
 ERROR:  could not connect to server "cdb_fs_wrong-port"
+%% Latency stats: can get them on default PG port 5432 when not provided
+2.4|t|t
 D1|
 D2|
+D3|
