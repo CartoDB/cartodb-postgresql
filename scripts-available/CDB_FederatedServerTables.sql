@@ -306,9 +306,13 @@ BEGIN
         END IF;
     END;
 
-    EXECUTE format('ALTER VIEW %1$I OWNER TO %I',
-                local_name,
-                cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal));
+    BEGIN
+        EXECUTE format('ALTER VIEW %1$I OWNER TO %I',
+                    local_name,
+                    cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal));
+    EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'View "%" could not be shared with other users: %', local_name, SQLERRM;
+    END;
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
