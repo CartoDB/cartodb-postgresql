@@ -238,10 +238,6 @@ BEGIN
     IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = server_internal) THEN
         BEGIN
             EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', server_internal);
-            -- TODO: Delete this IF before merging to make sure nobody creates a role
-            -- that is later used automatically by us granting them all permissions in the foreign server
-            -- TODO: This is here to help debugging during development (so failures to destroy objects are allowed)
-            -- TODO
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
                 EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
             END IF;
