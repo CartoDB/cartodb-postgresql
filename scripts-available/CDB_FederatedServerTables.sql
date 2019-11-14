@@ -227,7 +227,7 @@ BEGIN
         EXECUTE FORMAT('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I;',
                         remote_schema, remote_table, server_internal, local_schema);
     EXCEPTION WHEN OTHERS THEN
-        RAISE EXCEPTION 'Could not import schema "%" of server "%"', remote_schema, server;
+        RAISE EXCEPTION 'Could not import schema "%" of server "%": %', remote_schema, server, SQLERRM;
     END;
     
     BEGIN
@@ -284,6 +284,10 @@ BEGIN
         webmercator_expression
     ];
 
+    -- To create the view we switch to the caller role to make sure we have permissions
+    -- to write in the destination schema
+    RESET ROLE;
+
     -- Create a view with homogeneous CDB fields
     BEGIN
         EXECUTE format(
@@ -294,12 +298,17 @@ BEGIN
             array_to_string(carto_columns_expression || rest_of_cols, ','),
             src_table
         );
-    EXCEPTION
-    WHEN insufficient_privilege THEN
-        RAISE EXCEPTION 'Could not import table "%" as "%": "%" already exists', remote_table, local_name, local_name;
-    WHEN OTHERS THEN
-        RAISE EXCEPTION 'Could not import table "%" as "%": %', remote_table, local_name, SQLERRM;
+    EXCEPTION WHEN OTHERS THEN
+        IF EXISTS (SELECT to_regclass(local_name)) THEN
+            RAISE EXCEPTION 'Could not import table "%" as "%" already exists: %', remote_table, local_name, SQLERRM;
+        ELSE
+            RAISE EXCEPTION 'Could not import table "%" as "%": %', remote_table, local_name, SQLERRM;
+        END IF;
     END;
+
+    EXECUTE format('ALTER VIEW %1$I OWNER TO %I',
+                local_name,
+                cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal));
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

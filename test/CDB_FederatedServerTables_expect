@@ -27,7 +27,7 @@ ERROR:  Server "Does not exist" does not exist
 ## Registering a table: NULL server fails
 ERROR:  Server name cannot be NULL
 ## Registering a table: Invalid schema fails
-ERROR:  Could not import schema "Does not exist" of server "loopback"
+ERROR:  Could not import schema "Does not exist" of server "loopback": schema "Does not exist" is not present on foreign server "cdb_fs_loopback"
 ## Registering a table: NULL schema fails
 ERROR:  Schema name cannot be NULL
 ## Registering a table: Invalid table fails
@@ -50,10 +50,10 @@ ERROR:  non geometry column "Does not exists"
 
 ## Target conflict is handled nicely: Table
 CREATE TABLE
-ERROR:  Could not import table "remote_geom" as "localtable": "localtable" already exists
+ERROR:  Could not import table "remote_geom" as "localtable" already exists: "localtable" is not a view
 ## Target conflict is handled nicely: View
 CREATE VIEW
-ERROR:  Could not import table "remote_geom" as "localtable2": "localtable2" already exists
+ERROR:  Could not import table "remote_geom" as "localtable2" already exists: cannot change name of view column "a" to "cartodb_id"
 DROP VIEW
 DROP TABLE
 ## Registering tables does not work without permissions
