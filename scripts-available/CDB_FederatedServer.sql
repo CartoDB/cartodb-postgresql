@@ -258,7 +258,7 @@ BEGIN
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN SERVER %I TO %I', server_internal, role_name);
             EXECUTE FORMAT('ALTER SERVER %I OWNER TO %I', server_internal, role_name);
-            EXECUTE FORMAT ('CREATE USER MAPPING FOR PUBLIC SERVER %I', server_internal);
+            EXECUTE FORMAT ('CREATE USER MAPPING FOR %I SERVER %I', role_name, server_internal);
         EXCEPTION WHEN OTHERS THEN
             RAISE EXCEPTION 'Could not create server %: %', server, SQLERRM
                 USING HINT = 'Please clean the left over objects';
@@ -284,12 +284,12 @@ BEGIN
     LOOP
         IF NOT EXISTS (
             WITH a AS (
-                SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = 'public'
+                SELECT split_part(unnest(umoptions), '=', 1) as options from pg_user_mappings WHERE srvname = server_internal AND usename = role_name
             ) SELECT * from a where options = option.key)
         THEN
-            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (ADD %I %L)', server_internal, option.key, option.value);
+            EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (ADD %I %L)', role_name, server_internal, option.key, option.value);
         ELSE
-            EXECUTE FORMAT('ALTER USER MAPPING FOR PUBLIC SERVER %I OPTIONS (SET %I %L)', server_internal, option.key, option.value);
+            EXECUTE FORMAT('ALTER USER MAPPING FOR %I SERVER %I OPTIONS (SET %I %L)', role_name, server_internal, option.key, option.value);
         END IF;
     END LOOP;
 END
@@ -308,7 +308,7 @@ DECLARE
 BEGIN
     SET client_min_messages = ERROR;
     BEGIN
-        EXECUTE FORMAT ('DROP USER MAPPING FOR PUBLIC SERVER %I', server_internal);
+        EXECUTE FORMAT ('DROP USER MAPPING FOR %I SERVER %I', role_name, server_internal);
         EXECUTE FORMAT ('DROP OWNED BY %I', role_name);
         EXECUTE FORMAT ('DROP ROLE %I', role_name);
     EXCEPTION WHEN OTHERS THEN
