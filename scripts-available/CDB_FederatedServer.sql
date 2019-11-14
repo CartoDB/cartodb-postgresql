@@ -362,6 +362,8 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 --
 -- Grant access to a server
+-- In the future we might consider adding the server's view schema to the role search_path
+-- to make it easier to access the created views
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server TEXT, db_role NAME)
 RETURNS void
