@@ -311,7 +311,8 @@ BEGIN
                     local_name,
                     cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal));
     EXCEPTION WHEN OTHERS THEN
-        RAISE WARNING 'View "%" could not be shared with other users: %', local_name, SQLERRM;
+        RAISE WARNING 'View "%" could not be shared with other users: %. Execute "ALTER VIEW %1$I OWNER TO %I" to share it',
+                local_name, SQLERRM, local_name, cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal);
     END;
 END
 $$
