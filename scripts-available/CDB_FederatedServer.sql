@@ -301,7 +301,7 @@ BEGIN
     SET client_min_messages = ERROR;
     BEGIN
         EXECUTE FORMAT ('DROP USER MAPPING FOR PUBLIC SERVER %I', server_internal);
-        EXECUTE FORMAT ('DROP OWNED BY %I', role_name);
+        EXECUTE FORMAT ('DROP OWNED BY %I CASCADE', role_name);
         EXECUTE FORMAT ('DROP ROLE %I', role_name);
     EXCEPTION WHEN OTHERS THEN
         RAISE EXCEPTION 'Not enough permissions to drop the server "%"', server;
