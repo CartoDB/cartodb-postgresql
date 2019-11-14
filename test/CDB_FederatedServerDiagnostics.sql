@@ -23,6 +23,27 @@ SELECT 'C1', cartodb.CDB_Federated_Server_Register_PG(server => 'loopback'::text
     }
 }'::jsonb);
 
+SELECT 'C2', cartodb.CDB_Federated_Server_Register_PG(server => 'wrong-port'::text, config => '{
+    "server": {
+        "host": "localhost",
+        "port": "12345"
+    },
+    "credentials": {
+        "username": "cdb_fs_tester",
+        "password": "cdb_fs_passwd"
+    }
+}'::jsonb);
+
+SELECT 'C3', cartodb.CDB_Federated_Server_Register_PG(server => 'loopback-no-port'::text, config => '{
+    "server": {
+        "host": "localhost"
+    },
+    "credentials": {
+        "username": "cdb_fs_tester",
+        "password": "cdb_fs_passwd"
+    }
+}'::jsonb);
+
 \c cdb_fs_tester postgres
 CREATE EXTENSION postgis;
 \c contrib_regression postgres
@@ -57,12 +78,41 @@ SELECT '1.5', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> 
 \echo '%% It returns the remote server options'
 SELECT '1.6', cartodb.CDB_Federated_Server_Diagnostics(server => 'loopback') @> '{"server_options": {"host": "localhost", "port": "@@PGPORT@@", "updatable": "false", "extensions": "postgis", "fetch_size": "1000", "use_remote_estimate": "true"}}'::jsonb;
 
+\echo '%% It returns network latency stats to the remote server: min <= avg <= max'
+WITH latency AS (
+   SELECT CDB_Federated_Server_Diagnostics('loopback')->'server_latency_ms' ms
+) SELECT '2.1', (latency.ms->'min')::text::float <= (latency.ms->'avg')::text::float, (latency.ms->'avg')::text::float <= (latency.ms->'max')::text::float
+FROM latency;
+
+\echo '%% Latency stats: 0 <= min <= max <= 1000 ms (local connection)'
+WITH latency AS (
+   SELECT CDB_Federated_Server_Diagnostics('loopback')->'server_latency_ms' ms
+) SELECT '2.2', 0.0 <= (latency.ms->'min')::text::float, (latency.ms->'max')::text::float <= 1000.0
+FROM latency;
+
+\echo '%% Latency stats: stdev > 0'
+WITH latency AS (
+   SELECT CDB_Federated_Server_Diagnostics('loopback')->'server_latency_ms' ms
+) SELECT '2.3', (latency.ms->'stdev')::text::float >= 0.0
+FROM latency;
+
+\echo '%% It raises an error if the wrong port is provided'
+SELECT '3.0', cartodb.CDB_Federated_Server_Diagnostics(server => 'wrong-port');
+
+\echo '%% Latency stats: can get them on default PG port 5432 when not provided'
+WITH latency AS (
+   SELECT CDB_Federated_Server_Diagnostics('loopback-no-port')->'server_latency_ms' ms
+) SELECT '2.4', 0.0 <= (latency.ms->'min')::text::float, (latency.ms->'max')::text::float <= 1000.0
+FROM latency;
+
 
 -- ===================================================================
 -- Cleanup
 -- ===================================================================
 \set QUIET on
 SELECT 'D1', cartodb.CDB_Federated_Server_Unregister(server => 'loopback'::text);
+SELECT 'D2', cartodb.CDB_Federated_Server_Unregister(server => 'wrong-port'::text);
+SELECT 'D3', cartodb.CDB_Federated_Server_Unregister(server => 'loopback-no-port'::text);
 -- Reconnect, using a new session in order to close FDW connections
 \connect
 DROP DATABASE cdb_fs_tester;
