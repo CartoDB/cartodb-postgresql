@@ -26,7 +26,7 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 --
 -- Produce a valid DB name for servers generated for the Federated Server
 -- If check_existence is true, it'll throw if the server doesn't exists
--- This name is also used to
+-- This name is also used as the schema to store views
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Name(input_name TEXT, check_existence BOOL)
 RETURNS NAME
@@ -243,9 +243,10 @@ BEGIN
             END IF;
             EXECUTE FORMAT('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', current_database(), role_name);
 
+            -- These grants over `@extschema@` and `@postgisschema@` are necessary for the cases
+            -- where the schemas aren't accessible to PUBLIC, which is what happens in a CARTO database
             EXECUTE FORMAT('GRANT USAGE ON SCHEMA %I TO %I', '@extschema@', role_name);
             EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO %I', '@extschema@', role_name);
-
             EXECUTE FORMAT('GRANT USAGE ON SCHEMA %I TO %I', '@postgisschema@', role_name);
             EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO %I', '@postgisschema@', role_name);
             EXECUTE FORMAT('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO %I', '@postgisschema@', role_name);
