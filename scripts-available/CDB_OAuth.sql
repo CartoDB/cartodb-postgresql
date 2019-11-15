@@ -15,13 +15,22 @@ BEGIN
                   obj.object_type,
                   obj.schema_name,
                   obj.object_identity;
-      SELECT rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid INTO creator_role;
+      IF obj.object_type = 'function' THEN
+        SELECT rolname FROM pg_proc JOIN pg_roles ON proowner = pg_roles.oid WHERE pg_proc.oid = obj.objid INTO creator_role;
+      ELSE
+	      SELECT rolname FROM pg_class JOIN pg_roles ON relowner = pg_roles.oid WHERE pg_class.oid = obj.objid INTO creator_role;
+      END IF;
       SELECT value->>'ownership_role_name' from @extschema@.CDB_Conf_GetConf('api_keys_' || quote_ident(creator_role)) value INTO owner_role;
       IF owner_role IS NULL OR owner_role = '' THEN
+        RAISE DEBUG 'owner_role not found';
         CONTINUE;
       ELSE
         EXECUTE 'ALTER ' || obj.object_type || ' ' || obj.object_identity || ' OWNER TO ' || quote_ident(owner_role);
-        EXECUTE 'GRANT ALL ON ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        IF obj.object_type = 'function' THEN
+          EXECUTE 'GRANT ALL ON FUNCTION ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        ELSE
+          EXECUTE 'GRANT ALL ON ' || obj.object_identity || ' TO ' || QUOTE_IDENT(creator_role);
+        END IF;        
         RAISE DEBUG 'Changing ownership from % to %', creator_role, owner_role;
       END IF;
     END LOOP;
