@@ -5,9 +5,16 @@
 --
 -- This function is just a placement to store and use the pattern for
 -- foreign object names
--- Servers:     cdb_fs_$(server_name)
--- Schemas:     cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
--- Owner role:  cdb_fs_$(md5sum(current_database() || server_name)
+-- Servers:         cdb_fs_$(server_name)
+-- View schema:     cdb_fs_$(server_name)
+--  > This is where all views created when importing tables are placed
+--  > One server has only one view schema
+-- Import Schemas:  cdb_fs_schema_$(md5sum(server_name || remote_schema_name))
+--  > This is where the foreign tables are placed
+--  > One server has one import schema per remote schema plus auxiliar ones used
+--      to access the remote catalog (pg_catalog, information_schema...)
+-- Owner role:      cdb_fs_$(md5sum(current_database() || server_name)
+--  > This is the role than owns all schemas and tables related to the server
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Name_Pattern()
 RETURNS TEXT
@@ -19,6 +26,7 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 --
 -- Produce a valid DB name for servers generated for the Federated Server
 -- If check_existence is true, it'll throw if the server doesn't exists
+-- This name is also used as the schema to store views
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Server_Name(input_name TEXT, check_existence BOOL)
 RETURNS NAME
@@ -230,16 +238,19 @@ BEGIN
     IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = server_internal) THEN
         BEGIN
             EXECUTE FORMAT('CREATE SERVER %I FOREIGN DATA WRAPPER postgres_fdw', server_internal);
-            -- TODO: Delete this IF before merging to make sure nobody creates a role
-            -- that is later used automatically by us granting them all permissions in the foreign server
-            -- TODO: This is here to help debugging during development (so failures to destroy objects are allowed)
-            -- TODO
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
                 EXECUTE FORMAT('CREATE ROLE %I NOLOGIN', role_name);
             END IF;
             EXECUTE FORMAT('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', current_database(), role_name);
-            EXECUTE FORMAT('GRANT ALL ON SCHEMA %I TO %I', '@extschema@', role_name);
-            EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS in SCHEMA %I TO %I', '@extschema@', role_name);
+
+            -- These grants over `@extschema@` and `@postgisschema@` are necessary for the cases
+            -- where the schemas aren't accessible to PUBLIC, which is what happens in a CARTO database
+            EXECUTE FORMAT('GRANT USAGE ON SCHEMA %I TO %I', '@extschema@', role_name);
+            EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO %I', '@extschema@', role_name);
+            EXECUTE FORMAT('GRANT USAGE ON SCHEMA %I TO %I', '@postgisschema@', role_name);
+            EXECUTE FORMAT('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO %I', '@postgisschema@', role_name);
+            EXECUTE FORMAT('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO %I', '@postgisschema@', role_name);
+
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO %I', role_name);
             EXECUTE FORMAT('GRANT USAGE ON FOREIGN SERVER %I TO %I', server_internal, role_name);
@@ -348,6 +359,8 @@ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 --
 -- Grant access to a server
+-- In the future we might consider adding the server's view schema to the role search_path
+-- to make it easier to access the created views
 --
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_Grant_Access(server TEXT, db_role NAME)
 RETURNS void

@@ -173,6 +173,8 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 -- can be used through SQL and Maps API's.
 -- If the table was already exported, it will be dropped and re-imported
 --
+-- The view is placed under the server's view schema (cdb_fs_$(server_name))
+--
 -- E.g:
 -- SELECT cartodb.CDB_SetUp_PG_Federated_Table(
 --   'amazon',                  -- mandatory, name of the federated server
@@ -198,7 +200,10 @@ AS $$
 DECLARE
     server_internal name := @extschema@.__CDB_FS_Generate_Server_Name(input_name => server, check_existence => false);
     local_schema name := @extschema@.__CDB_FS_Create_Schema(server_internal, remote_schema);
-    src_table REGCLASS;
+    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(server_internal);
+
+    src_table REGCLASS; -- import_schema.remote_table  - import_schema is local_schema
+    local_view text;    -- view_schema.local_name      - view_schema is server_internal
 
     rest_of_cols TEXT[];
     geom_expression TEXT;
@@ -284,31 +289,28 @@ BEGIN
         webmercator_expression
     ];
 
-    -- To create the view we switch to the caller role to make sure we have permissions
-    -- to write in the destination schema
-    RESET ROLE;
+    -- Create view schema if it doesn't exist
+    IF NOT EXISTS (SELECT oid FROM pg_namespace WHERE nspname = server_internal) THEN
+        EXECUTE 'CREATE SCHEMA ' || quote_ident(server_internal) || ' AUTHORIZATION ' || quote_ident(role_name);
+    END IF;
 
     -- Create a view with homogeneous CDB fields
     BEGIN
         EXECUTE format(
-            'CREATE OR REPLACE VIEW %1$I AS
-                SELECT %2s
-                FROM %3$s t',
-            local_name,
+            'CREATE OR REPLACE VIEW %1$I.%2$I AS
+                SELECT %3s
+                FROM %4$s t',
+            server_internal, local_name,
             array_to_string(carto_columns_expression || rest_of_cols, ','),
             src_table
         );
     EXCEPTION WHEN OTHERS THEN
-        IF EXISTS (SELECT to_regclass(local_name)) THEN
-            RAISE EXCEPTION 'Could not import table "%" as "%" already exists: %', remote_table, local_name, SQLERRM;
+        IF EXISTS (SELECT to_regclass(format('%1$I.%2$I', server_internal, local_name))) THEN
+            RAISE EXCEPTION 'Could not import table "%" as "%.%" already exists', remote_table, server_internal, local_name;
         ELSE
             RAISE EXCEPTION 'Could not import table "%" as "%": %', remote_table, local_name, SQLERRM;
         END IF;
     END;
-
-    EXECUTE format('ALTER VIEW %1$I OWNER TO %I',
-                local_name,
-                cartodb.__CDB_FS_Generate_Server_Role_Name(server_internal));
 END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
