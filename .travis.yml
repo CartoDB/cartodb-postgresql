@@ -16,7 +16,9 @@ jobs:
     - env: POSTGRESQL_VERSION="11" POSTGIS_VERSION="2.5"
     - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="2.5"
     - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="3"
-  
+  allow_failures:
+    - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="2.5"
+    - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="3"
 
 script:
   - sudo service postgresql stop;
