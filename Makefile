@@ -138,7 +138,9 @@ PG_VERSION := $(shell $(PG_CONFIG) --version | $(AWK) '{split($$2,a,"."); print 
 PG_12_GE := $(shell [ $(PG_VERSION) -ge 12 ] && echo true)
 PLPYTHONU := plpythonu
 ifeq ($(PG_12_GE), true)
-PLPYTHONU := plpython3u
+# Reverted until we are ready for PG12 support in other projects
+PLPYTHONU := plpythonu
+# PLPYTHONU := plpython3u
 endif
 PGPORT ?= '5432'
 PGUSER ?= 'postgres'

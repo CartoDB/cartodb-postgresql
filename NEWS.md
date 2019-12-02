@@ -1,3 +1,6 @@
+0.33.0 (XXXX-XX-XX)
+* Revert `Make PG12 depend on plpython3u instead of plpythonu`.
+
 0.32.0 (2019-11-08)
 * Fix oAuth ownership re-assignation for functions
 * Some fixes for PG12.
