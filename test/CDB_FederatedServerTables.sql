@@ -52,6 +52,7 @@ INSERT INTO remote_schema.remote_geom2 VALUES (3, 'patata', 'SRID=4326;POINT(3 3
 CREATE TABLE remote_schema.remote_other(id bigint, field text, field2 text);
 INSERT INTO remote_schema.remote_other VALUES (1, 'delicious', 'potatoes');
 
+CREATE TABLE remote_schema.remote_geom3(id bigint, geom geometry(Geometry,4326), geom_mercator geometry(Geometry,3857));
 
 -- ===================================================================
 -- Test the listing functions
@@ -249,6 +250,22 @@ SELECT cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom'
+    );
+
+\echo '##Registering a table with extra columns show the correct information'
+SELECT cartodb.CDB_Federated_Table_Register(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom3',
+    id_column =>  'id',
+    geom_column => 'geom',
+    webmercator_column => 'geom_mercator'
+    );
+Select * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema') where remote_table = 'remote_geom3';
+SELECT cartodb.CDB_Federated_Table_Unregister(
+    server => 'loopback',
+    remote_schema => 'remote_schema',
+    remote_table => 'remote_geom3'
     );
 
 -- ===================================================================

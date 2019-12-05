@@ -87,7 +87,7 @@ AS $$
             ELSE col_def[array_length(col_def, 1) - 2]
             END, '.', 2))
     FROM column_definitions
-    WHERE col_def[array_length(col_def, 1)] = 'the_geom,'
+    WHERE col_def[array_length(col_def, 1)] IN ('the_geom,', 'the_geom')
     LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
@@ -106,7 +106,7 @@ AS $$
             ELSE col_def[array_length(col_def, 1) - 2]
             END, '.', 2))
     FROM column_definitions
-    WHERE col_def[array_length(col_def, 1)] = 'the_geom_webmercator,'
+    WHERE col_def[array_length(col_def, 1)] IN ('the_geom_webmercator,', 'the_geom_webmercator')
     LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
@@ -218,7 +218,7 @@ BEGIN
     IF webmercator_column IS NULL THEN
         webmercator_column := geom_column;
     END IF;
-    
+
     IF local_name IS NULL THEN
         local_name := remote_table;
     END IF;
