@@ -214,9 +214,11 @@ BEGIN
         RAISE EXCEPTION 'Remote table name cannot be NULL';
     END IF;
 
-    -- Use geom_column as default for webmercator_column
+    -- Make do with whatever columns are provided
     IF webmercator_column IS NULL THEN
         webmercator_column := geom_column;
+    ELSIF geom_column IS NULL THEN
+        geom_column := webmercator_column;
     END IF;
 
     IF local_name IS NULL THEN

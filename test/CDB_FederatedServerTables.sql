@@ -213,14 +213,17 @@ SELECT cartodb.CDB_Federated_Table_Register(
     geom_column => 'Does not exists'
     );
 
-\echo '## Registering a table: NULL geom_column is OK'
+\echo '## Registering a table: NULL geom_column is OK: Reuses geom_mercator'
 SELECT cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom',
     id_column =>  'id',
-    geom_column => NULL::text
+    geom_column => NULL::text,
+    webmercator_column => 'geom'
     );
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema') where remote_table = 'remote_geom';
+
 SELECT cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -237,7 +240,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
     webmercator_column => 'Does not exists'
     );
 
-\echo '## Registering a table: NULL webmercator_column is OK'
+\echo '## Registering a table: NULL webmercator_column is OK: Reuses geom'
 SELECT cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
@@ -246,6 +249,7 @@ SELECT cartodb.CDB_Federated_Table_Register(
     geom_column => 'geom',
     webmercator_column => NULL::text
     );
+SELECT * FROM cartodb.CDB_Federated_Server_List_Remote_Tables(server => 'loopback', remote_schema => 'remote_schema') where remote_table = 'remote_geom';
 SELECT cartodb.CDB_Federated_Table_Unregister(
     server => 'loopback',
     remote_schema => 'remote_schema',

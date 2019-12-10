@@ -43,13 +43,15 @@ ERROR:  non integer id_column "Does not exist"
 ERROR:  non integer id_column "<NULL>"
 ## Registering a table: Invalid geom_column fails
 ERROR:  non geometry column "Does not exists"
-## Registering a table: NULL geom_column is OK
+## Registering a table: NULL geom_column is OK: Reuses geom_mercator
 
+t|remote_geom|cdb_fs_loopback.remote_geom|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
 
 ## Registering a table: Invalid webmercator_column fails
 ERROR:  non geometry column "Does not exists"
-## Registering a table: NULL webmercator_column is OK
+## Registering a table: NULL webmercator_column is OK: Reuses geom
 
+t|remote_geom|cdb_fs_loopback.remote_geom|id|geom|geom|[{"Name" : "another_field", "Type" : "text"}, {"Name" : "geom", "Type" : "GEOMETRY,4326"}, {"Name" : "id", "Type" : "integer"}]
 
 ##Registering a table with extra columns show the correct information
 
