@@ -175,6 +175,9 @@ SELECT '9.3', cartodb.CDB_Federated_Server_Register_PG(server => 'myRemote4'::te
 
 \echo '## Granting access to a user works'
 SELECT '9.5', cartodb.CDB_Federated_Server_Grant_Access(server => 'myRemote3', db_role => 'cdb_fs_tester'::name);
+\c contrib_regression cdb_fs_tester
+SELECT '9.55', cartodb.CDB_Federated_Server_List_Servers();
+\c contrib_regression postgres
 SELECT '9.6', cartodb.CDB_Federated_Server_Grant_Access(server => 'does not exist', db_role => 'cdb_fs_tester'::name);
 SELECT '9.7', cartodb.CDB_Federated_Server_Grant_Access(server => 'myRemote3', db_role => 'does not exist'::name);
 

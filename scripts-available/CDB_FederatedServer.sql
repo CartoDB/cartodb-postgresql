@@ -192,6 +192,34 @@ END
 $$
 LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+-- Given an server name, returns the username used in the configuration if the caller has rights to access it
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_get_usermapping_username(internal_server_name NAME)
+RETURNS text
+AS $$
+DECLARE
+    role_name name := @extschema@.__CDB_FS_Generate_Server_Role_Name(internal_server_name);
+    username text;
+BEGIN
+    BEGIN
+        EXECUTE 'SET LOCAL ROLE ' || quote_ident(role_name);
+    EXCEPTION WHEN OTHERS THEN
+        RETURN NULL;
+    END;
+
+    SELECT (SELECT option_value FROM pg_options_to_table(u.umoptions) WHERE option_name LIKE 'user') as name INTO username
+        FROM pg_foreign_server s
+        LEFT JOIN pg_user_mappings u
+        ON u.srvid = s.oid
+        WHERE s.srvname = internal_server_name
+        ORDER BY 1;
+
+    RESET ROLE;
+
+    RETURN username;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
 
 --------------------------------------------------------------------------------
 -- Public functions
@@ -233,7 +261,7 @@ BEGIN
         RAISE EXCEPTION 'postgres_fdw extension is not installed'
             USING HINT = 'Please install it with `CREATE EXTENSION postgres_fdw`';
     END IF;
-    
+
     -- We only create server and roles if the server didn't exist before
     IF NOT EXISTS (SELECT * FROM pg_foreign_server WHERE srvname = server_internal) THEN
         BEGIN
@@ -345,8 +373,7 @@ BEGIN
         (SELECT option_value FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'dbname') AS "DBName",
         CASE WHEN (SELECT NOT option_value::boolean FROM pg_options_to_table(s.srvoptions) WHERE option_name LIKE 'updatable') THEN 'read-only' ELSE 'read-write' END AS "ReadMode",
 
-        -- Read username from pg_user_mappings
-        (SELECT option_value FROM pg_options_to_table(u.umoptions) WHERE option_name LIKE 'user') AS "Username"
+        @extschema@.__CDB_FS_get_usermapping_username(s.srvname)::text AS "Username"
     FROM pg_foreign_server s
     LEFT JOIN pg_user_mappings u
     ON u.srvid = s.oid

@@ -47,6 +47,9 @@ ERROR:  Could not create server myRemote4: permission denied for foreign-data wr
 You are now connected to database "contrib_regression" as user "postgres".
 ## Granting access to a user works
 9.5|
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+9.55|(myRemote3,postgres_fdw,localhost,5432,,read-only,fdw_user)
+You are now connected to database "contrib_regression" as user "postgres".
 ERROR:  Server "does not exist" does not exist
 ERROR:  Could not grant access on "myRemote3" to "does not exist": role "does not exist" does not exist
 ## Granting access again raises a notice
