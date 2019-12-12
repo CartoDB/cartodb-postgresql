@@ -59,54 +59,62 @@ $$ LANGUAGE SQL STABLE PARALLEL UNSAFE;
 
 --
 -- Returns the id column from a view definition
+-- Note: The id is always of one of this forms:
+-- SELECT t.cartodb_id,
+-- SELECT t.my_id as cartodb_id,
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_id_column(view_def TEXT)
 RETURNS TEXT
 AS $$
     WITH column_definitions AS
     (
-        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+        SELECT regexp_split_to_array(trim(leading from regexp_split_to_table(view_def, '\n')), ' ') AS col_def
     )
-    SELECT split_part(col_def[array_length(col_def, 1) - 2], '.', 2)
-    FROM column_definitions where col_def[array_length(col_def, 1)] = 'cartodb_id,'
+    SELECT trim(trailing ',' FROM split_part(col_def[2], '.', 2))
+    FROM column_definitions
+    WHERE trim(trailing ',' FROM col_def[array_length(col_def, 1)]) IN ('t.cartodb_id', 'cartodb_id')
     LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 --
 -- Returns the geom column from a view definition
 --
+-- Note: The the_geom is always of one of this forms:
+--      t.the_geom,
+--      t.my_geom as the_geom,
+--
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_geom_column(view_def TEXT)
 RETURNS TEXT
 AS $$
     WITH column_definitions AS
     (
-        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+        SELECT regexp_split_to_array(trim(leading from regexp_split_to_table(view_def, '\n')), ' ') AS col_def
     )
-    SELECT trim(trailing ',' FROM split_part(
-            CASE WHEN col_def[array_length(col_def, 1) - 2] = '4326)' THEN col_def[array_length(col_def, 1) - 3]
-            ELSE col_def[array_length(col_def, 1) - 2]
-            END, '.', 2))
+    SELECT trim(trailing ',' FROM split_part(col_def[1], '.', 2))
     FROM column_definitions
-    WHERE col_def[array_length(col_def, 1)] IN ('the_geom,', 'the_geom')
+    WHERE trim(trailing ',' FROM col_def[array_length(col_def, 1)]) IN ('t.the_geom', 'the_geom')
     LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 --
 -- Returns the webmercatorcolumn from a view definition
+-- Note: The the_geom_webmercator is always of one of this forms:
+--      t.the_geom_webmercator,
+--      t.my_geom as the_geom_webmercator,
+-- Or without the trailing comma:
+--      t.the_geom_webmercator
+--      t.my_geom as the_geom_webmercator
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Get_View_webmercator_column(view_def TEXT)
 RETURNS TEXT
 AS $$
     WITH column_definitions AS
     (
-        SELECT regexp_split_to_array(regexp_split_to_table(view_def, '\n'), ' ') AS col_def
+        SELECT regexp_split_to_array(trim(leading from regexp_split_to_table(view_def, '\n')), ' ') AS col_def
     )
-    SELECT trim(trailing ',' FROM split_part(
-            CASE WHEN col_def[array_length(col_def, 1) - 2] = '3857)' THEN col_def[array_length(col_def, 1) - 3]
-            ELSE col_def[array_length(col_def, 1) - 2]
-            END, '.', 2))
+    SELECT trim(trailing ',' FROM split_part(col_def[1], '.', 2))
     FROM column_definitions
-    WHERE col_def[array_length(col_def, 1)] IN ('the_geom_webmercator,', 'the_geom_webmercator')
+    WHERE trim(trailing ',' FROM col_def[array_length(col_def, 1)]) IN ('t.the_geom_webmercator', 'the_geom_webmercator')
     LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 

@@ -45,7 +45,7 @@ CREATE TABLE remote_schema.remote_geom(id int, another_field text, geom geometry
 INSERT INTO remote_schema.remote_geom VALUES (1, 'patata', 'SRID=4326;POINT(1 1)'::geometry);
 INSERT INTO remote_schema.remote_geom VALUES (2, 'patata2', 'SRID=4326;POINT(2 2)'::geometry);
 
-CREATE TABLE remote_schema.remote_geom2(id bigint, another_field text, geom geometry(Geometry,4326), geom_mercator geometry(Geometry,3857));
+CREATE TABLE remote_schema.remote_geom2(cartodb_id bigint, another_field text, the_geom geometry(Geometry,4326), the_geom_webmercator geometry(Geometry,3857));
 
 INSERT INTO remote_schema.remote_geom2 VALUES (3, 'patata', 'SRID=4326;POINT(3 3)'::geometry, 'SRID=3857;POINT(3 3)');
 
@@ -84,9 +84,9 @@ SELECT 'R2', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom2',
-    id_column => 'id',
-    geom_column => 'geom',
-    webmercator_column => 'geom_mercator',
+    id_column => 'cartodb_id',
+    geom_column => 'the_geom',
+    webmercator_column => 'the_geom_webmercator',
     local_name => 'myFullTable'
     );
 
@@ -101,10 +101,10 @@ SELECT 'R3', cartodb.CDB_Federated_Table_Register(
     server => 'loopback',
     remote_schema => 'remote_schema',
     remote_table => 'remote_geom2',
-    id_column => 'id',
+    id_column => 'cartodb_id',
     -- Switch geom and geom_column on purpose to force ST_Transform to be used
-    geom_column => 'geom_mercator',
-    webmercator_column => 'geom',
+    geom_column => 'the_geom_webmercator',
+    webmercator_column => 'the_geom',
     local_name => 'different_name'
     );
 
