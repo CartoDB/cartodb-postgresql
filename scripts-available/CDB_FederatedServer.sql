@@ -34,7 +34,7 @@ AS $$
 DECLARE
     internal_server_name text := format('%s%s', @extschema@.__CDB_FS_Name_Pattern(), input_name);
 BEGIN
-    IF input_name IS NULL THEN
+    IF input_name IS NULL OR char_length(input_name) = 0 THEN
         RAISE EXCEPTION 'Server name cannot be NULL';
     END IF;
 
@@ -381,7 +381,7 @@ BEGIN
     ORDER BY 1;
 END
 $$
-LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+LANGUAGE PLPGSQL VOLATILE PARALLEL SAFE;
 
 
 --
