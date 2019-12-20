@@ -33,7 +33,7 @@ BEGIN
 
    IF raster_available THEN
        raster_read_query := Format('SELECT o_table_name, r_table_name FROM @postgisschema@.raster_overviews
-                        WHERE o_table_schema = ''%I'' AND o_table_catalog = current_database()', schema_name);
+                        WHERE o_table_schema = %L AND o_table_catalog = current_database()', schema_name);
    ELSE
        raster_read_query := 'SELECT NULL::text AS o_table_name, NULL::text AS r_table_name';
    END IF;
@@ -42,7 +42,7 @@ BEGIN
     %s
   ),
   user_tables AS (
-    SELECT table_name FROM @extschema@._CDB_NonAnalysisTablesInSchema(''%I'')
+    SELECT table_name FROM @extschema@._CDB_NonAnalysisTablesInSchema(%L)
   ),
   table_cat AS (
     SELECT
@@ -55,7 +55,7 @@ BEGIN
     FROM user_tables
   ),
   sizes AS (
-    SELECT COALESCE(INT8(SUM(@extschema@._CDB_total_relation_size(''%I'', table_name)))) table_size,
+    SELECT COALESCE(INT8(SUM(@extschema@._CDB_total_relation_size(%L, table_name)))) table_size,
       CASE
         WHEN is_overview THEN 0
 	WHEN is_raster THEN 1
