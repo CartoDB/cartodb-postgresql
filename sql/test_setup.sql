@@ -2,7 +2,7 @@
 \set QUIET on
 SET client_min_messages TO error;
 CREATE EXTENSION postgis;
-CREATE EXTENSION plpythonu;
+CREATE EXTENSION @@plpythonu@@;
 CREATE SCHEMA cartodb;
 \i 'cartodb--unpackaged--@@VERSION@@.sql'
 CREATE FUNCTION public.cdb_invalidate_varnish(table_name text)

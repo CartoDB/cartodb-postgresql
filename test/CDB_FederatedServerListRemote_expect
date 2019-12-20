@@ -1,0 +1,162 @@
+C1|
+C2|
+## Test listing of remote schemas without permissions before the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote schemas (sunny day)
+S 1
+information_schema
+public
+## Test listing of remote schemas without permissions after the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote schemas with permissions (sunny day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+S 1
+information_schema
+public
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote schemas without permissions after revoking access (rainy day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote schemas (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
+## Test listing of remote tables without permissions before the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote tables (sunny day)
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback"
+f|T 1|||||[{"Name" : "C 1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}, {"Name" : "c4", "Type" : "timestamp with time zone"}, {"Name" : "c5", "Type" : "timestamp without time zone"}, {"Name" : "c6", "Type" : "character varying"}, {"Name" : "c7", "Type" : "character"}, {"Name" : "c8", "Type" : "USER-DEFINED"}]
+f|T 2|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "text"}]
+f|T 3|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+f|T 4|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+## Test listing of remote tables without permissions after the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote tables with permissions (sunny day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback"
+f|T 1|||||[{"Name" : "C 1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}, {"Name" : "c4", "Type" : "timestamp with time zone"}, {"Name" : "c5", "Type" : "timestamp without time zone"}, {"Name" : "c6", "Type" : "character varying"}, {"Name" : "c7", "Type" : "character"}, {"Name" : "c8", "Type" : "USER-DEFINED"}]
+f|T 2|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "text"}]
+f|T 3|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+f|T 4|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote tables without permissions after revoking access (rainy day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote tables (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
+## Test listing of remote tables (rainy day): Remote schema does not exist
+## Test listing of remote columns without permissions before the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote columns (sunny day)
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback"
+C 1|integer
+c2|integer
+c3|text
+c4|timestamp with time zone
+c5|timestamp without time zone
+c6|character varying
+c7|character
+c8|USER-DEFINED
+## Test listing of remote columns without permissions after the first instantiation (rainy day)
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote columns with permissions (sunny day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback"
+C 1|integer
+c2|integer
+c3|text
+c4|timestamp with time zone
+c5|timestamp without time zone
+c6|character varying
+c7|character
+c8|USER-DEFINED
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote columns without permissions after revoking access (rainy day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+ERROR:  Not enough permissions to access the server "loopback"
+You are now connected to database "contrib_regression" as user "postgres".
+## Test listing of remote columns (rainy day): Server does not exist
+ERROR:  Server "Does Not Exist" does not exist
+## Test listing of remote columns (rainy day): Remote schema does not exist
+## Test listing of remote columns (rainy day): Remote table does not exist
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback"
+## Test listing of remote columns (rainy day): Remote table is NULL
+ERROR:  Remote table name cannot be NULL
+## Test listing of remote objects with permissions (sunny day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester2".
+S 1
+information_schema
+public
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback2"
+f|T 1|||||[{"Name" : "C 1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}, {"Name" : "c4", "Type" : "timestamp with time zone"}, {"Name" : "c5", "Type" : "timestamp without time zone"}, {"Name" : "c6", "Type" : "character varying"}, {"Name" : "c7", "Type" : "character"}, {"Name" : "c8", "Type" : "USER-DEFINED"}]
+f|T 2|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "text"}]
+f|T 3|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+f|T 4|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback2"
+C 1|integer
+c2|integer
+c3|text
+c4|timestamp with time zone
+c5|timestamp without time zone
+c6|character varying
+c7|character
+c8|USER-DEFINED
+You are now connected to database "contrib_regression" as user "postgres".
+## Test that dropping the granted user works fine (sunny day)
+REVOKE
+DROP ROLE
+## Test listing of remote objects with other user still works (sunny day)
+
+You are now connected to database "contrib_regression" as user "cdb_fs_tester".
+S 1
+information_schema
+public
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback2"
+f|T 1|||||[{"Name" : "C 1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}, {"Name" : "c4", "Type" : "timestamp with time zone"}, {"Name" : "c5", "Type" : "timestamp without time zone"}, {"Name" : "c6", "Type" : "character varying"}, {"Name" : "c7", "Type" : "character"}, {"Name" : "c8", "Type" : "USER-DEFINED"}]
+f|T 2|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "text"}]
+f|T 3|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+f|T 4|||||[{"Name" : "c1", "Type" : "integer"}, {"Name" : "c2", "Type" : "integer"}, {"Name" : "c3", "Type" : "text"}]
+INFO:  Could not find Postgis installation in the remote "public" schema in server "loopback2"
+C 1|integer
+c2|integer
+c3|text
+c4|timestamp with time zone
+c5|timestamp without time zone
+c6|character varying
+c7|character
+c8|USER-DEFINED
+## Test listing of remote geometry columns (sunny day)
+geo_nosrid|GEOMETRY,0
+geog|Geometry,0
+geom|GEOMETRY,4326
+geom_wm|GEOMETRY,3857
+## Test listing of remote geometry columns (sunny day) - Rerun
+geo_nosrid|GEOMETRY,0
+geog|Geometry,0
+geom|GEOMETRY,4326
+geom_wm|GEOMETRY,3857
+## Check error message with invalid password (rainy day)
+
+ERROR:  could not connect to server "cdb_fs_loopback_invalid"
+
+D1|
+D2|
