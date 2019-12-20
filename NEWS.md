@@ -1,5 +1,6 @@
-0.33.0 (XXXX-XX-XX)
+0.33.0 (2019-12-20)
 * Revert `Make PG12 depend on plpython3u instead of plpythonu`.
+* Add functions to manage Federated Tables (Foreign Data Wrapper)
 
 0.32.0 (2019-11-08)
 * Fix oAuth ownership re-assignation for functions
