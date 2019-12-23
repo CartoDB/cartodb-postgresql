@@ -1,0 +1,28 @@
+C1|
+C2|
+C3|
+%% It raises an error if the server does not exist
+ERROR:  Server "doesNotExist" does not exist
+%% It returns a jsonb object
+1.2|jsonb
+%% It returns the server version
+1.3|t
+%% It returns the postgis version
+1.4|t
+%% It returns null as the postgis version if it is not installed
+1.5|t
+%% It returns the remote server options
+1.6|t
+%% It returns network latency stats to the remote server: min <= avg <= max
+2.1|t|t
+%% Latency stats: 0 <= min <= max <= 1000 ms (local connection)
+2.2|t|t
+%% Latency stats: stdev > 0
+2.3|t
+%% It raises an error if the wrong port is provided
+ERROR:  could not connect to server "cdb_fs_wrong-port"
+%% Latency stats: can get them on default PG port 5432 when not provided
+2.4|t|t
+D1|
+D2|
+D3|
