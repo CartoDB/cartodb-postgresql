@@ -6,6 +6,13 @@ AS $$
 $$
 LANGUAGE SQL STABLE PARALLEL SAFE;
 
+
+----- ########################## WARNING ##########################
+----- The code below creates a new role for the organization but
+----- only when the extension is INSTALLED in a database, i.e. it
+----- won't work if you clone a database that has it installed.
+----- If you do, you need to update the extension to next and back
+----- ########################## WARNING ##########################
 DO LANGUAGE 'plpgsql' $$
 DECLARE
     cdb_org_member_role_name TEXT;
@@ -38,6 +45,12 @@ AS $$
 $$
 LANGUAGE SQL STABLE PARALLEL SAFE;
 
+----- ########################## WARNING ##########################
+----- The code below creates a new role for the organization but
+----- only when the extension is INSTALLED in a database, i.e. it
+----- won't work if you clone a database that has it installed.
+----- If you do, you need to update the extension to next and back
+----- ########################## WARNING ##########################
 -- Administrator role creation on extension install
 DO LANGUAGE 'plpgsql' $$
 DECLARE
