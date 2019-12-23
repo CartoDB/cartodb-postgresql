@@ -1,5 +1,5 @@
 0.34.0 (2019-12-23)
-* Revert changes done in 0.32.0, keeping function signature to drop them
+* Revert changes done in 0.33.0, keeping function signature to drop them
 
 0.33.0 (2019-12-20)
 * Revert `Make PG12 depend on plpython3u instead of plpythonu`.
