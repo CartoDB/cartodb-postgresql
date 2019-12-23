@@ -172,7 +172,27 @@ $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 
 --------------------------------------------------------------------------------
--- Deprecated
+-- Role management
 --------------------------------------------------------------------------------
-DROP FUNCTION IF EXISTS @extschema@.CDB_Organization_Grant_Role(name);
-DROP FUNCTION IF EXISTS @extschema@.CDB_Organization_Revoke_Role(name);
+CREATE OR REPLACE
+FUNCTION @extschema@.CDB_Organization_Grant_Role(role_name name)
+RETURNS VOID AS $$
+DECLARE
+    org_role TEXT;
+BEGIN
+    org_role := @extschema@.CDB_Organization_Member_Group_Role_Member_Name();
+    EXECUTE format('GRANT %I TO %I', role_name, org_role);
+END
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
+
+CREATE OR REPLACE
+FUNCTION @extschema@.CDB_Organization_Revoke_Role(role_name name)
+RETURNS VOID AS $$
+DECLARE
+    org_role TEXT;
+BEGIN
+    org_role := @extschema@.CDB_Organization_Member_Group_Role_Member_Name();
+    EXECUTE format('REVOKE %I FROM %I', role_name, org_role);
+END
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
