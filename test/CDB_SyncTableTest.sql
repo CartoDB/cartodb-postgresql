@@ -51,7 +51,7 @@ UPDATE test_sync_dest SET the_geom = cartodb.CDB_LatLng(lat, lon); -- A "gecodin
 SET client_min_messages TO notice;
 SELECT cartodb.CDB_SyncTable('test_sync_source', 'public', 'test_sync_dest', '{the_geom, the_geom_webmercator}');
 SELECT * FROM test_sync_source ORDER BY cartodb_id;
-SELECT cartodb_id, the_geom, lat, lon, name FROM test_sync_dest ORDER BY cartodb_id;
+SELECT * FROM test_sync_dest ORDER BY cartodb_id;
 
 \echo 'It will work with schemas that need quoting'
 \set QUIET on
