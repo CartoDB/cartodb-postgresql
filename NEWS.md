@@ -1,5 +1,6 @@
 0.35.0 (XXXX-XX-XX)
 * Reapply the changes in 0.33.0 (the issue we were looking for was unrelated)
+* Reapply `Make PG12 depend on plpython3u instead of plpythonu`
 
 0.34.0 (2019-12-23)
 * Revert changes done in 0.33.0, keeping function signature to drop them
