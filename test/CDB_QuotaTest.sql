@@ -60,6 +60,9 @@ SELECT 'excess3', catch_error($$INSERT INTO big VALUES (3);$$); -- disallowed, q
 DROP TABLE big;
 SELECT CDB_SetUserQuotaInBytes(0);
 
+CREATE SCHEMA "complex-name%_with'quotes""";
+SELECT CDB_UserDataSize('"complex-name%_with''quotes"');
+DROP SCHEMA "complex-name%_with'quotes""";
 
 set client_min_messages to NOTICE;
 DROP FUNCTION catch_error(text);
