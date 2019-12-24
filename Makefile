@@ -1,7 +1,7 @@
 # cartodb/Makefile
 
 EXTENSION = cartodb
-EXTVERSION = 0.33.0
+EXTVERSION = 0.34.0
 
 SED = sed
 AWK = awk
@@ -106,6 +106,7 @@ UPGRADABLE = \
   0.31.0 \
   0.32.0 \
   0.33.0 \
+  0.34.0 \
   $(EXTVERSION)dev \
   $(EXTVERSION)next \
   $(END)
@@ -139,9 +140,7 @@ PG_VERSION := $(shell $(PG_CONFIG) --version | $(AWK) '{split($$2,a,"."); print 
 PG_12_GE := $(shell [ $(PG_VERSION) -ge 12 ] && echo true)
 PLPYTHONU := plpythonu
 ifeq ($(PG_12_GE), true)
-# Reverted until we are ready for PG12 support in other projects
-PLPYTHONU := plpythonu
-# PLPYTHONU := plpython3u
+PLPYTHONU := plpython3u
 endif
 PGPORT ?= '5432'
 PGUSER ?= 'postgres'

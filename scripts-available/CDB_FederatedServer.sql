@@ -65,7 +65,7 @@ $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
 --
--- Produce a valid name for a schema generated for the Federated Server 
+-- Produce a valid name for a schema generated for the Federated Server
 --
 CREATE OR REPLACE FUNCTION @extschema@.__CDB_FS_Generate_Schema_Name(internal_server_name NAME, schema_name TEXT)
 RETURNS NAME
@@ -155,7 +155,7 @@ BEGIN
     IF NOT (input_config ? 'credentials') THEN
         RAISE EXCEPTION 'Credentials are mandatory';
     END IF;
-    
+
     -- For now, allow not passing username or password
     IF input_config->'credentials'->'username' IS NOT NULL THEN
         mapping := jsonb_build_object('user', input_config->'credentials'->'username');
@@ -163,7 +163,7 @@ BEGIN
     IF input_config->'credentials'->'password' IS NOT NULL THEN
         mapping := mapping || jsonb_build_object('password', input_config->'credentials'->'password');
     END IF;
-    
+
     RETURN (input_config - 'credentials')::jsonb || jsonb_build_object('user_mapping', mapping);
 END
 $$
@@ -345,7 +345,7 @@ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
 --
 -- List registered servers
--- 
+--
 CREATE OR REPLACE FUNCTION @extschema@.CDB_Federated_Server_List_Servers(server TEXT DEFAULT '%')
 RETURNS TABLE (
     name        text,

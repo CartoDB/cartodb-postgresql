@@ -244,7 +244,7 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
         RAISE EXCEPTION 'Could not import schema "%" of server "%": %', remote_schema, server, SQLERRM;
     END;
-    
+
     BEGIN
         src_table := format('%I.%I', local_schema, remote_table);
     EXCEPTION WHEN OTHERS THEN
