@@ -32,7 +32,6 @@ AS $$
           client = redis.Redis(host=tis_host, port=tis_port, socket_timeout=tis_timeout)
           GD['invalidation'] = client
         except Exception as err:
-          error = "client_error - %s" % str(err)
           # NOTE: no retries on connection error
           plpy.warning('Error trying to connect to Invalidation Service to link Ghost Tables: ' +  str(err))
           break
@@ -41,13 +40,12 @@ AS $$
       client.execute_command('DBSCH', db_name, username, event_name)
       break
     except Exception as err:
-      error = "request_error - %s" % str(err)
       client = GD['invalidation'] = None # force reconnect
       if not tis_retry:
         plpy.warning('Error calling Invalidation Service to link Ghost Tables: ' +  str(err))
         break
       tis_retry -= 1 # try reconnecting
-$$ LANGUAGE 'plpythonu' VOLATILE PARALLEL UNSAFE;
+$$ LANGUAGE '@@plpythonu@@' VOLATILE PARALLEL UNSAFE;
 
 -- Enqueues a job to run Ghost tables linking process for the current user
 CREATE OR REPLACE FUNCTION @extschema@.CDB_LinkGhostTables(event_name text DEFAULT 'USER')
@@ -61,7 +59,7 @@ AS $$
     EXECUTE 'SELECT current_database();' INTO db_name;
 
     PERFORM @extschema@._CDB_LinkGhostTables(username, db_name, event_name);
-    RAISE NOTICE '_CDB_LinkGhostTables() called with username=%, event_name=%', username, event_name;
+    RAISE INFO '_CDB_LinkGhostTables() called with username=%, event_name=%', username, event_name;
   END;
 $$  LANGUAGE plpgsql
     VOLATILE

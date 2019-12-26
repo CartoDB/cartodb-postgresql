@@ -1,4 +1,3 @@
-dist: xenial
 language: c
 sudo: required
 
@@ -12,10 +11,15 @@ env:
 jobs:
   include:
     - env: POSTGRESQL_VERSION="9.6" POSTGIS_VERSION="2.5"
+      dist: xenial
     - env: POSTGRESQL_VERSION="10" POSTGIS_VERSION="2.5"
+      dist: xenial
     - env: POSTGRESQL_VERSION="11" POSTGIS_VERSION="2.5"
+      dist: xenial
     - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="2.5"
+      dist: bionic
     - env: POSTGRESQL_VERSION="12" POSTGIS_VERSION="3"
+      dist: bionic
 
 script:
   - sudo service postgresql stop;

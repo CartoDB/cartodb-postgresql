@@ -150,7 +150,7 @@ $(EXTENSION)--$(EXTVERSION).sql: $(CDBSCRIPTS) cartodb_version.sql Makefile
 	cat $(CDBSCRIPTS) | \
 	$(SED) 	-e 's/@extschema@/cartodb/g' \
 		-e 's/@postgisschema@/public/g' \
-		-e 's/plpythonu/$(PLPYTHONU)/g' >> $@
+		-e 's/@@plpythonu@@/$(PLPYTHONU)/g' >> $@
 	echo "GRANT USAGE ON SCHEMA cartodb TO public;" >> $@
 	cat cartodb_version.sql >> $@
 
@@ -164,10 +164,10 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 	cp $< $@
 
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/g' -e 's/plpythonu/$(PLPYTHONU)/g' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/g' -e 's/@@plpythonu@@/$(PLPYTHONU)/g' $< > $@
 
 cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
-	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/plpythonu/$(PLPYTHONU)/g' $< > $@
+	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/@@plpythonu@@/$(PLPYTHONU)/g' $< > $@
 
 # Needed for consistent `echo` results with backslashes
 SHELL = bash
