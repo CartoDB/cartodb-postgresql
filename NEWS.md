@@ -1,4 +1,4 @@
-0.35.0 (XXXX-XX-XX)
+0.35.0 (2019-12-30)
 * Reapply the changes in 0.33.0 (the issue we were looking for was unrelated)
 * Reapply `Make PG12 depend on plpython3u instead of plpythonu`
 * Fix identifier quotation in `CDB_UserDataSize`
