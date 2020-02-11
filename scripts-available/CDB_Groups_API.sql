@@ -197,8 +197,17 @@ CREATE OR REPLACE
 FUNCTION @extschema@._CDB_Group_API_Auth(username text, password text)
     RETURNS TEXT AS
 $$
+    import sys
     import base64
-    return base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+
+    data_to_encode = '%s:%s' % (username, password)
+    if sys.version_info[0] < 3: -- python 2.x
+        data_encoded = base64.encodestring(data_to_encode)
+    else: -- python 3.x
+        data_encoded = base64.b64encode(data_to_encode.encode()).decode()
+
+    data_encoded = data_encoded.replace('\n', '')
+    return data_encoded
 $$ LANGUAGE '@@plpythonu@@' VOLATILE PARALLEL UNSAFE;
 
 -- url must contain a '%s' placeholder that will be replaced by current_database, for security reasons.
@@ -206,10 +215,12 @@ CREATE OR REPLACE
 FUNCTION @extschema@._CDB_Group_API_Request(method text, url text, body text, valid_return_codes int[])
     RETURNS int AS
 $$
+    python_v2 = True
     try:
-        import httplib as client
+      import httplib as client
     except:
-        from http import client
+      from http import client
+      python_v3 = False
 
     params = plpy.execute("select c.host, c.port, c.timeout, c.auth from @extschema@._CDB_Group_API_Conf() c;")[0]
     if params['host'] is None:
@@ -222,7 +233,10 @@ $$
     last_err = None
     while retry > 0:
       try:
-        conn = SD['groups_api_client'] = client.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+        if python_v2:
+          conn = SD['groups_api_client'] = client.HTTPConnection(params['host'], params['port'], False, params['timeout'])
+        else:
+          conn = SD['groups_api_client'] = client.HTTPConnection(params['host'], port=params['port'], timeout=params['timeout'])
         database_name = plpy.execute("select current_database();")[0]['current_database']
         conn.request(method, url.format(database_name), body, headers)
         response = conn.getresponse()
