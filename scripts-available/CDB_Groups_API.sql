@@ -202,9 +202,9 @@ $$
 
     data_to_encode = '%s:%s' % (username, password)
     if sys.version_info[0] < 3:
-        data_encoded = base64.encodestring(data_to_encode)
+      data_encoded = base64.encodestring(data_to_encode)
     else:
-        data_encoded = base64.b64encode(data_to_encode.encode()).decode()
+      data_encoded = base64.b64encode(data_to_encode.encode()).decode()
 
     data_encoded = data_encoded.replace('\n', '')
     return data_encoded
@@ -220,7 +220,7 @@ $$
       import httplib as client
     except:
       from http import client
-      python_v3 = False
+      python_v2 = False
 
     params = plpy.execute("select c.host, c.port, c.timeout, c.auth from @extschema@._CDB_Group_API_Conf() c;")[0]
     if params['host'] is None:
