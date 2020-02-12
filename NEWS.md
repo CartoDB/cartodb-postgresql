@@ -1,3 +1,7 @@
+0.36.0 (2020-XX-XX)
+* Make `_CDB_Group_API_Auth` python3 compatible by passing bytes representation instead of a string.
+* Make `_CDB_Group_API_Request` python3 compatible by adapting the function signature of `HTTPConnection`.
+
 0.35.0 (2019-12-30)
 * Reapply the changes in 0.33.0 (the issue we were looking for was unrelated)
 * Reapply `Make PG12 depend on plpython3u instead of plpythonu`
