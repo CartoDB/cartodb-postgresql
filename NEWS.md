@@ -1,4 +1,4 @@
-0.36.0 (2020-XX-XX)
+0.36.0 (2020-02-13)
 * Make `_CDB_Group_API_Auth` python3 compatible by passing bytes representation instead of a string.
 * Make `_CDB_Group_API_Request` python3 compatible by adapting the function signature of `HTTPConnection`.
 
