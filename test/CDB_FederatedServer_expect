@@ -2,20 +2,20 @@
 ## List non-existent server shows nothing
 ## Create and list a server works
 1.3|
-1.4|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
+1.4|(myRemote,postgres_fdw,localhost,@@PGPORT@@,,read-only,fdw_user)
 ## Create and list a second server works
 2.1|
-2.2|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
-2.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,fdw_user)
+2.2|(myRemote,postgres_fdw,localhost,@@PGPORT@@,,read-only,fdw_user)
+2.2|(myRemote2,postgres_fdw,localhost,@@PGPORT@@,fdw_target,read-only,fdw_user)
 ## List server by name works
-2.3|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
+2.3|(myRemote,postgres_fdw,localhost,@@PGPORT@@,,read-only,fdw_user)
 ## Re-register a second server works
 3.1|
-3.2|(myRemote,postgres_fdw,localhost,5432,,read-only,fdw_user)
-3.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
+3.2|(myRemote,postgres_fdw,localhost,@@PGPORT@@,,read-only,fdw_user)
+3.2|(myRemote2,postgres_fdw,localhost,@@PGPORT@@,fdw_target,read-only,other_remote_user)
 ## Unregister server 1 works
 4.1|
-4.2|(myRemote2,postgres_fdw,localhost,5432,fdw_target,read-only,other_remote_user)
+4.2|(myRemote2,postgres_fdw,localhost,@@PGPORT@@,fdw_target,read-only,other_remote_user)
 ## Unregistering a server that does not exist fails
 ERROR:  Server "doesNotExist" does not exist
 ## Unregister the second server works
@@ -30,25 +30,25 @@ ERROR:  Server information is mandatory
 ERROR:  Credentials are mandatory
 ## Create a server with empty credentials works
 7.3|
-7.4|(empty,postgres_fdw,localhost,5432,fdw_target,read-only,)
+7.4|(empty,postgres_fdw,localhost,@@PGPORT@@,fdw_target,read-only,)
 7.5|
 ## Create a server without options fails
 ERROR:  Server information is mandatory
 ## Create a server with special characters works
 8.1|
-8.2|("myRemote"" or'not",postgres_fdw,localhost,5432,"fdw target",read-only,"fdw user")
+8.2|("myRemote"" or'not",postgres_fdw,localhost,@@PGPORT@@,"fdw target",read-only,"fdw user")
 8.3|
 9.1|
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
 ## All users are able to list servers
-9.2|(myRemote3,postgres_fdw,localhost,5432,,read-only,)
+9.2|(myRemote3,postgres_fdw,localhost,@@PGPORT@@,,read-only,)
 ## Only superadmins can create servers
 ERROR:  Could not create server myRemote4: permission denied for foreign-data wrapper postgres_fdw
 You are now connected to database "contrib_regression" as user "postgres".
 ## Granting access to a user works
 9.5|
 You are now connected to database "contrib_regression" as user "cdb_fs_tester".
-9.55|(myRemote3,postgres_fdw,localhost,5432,,read-only,fdw_user)
+9.55|(myRemote3,postgres_fdw,localhost,@@PGPORT@@,,read-only,fdw_user)
 You are now connected to database "contrib_regression" as user "postgres".
 ERROR:  Server "does not exist" does not exist
 ERROR:  Could not grant access on "myRemote3" to "does not exist": role "does not exist" does not exist
