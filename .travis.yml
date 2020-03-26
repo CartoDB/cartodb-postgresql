@@ -28,8 +28,7 @@ script:
   - if [[ $POSTGRESQL_VERSION != '12' ]]; then sudo apt-get install -y postgresql-plpython-$POSTGRESQL_VERSION python python-redis; else sudo apt-get install -y postgresql-plpython3-12 python3 python3-redis; fi;
   - sudo pg_dropcluster --stop $POSTGRESQL_VERSION main
   - sudo rm -rf /etc/postgresql/$POSTGRESQL_VERSION /var/lib/postgresql/$POSTGRESQL_VERSION /var/ramfs/postgresql/$POSTGRESQL_VERSION
-  - sudo pg_createcluster -u postgres $POSTGRESQL_VERSION main -- --auth-local trust --auth-host password
-  - sudo /etc/init.d/postgresql start $POSTGRESQL_VERSION || sudo journalctl -xe
+  - sudo pg_createcluster -u postgres $POSTGRESQL_VERSION main --start -- --auth-local trust --auth-host password
   - export PGPORT=$(pg_lsclusters | grep $POSTGRESQL_VERSION | awk '{print $3}')
   - make
   - sudo make install
@@ -40,3 +39,4 @@ after_failure:
   - cat regression.out
   - cat regression.diffs
   - echo $PGPORT
+  - cat /var/log/postgresql/postgresql-$POSTGRESQL_VERSION-main.log
