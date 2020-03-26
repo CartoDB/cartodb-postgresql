@@ -99,7 +99,7 @@ FROM latency;
 \echo '%% It raises an error if the wrong port is provided'
 SELECT '3.0', cartodb.CDB_Federated_Server_Diagnostics(server => 'wrong-port');
 
--- Disabled: It's not compatibly with Travis since the target database (self) might be in a different port
+-- Disabled: It's not compatible with Travis since the target database (self) might be in a different port
 -- \echo '%% Latency stats: can get them on default PG port 5432 when not provided'
 -- WITH latency AS (
 --    SELECT CDB_Federated_Server_Diagnostics('loopback-no-port')->'server_latency_ms' ms
