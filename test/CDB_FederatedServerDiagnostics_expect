@@ -21,8 +21,6 @@ ERROR:  Server "doesNotExist" does not exist
 2.3|t
 %% It raises an error if the wrong port is provided
 ERROR:  could not connect to server "cdb_fs_wrong-port"
-%% Latency stats: can get them on default PG port 5432 when not provided
-2.4|t|t
 D1|
 D2|
 D3|

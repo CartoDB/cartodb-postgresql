@@ -201,13 +201,10 @@ $$
     import base64
 
     data_to_encode = '%s:%s' % (username, password)
-    plpy.warning('DEBUG: _CDB_Group_API_Auth python v' + str(sys.version_info[0]))
     if sys.version_info[0] < 3:
       data_encoded = base64.encodestring(data_to_encode)
     else:
-      plpy.warning('DEBUG: _CDB_Group_API_Auth entra')
       data_encoded = base64.b64encode(data_to_encode.encode()).decode()
-      plpy.warning('DEBUG: _CDB_Group_API_Auth sale')
 
     data_encoded = data_encoded.replace('\n', '')
     return data_encoded
