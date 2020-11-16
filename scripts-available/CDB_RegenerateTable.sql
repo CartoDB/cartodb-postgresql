@@ -38,7 +38,9 @@ AS $$
         sublines = [line.rstrip() for line in sublines]
         sublines = [line for line in sublines if line]
         sublines = [line for line in sublines if not line.startswith('--')]
+        # We need to force all setting changes to be local to keep the environment clean
         sublines = [re.sub(r'^SET ', 'SET LOCAL ', line) for line in sublines]
+        sublines = [re.sub(r'(.*)(pg_catalog.set_config.*)(false)(.*)', r'\1\2true\4', line) for line in sublines]
         if len(sublines):
             clean_lines.append("".join(sublines))
 
