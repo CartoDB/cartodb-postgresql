@@ -10,7 +10,7 @@ See [the cartodb-postgresql wiki](https://github.com/CartoDB/cartodb-postgresql/
 Dependencies
 ------------
 
- * PostgreSQL 9.6+ (with plpythonu extension and xml support). For PostgreSQL 12+ plpython3u is required instead of plpythonu.
+ * PostgreSQL 11+ (with plpythonu extension). For PostgreSQL 12+ plpython3u is required instead. Older versions might still work but they aren't actively tested or supported.
  * [PostGIS extension](http://postgis.net)
  * Python with [Redis module](https://pypi.org/project/redis/)
 
@@ -30,7 +30,7 @@ make installcheck
 
 NOTE: you need to run the installcheck as a superuser, use PGUSER
       env variable if needed, like: PGUSER=postgres make installcheck
-      
+
 NOTE: the tests need to run against a **clean postgres instance**, if you have some roles already created test will likely fail due `publicuser` not being dropped.
 
 Enable database
@@ -39,23 +39,7 @@ Enable database
 In a database that needs to be turned into a "cartodb" user database, run:
 
 ```sql
-CREATE EXTENSION postgis;
-CREATE EXTENSION cartodb;
-```
-
-Migrate existing cartodb database
----------------------------------
-
-When upgrading an existing cartodb user database, the cartodb extension
-can be migrated from the "unpackaged" version. The procedure will copy
-the data from ``public.CDB_TableMetada`` to ``cartodb.CDB_TableMetadata``,
-re-cartodbfy all tables using old functions in triggers and drop the
-cartodb functions from the 'public' schema. All new cartodb objects will
-be in the "cartodb" schema.
-
-```sql
-CREATE EXTENSION postgis FROM unpackaged;
-CREATE EXTENSION cartodb FROM unpackaged;
+CREATE EXTENSION cartodb CASCADE;
 ```
 
 Update cartodb extension
