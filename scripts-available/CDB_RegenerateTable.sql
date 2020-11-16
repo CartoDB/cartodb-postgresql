@@ -1,13 +1,8 @@
 --
--- Given a table
--- Replace cartodb ==> @extschema@
--- Replace plpython3u ==> @@plpythonu@@
+-- Given a table, returns a series of queries that can be used to recreate it
+-- It does not include data
 --
-
-
-
-
-CREATE OR REPLACE FUNCTION cartodb.__CDB_RegenerateTable_Get_Commands(tableoid OID)
+CREATE OR REPLACE FUNCTION @extschema@.__CDB_RegenerateTable_Get_Commands(tableoid OID)
 RETURNS text[]
 AS $$
     import subprocess
@@ -44,6 +39,44 @@ AS $$
         sublines = [line for line in sublines if not line.startswith('--')]
         if len(sublines):
             clean_lines.append("".join(sublines))
+
+    # Add an extra query to reset the environment
+    clean_lines.append("RESET ALL");
+
     return clean_lines
 $$
-LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
+LANGUAGE @@plpythonu@@ VOLATILE PARALLEL UNSAFE;
+
+-- Regenerates a table
+CREATE OR REPLACE FUNCTION @extschema@.CDB_RegenerateTable(tableoid OID)
+RETURNS void
+AS
+$$
+DECLARE
+    temp_name TEXT := 'temp_' || encode(sha224(random()::text::bytea), 'hex');
+    table_name TEXT;
+    queries TEXT[] := @extschema@.__CDB_RegenerateTable_Get_Commands(tableoid);
+    i INTEGER;
+BEGIN
+    EXECUTE FORMAT('SELECT concat(quote_ident(nspname), ''.'', quote_ident(relname)) as quoted_name
+                        FROM pg_catalog.pg_class AS c
+                        JOIN pg_catalog.pg_namespace AS ns
+                        ON c.relnamespace = ns.oid
+                        WHERE c.oid = %L', tableoid) INTO table_name;
+
+    RAISE DEBUG '%', FORMAT('ALTER TABLE %s RENAME TO %s', table_name, temp_name);
+    EXECUTE FORMAT('ALTER TABLE %s RENAME TO %s', table_name, temp_name);
+
+    FOR i IN 1 .. array_upper(queries, 1)
+    LOOP
+        RAISE DEBUG '% - %', i, queries[i];
+        EXECUTE queries[i];
+    END LOOP;
+
+    RAISE DEBUG '%', FORMAT('INSERT INTO %s SELECT * FROM %I', table_name, temp_name);
+    EXECUTE FORMAT('INSERT INTO %s SELECT * FROM %I', table_name, temp_name);
+
+    RAISE DEBUG '%', FORMAT('DROP TABLE %I', temp_name);
+    EXECUTE FORMAT('DROP TABLE %I', temp_name);
+END
+$$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
