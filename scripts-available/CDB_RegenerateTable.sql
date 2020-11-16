@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION @extschema@.__CDB_RegenerateTable_Get_Commands(tableo
 RETURNS text[]
 AS $$
     import subprocess
+    import re
 
     query = "SELECT current_database()::text as dname"
     rv = plpy.execute(query, 1)
@@ -37,11 +38,9 @@ AS $$
         sublines = [line.rstrip() for line in sublines]
         sublines = [line for line in sublines if line]
         sublines = [line for line in sublines if not line.startswith('--')]
+        sublines = [re.sub(r'^SET ', 'SET LOCAL ', line) for line in sublines]
         if len(sublines):
             clean_lines.append("".join(sublines))
-
-    # Add an extra query to reset the environment
-    clean_lines.append("RESET ALL");
 
     return clean_lines
 $$
