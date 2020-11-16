@@ -64,8 +64,10 @@ BEGIN
                         ON c.relnamespace = ns.oid
                         WHERE c.oid = %L', tableoid) INTO table_name;
 
-    RAISE DEBUG '%', FORMAT('ALTER TABLE %s RENAME TO %s', table_name, temp_name);
-    EXECUTE FORMAT('ALTER TABLE %s RENAME TO %s', table_name, temp_name);
+    RAISE DEBUG '%', FORMAT('CREATE TEMPORARY TABLE %s  ON COMMIT DROP AS SELECT * FROM %s', temp_name, table_name);
+    EXECUTE FORMAT('CREATE TEMPORARY TABLE %s  ON COMMIT DROP AS SELECT * FROM %s', temp_name, table_name);
+    RAISE DEBUG '%', FORMAT('DROP TABLE %s', table_name);
+    EXECUTE FORMAT('DROP TABLE %s', table_name);
 
     FOR i IN 1 .. array_upper(queries, 1)
     LOOP
@@ -75,8 +77,5 @@ BEGIN
 
     RAISE DEBUG '%', FORMAT('INSERT INTO %s SELECT * FROM %I', table_name, temp_name);
     EXECUTE FORMAT('INSERT INTO %s SELECT * FROM %I', table_name, temp_name);
-
-    RAISE DEBUG '%', FORMAT('DROP TABLE %I', temp_name);
-    EXECUTE FORMAT('DROP TABLE %I', temp_name);
 END
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;

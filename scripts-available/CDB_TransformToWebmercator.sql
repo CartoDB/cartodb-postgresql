@@ -36,7 +36,7 @@ BEGIN
 
   -- Don't bother clipping if the geometry boundary doesn't
   -- go outside the valid extent.
-  IF latlon_input @ valid_extent THEN
+  IF @postgisschema@.geometry_within(latlon_input, valid_extent) THEN
     BEGIN
       RETURN @postgisschema@.ST_Transform(latlon_input, 3857);
     EXCEPTION WHEN OTHERS THEN
