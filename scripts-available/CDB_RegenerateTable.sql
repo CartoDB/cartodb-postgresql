@@ -3,8 +3,12 @@
 -- Replace cartodb ==> @extschema@
 -- Replace plpython3u ==> @@plpythonu@@
 --
+
+
+
+
 CREATE OR REPLACE FUNCTION cartodb.__CDB_RegenerateTable_Get_Commands(tableoid OID)
-RETURNS text
+RETURNS text[]
 AS $$
     import subprocess
 
@@ -29,12 +33,17 @@ AS $$
     if (err):
         plpy.error(err)
 
-    lines = out.splitlines()
-    lines = [line.rstrip() for line in lines]
-    lines = [line for line in lines if line]
-    lines = [line for line in lines if not line.startswith(b'--')]
-    lines = [line.decode("utf-8") for line in lines]
-
-    return "".join(lines)
+    line = out.decode("utf-8")
+    lines = line.rsplit(";\n", -1)
+    clean_lines = []
+    for i in range(0, len(lines)):
+        line = lines[i]
+        sublines = line.splitlines()
+        sublines = [line.rstrip() for line in sublines]
+        sublines = [line for line in sublines if line]
+        sublines = [line for line in sublines if not line.startswith('--')]
+        if len(sublines):
+            clean_lines.append("".join(sublines))
+    return clean_lines
 $$
 LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
