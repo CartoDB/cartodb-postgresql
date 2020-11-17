@@ -1,0 +1,142 @@
+## Setup
+CREATE TABLE
+INSERT 0 3
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||||plain||
+c4|integer||||plain||
+1|2|3|4|5
+2|3|4|5|6
+3|4|5|6|7
+SELECT 1
+## Run cartodb.CDB_RegenerateTable and confirm the data and columns are the same
+
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||||plain||
+c4|integer||||plain||
+1|2|3|4|5
+2|3|4|5|6
+3|4|5|6|7
+## The table oid must have changed since the table itself changed
+SELECT 1
+f
+## Check adding an index
+CREATE INDEX
+testtable|testtable_stable_idx|CREATE INDEX testtable_stable_idx ON public.testtable USING btree (stable NULLS FIRST) WITH (fillfactor='80', vacuum_cleanup_index_scale_factor='0.11')
+
+testtable|testtable_stable_idx|CREATE INDEX testtable_stable_idx ON public.testtable USING btree (stable NULLS FIRST) WITH (fillfactor='80', vacuum_cleanup_index_scale_factor='0.11')
+## Check column properties
+ALTER TABLE
+ALTER TABLE
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||not null||plain||
+c4|integer||||plain||
+testtable|testtable_c2_key|CREATE UNIQUE INDEX testtable_c2_key ON public.testtable USING btree (c2)
+testtable|testtable_stable_idx|CREATE INDEX testtable_stable_idx ON public.testtable USING btree (stable NULLS FIRST) WITH (fillfactor='80', vacuum_cleanup_index_scale_factor='0.11')
+
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||not null||plain||
+c4|integer||||plain||
+testtable|testtable_c2_key|CREATE UNIQUE INDEX testtable_c2_key ON public.testtable USING btree (c2)
+testtable|testtable_stable_idx|CREATE INDEX testtable_stable_idx ON public.testtable USING btree (stable NULLS FIRST) WITH (fillfactor='80', vacuum_cleanup_index_scale_factor='0.11')
+## Check triggers
+CREATE FUNCTION
+CREATE TRIGGER
+public|testtable|public|testtable_trigger_example|UPDATE|BEFORE||EXECUTE FUNCTION trigger_example_fn()
+
+public|testtable|public|testtable_trigger_example|UPDATE|BEFORE||EXECUTE FUNCTION trigger_example_fn()
+## Check Cartodbfycation
+0
+testtable
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)|plain||
+the_geom|geometry(Geometry,4326)||||main||
+the_geom_webmercator|geometry(Geometry,3857)||||main||
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||||plain||
+c4|integer||||plain||
+testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
+testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
+testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
+public|testtable|public|test_quota|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.1', '-1', 'public')
+public|testtable|public|test_quota_per_row|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.001', '-1', 'public')
+public|testtable|public|track_updates|INSERT,DELETE,UPDATE|AFTER||EXECUTE FUNCTION cdb_tablemetadata_trigger()
+public|testtable|public|update_the_geom_webmercator_trigger|UPDATE,INSERT|BEFORE||EXECUTE FUNCTION _cdb_update_the_geom_webmercator()
+
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)|plain||
+the_geom|geometry(Geometry,4326)||||main||
+the_geom_webmercator|geometry(Geometry,3857)||||main||
+stable|integer||||plain||
+c1|integer||||plain||
+c2|integer||||plain||
+c3|integer||||plain||
+c4|integer||||plain||
+testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
+testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
+testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
+public|testtable|public|test_quota|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.1', '-1', 'public')
+public|testtable|public|test_quota_per_row|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.001', '-1', 'public')
+public|testtable|public|track_updates|INSERT,DELETE,UPDATE|AFTER||EXECUTE FUNCTION cdb_tablemetadata_trigger()
+public|testtable|public|update_the_geom_webmercator_trigger|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION _cdb_update_the_geom_webmercator()
+## Test view / matview dependencies: It will not work but data will be the same
+CREATE VIEW
+1|||1|2|3|4|5
+2|||2|3|4|5|6
+3|||3|4|5|6|7
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)
+the_geom|geometry(Geometry,4326)|||
+the_geom_webmercator|geometry(Geometry,3857)|||
+stable|integer|||
+c1|integer|||
+c2|integer|||
+c3|integer|||
+c4|integer|||
+ERROR:  cannot drop table testtable because other objects depend on it
+DROP VIEW
+
+SELECT 3
+1|||1|2|3|4|5
+2|||2|3|4|5|6
+3|||3|4|5|6|7
+ERROR:  cannot drop table testtable because other objects depend on it
+DROP MATERIALIZED VIEW
+
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)
+the_geom|geometry(Geometry,4326)|||
+the_geom_webmercator|geometry(Geometry,3857)|||
+stable|integer|||
+c1|integer|||
+c2|integer|||
+c3|integer|||
+c4|integer|||
+## Test role access
+CREATE ROLE
+GRANT
+GRANT
+You are now connected to database "contrib_regression" as user "cdb_regenerate_tester".
+3|||3|4|5|6|7
+2|||2|3|4|5|6
+1|||1|2|3|4|5
+You are now connected to database "contrib_regression" as user "postgres".
+
+You are now connected to database "contrib_regression" as user "cdb_regenerate_tester".
+3|||3|4|5|6|7
+2|||2|3|4|5|6
+1|||1|2|3|4|5
+You are now connected to database "contrib_regression" as user "postgres".
+## Test calling with read only access (should fail)
+You are now connected to database "contrib_regression" as user "cdb_regenerate_tester".
+ERROR:  must be owner of table testtable
+You are now connected to database "contrib_regression" as user "postgres".
+## teardown
+DROP TABLE
+REVOKE
+DROP ROLE
