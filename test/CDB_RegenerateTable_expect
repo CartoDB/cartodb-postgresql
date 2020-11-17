@@ -49,9 +49,9 @@ testtable|testtable_stable_idx|CREATE INDEX testtable_stable_idx ON public.testt
 ## Check triggers
 CREATE FUNCTION
 CREATE TRIGGER
-public|testtable|public|testtable_trigger_example|UPDATE|BEFORE||EXECUTE FUNCTION trigger_example_fn()
+public|testtable|public|testtable_trigger_example
 
-public|testtable|public|testtable_trigger_example|UPDATE|BEFORE||EXECUTE FUNCTION trigger_example_fn()
+public|testtable|public|testtable_trigger_example
 ## Check Cartodbfycation
 0
 testtable
@@ -66,10 +66,10 @@ c4|integer||||plain||
 testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
 testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
 testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
-public|testtable|public|test_quota|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.1', '-1', 'public')
-public|testtable|public|test_quota_per_row|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.001', '-1', 'public')
-public|testtable|public|track_updates|INSERT,DELETE,UPDATE|AFTER||EXECUTE FUNCTION cdb_tablemetadata_trigger()
-public|testtable|public|update_the_geom_webmercator_trigger|UPDATE,INSERT|BEFORE||EXECUTE FUNCTION _cdb_update_the_geom_webmercator()
+public|testtable|public|test_quota
+public|testtable|public|test_quota_per_row
+public|testtable|public|track_updates
+public|testtable|public|update_the_geom_webmercator_trigger
 
 cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)|plain||
 the_geom|geometry(Geometry,4326)||||main||
@@ -82,10 +82,10 @@ c4|integer||||plain||
 testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
 testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
 testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
-public|testtable|public|test_quota|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.1', '-1', 'public')
-public|testtable|public|test_quota_per_row|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION cdb_checkquota('0.001', '-1', 'public')
-public|testtable|public|track_updates|INSERT,DELETE,UPDATE|AFTER||EXECUTE FUNCTION cdb_tablemetadata_trigger()
-public|testtable|public|update_the_geom_webmercator_trigger|INSERT,UPDATE|BEFORE||EXECUTE FUNCTION _cdb_update_the_geom_webmercator()
+public|testtable|public|test_quota
+public|testtable|public|test_quota_per_row
+public|testtable|public|track_updates
+public|testtable|public|update_the_geom_webmercator_trigger
 ## Test view / matview dependencies: It will not work but data will be the same
 CREATE VIEW
 1|||1|2|3|4|5

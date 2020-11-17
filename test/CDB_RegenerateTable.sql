@@ -58,14 +58,10 @@ CREATE TRIGGER testtable_trigger_example
 SELECT event_object_schema as table_schema,
        event_object_table as table_name,
        trigger_schema,
-       trigger_name,
-       string_agg(event_manipulation, ',') as event,
-       action_timing as activation,
-       action_condition as condition,
-       action_statement as definition
+       trigger_name
 FROM information_schema.triggers
 WHERE event_object_table = 'testtable'
-GROUP BY 1,2,3,4,6,7,8
+GROUP BY 1,2,3,4
 ORDER BY table_schema,
          table_name;
 
@@ -74,16 +70,13 @@ SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 SELECT event_object_schema as table_schema,
        event_object_table as table_name,
        trigger_schema,
-       trigger_name,
-       string_agg(event_manipulation, ',') as event,
-       action_timing as activation,
-       action_condition as condition,
-       action_statement as definition
+       trigger_name
 FROM information_schema.triggers
 WHERE event_object_table = 'testtable'
-GROUP BY 1,2,3,4,6,7,8
+GROUP BY 1,2,3,4
 ORDER BY table_schema,
-         table_name;
+         table_name,
+         trigger_name;
 
 \echo '## Check Cartodbfycation'
 SELECT CDB_SetUserQuotaInBytes(0);
@@ -93,16 +86,13 @@ SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtab
 SELECT event_object_schema as table_schema,
        event_object_table as table_name,
        trigger_schema,
-       trigger_name,
-       string_agg(event_manipulation, ',') as event,
-       action_timing as activation,
-       action_condition as condition,
-       action_statement as definition
+       trigger_name
 FROM information_schema.triggers
 WHERE event_object_table = 'testtable'
-GROUP BY 1,2,3,4,6,7,8
+GROUP BY 1,2,3,4
 ORDER BY table_schema,
-         table_name;
+         table_name,
+         trigger_name;
 
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 
@@ -111,16 +101,13 @@ SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtab
 SELECT event_object_schema as table_schema,
        event_object_table as table_name,
        trigger_schema,
-       trigger_name,
-       string_agg(event_manipulation, ',') as event,
-       action_timing as activation,
-       action_condition as condition,
-       action_statement as definition
+       trigger_name
 FROM information_schema.triggers
 WHERE event_object_table = 'testtable'
-GROUP BY 1,2,3,4,6,7,8
+GROUP BY 1,2,3,4
 ORDER BY table_schema,
-         table_name;
+         table_name,
+         trigger_name;
 
 \echo '## Test view / matview dependencies: It will not work but data will be the same'
 CREATE VIEW testview AS SELECT * FROM testtable WHERE stable < 20;
