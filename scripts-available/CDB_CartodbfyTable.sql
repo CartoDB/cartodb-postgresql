@@ -636,8 +636,7 @@ $$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 DO $$
 BEGIN
-  SET search_path TO @extschema@;
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record' AND typnamespace = '@extschema@'::regnamespace) THEN
     CREATE TYPE @extschema@._cdb_has_usable_geom_record
       AS (has_usable_geoms boolean,
         text_geom_column boolean,
