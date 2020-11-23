@@ -79,8 +79,14 @@ ORDER BY table_schema,
          trigger_name;
 
 \echo '## Check Cartodbfycation'
+DROP INDEX testtable_stable_idx;
+DROP TRIGGER testtable_trigger_example ON testtable;
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
 SELECT CDB_SetUserQuotaInBytes(0);
 SELECT CDB_CartodbfyTable('testtable'::regclass);
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
 \d+ testtable
 SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
 SELECT event_object_schema as table_schema,
@@ -95,6 +101,9 @@ ORDER BY table_schema,
          trigger_name;
 
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
+
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
 
 \d+ testtable
 SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
@@ -184,6 +193,8 @@ WHERE c.oid=i.inhrelid AND i.inhparent = 'measurement'::regclass::oid
 ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_catalog.regclass::pg_catalog.text;
 \d measurement_y2006m02
 \d measurement_y2006m03
+
+SELECT cartodb.CDB_GetTableQueries('measurement'::regclass::oid, ignore_cartodbfication := false);
 
 \echo '## teardown'
 

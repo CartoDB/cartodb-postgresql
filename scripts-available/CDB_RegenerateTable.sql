@@ -48,6 +48,50 @@ AS $$
 $$
 LANGUAGE @@plpythonu@@ VOLATILE PARALLEL UNSAFE;
 
+-- Returns a list of queries that can be used to regenerate the structure of a table
+-- The query to create the table and the config set by pg_dump are removed
+-- The optional parameter **ignore_cartodbfication** will remove queries related to the cartodbfication of the table
+CREATE OR REPLACE FUNCTION @extschema@.CDB_GetTableQueries(tableoid OID, ignore_cartodbfication BOOL DEFAULT false)
+RETURNS text[]
+AS
+$$
+DECLARE
+    children INTEGER;
+    queries TEXT[];
+BEGIN
+    EXECUTE FORMAT ('SELECT count(*) FROM pg_catalog.pg_inherits WHERE inhparent =  %L', tableoid)
+            INTO children;
+    IF children > 0 THEN
+        RAISE EXCEPTION 'CDB_GetTableQueries does not support the parent of partitioned tables';
+    END IF;
+    IF NOT ignore_cartodbfication THEN
+        EXECUTE FORMAT('
+            SELECT array_agg(a)
+                FROM unnest(@extschema@.__CDB_RegenerateTable_Get_Commands(%L)) a
+                WHERE   a NOT SIMILAR TO ''CREATE TABLE%%'' AND
+                        a NOT SIMILAR TO ''SET%%'' AND
+                        a NOT SIMILAR TO (''%%pg_catalog.set_config%%'');', tableoid) INTO queries;
+    ELSE
+        EXECUTE FORMAT('
+            SELECT array_agg(a)
+                FROM unnest(@extschema@.__CDB_RegenerateTable_Get_Commands(%L)) a
+                WHERE   a NOT SIMILAR TO ''CREATE TABLE%%'' AND
+                        a NOT SIMILAR TO ''SET%%'' AND
+                        a NOT SIMILAR TO (''%%pg_catalog.set_config%%'') AND
+                        a NOT SIMILAR TO (''%%PRIMARY KEY \(cartodb_id\)%%'') AND
+                        a NOT SIMILAR TO (''%%cartodb_id_seq%%'') AND
+                        a NOT SIMILAR TO (''%%track_updates%%'') AND
+                        a NOT SIMILAR TO (''%%update_the_geom_webmercator_trigger%%'') AND
+                        a NOT SIMILAR TO (''%%test_quota%%'') AND
+                        a NOT SIMILAR TO (''%%test_quota_per_row%%'') AND
+                        a NOT SIMILAR TO (''%%gist \(the_geom\)%%'') AND
+                        a NOT SIMILAR TO (''%%gist \(the_geom_webmercator\)%%'');', tableoid) INTO queries;
+    END IF;
+    RETURN queries;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
 -- Regenerates a table
 CREATE OR REPLACE FUNCTION @extschema@.CDB_RegenerateTable(tableoid OID)
 RETURNS void

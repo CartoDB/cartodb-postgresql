@@ -53,8 +53,14 @@ public|testtable|public|testtable_trigger_example
 
 public|testtable|public|testtable_trigger_example
 ## Check Cartodbfycation
+DROP INDEX
+DROP TRIGGER
+{"ALTER TABLE public.testtable OWNER TO postgres","ALTER TABLE ONLY public.testtable    ADD CONSTRAINT testtable_c2_key UNIQUE (c2)"}
+{"ALTER TABLE public.testtable OWNER TO postgres","ALTER TABLE ONLY public.testtable    ADD CONSTRAINT testtable_c2_key UNIQUE (c2)"}
 0
 testtable
+{"ALTER TABLE public.testtable OWNER TO postgres","CREATE SEQUENCE public.testtable_cartodb_id_seq    START WITH 1    INCREMENT BY 1    NO MINVALUE    NO MAXVALUE    CACHE 1","ALTER TABLE public.testtable_cartodb_id_seq OWNER TO postgres","ALTER SEQUENCE public.testtable_cartodb_id_seq OWNED BY public.testtable.cartodb_id","ALTER TABLE ONLY public.testtable ALTER COLUMN cartodb_id SET DEFAULT nextval('public.testtable_cartodb_id_seq'::regclass)","ALTER TABLE ONLY public.testtable    ADD CONSTRAINT testtable_pkey PRIMARY KEY (cartodb_id)","CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)","CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)","CREATE TRIGGER test_quota BEFORE INSERT OR UPDATE ON public.testtable FOR EACH STATEMENT EXECUTE FUNCTION cartodb.cdb_checkquota('0.1', '-1', 'public')","CREATE TRIGGER test_quota_per_row BEFORE INSERT OR UPDATE ON public.testtable FOR EACH ROW EXECUTE FUNCTION cartodb.cdb_checkquota('0.001', '-1', 'public')","CREATE TRIGGER track_updates AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.testtable FOR EACH STATEMENT EXECUTE FUNCTION cartodb.cdb_tablemetadata_trigger()","CREATE TRIGGER update_the_geom_webmercator_trigger BEFORE INSERT OR UPDATE OF the_geom ON public.testtable FOR EACH ROW EXECUTE FUNCTION cartodb._cdb_update_the_geom_webmercator()"}
+{"ALTER TABLE public.testtable OWNER TO postgres"}
 cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)|plain||
 the_geom|geometry(Geometry,4326)||||main||
 the_geom_webmercator|geometry(Geometry,3857)||||main||
@@ -71,6 +77,8 @@ public|testtable|public|test_quota_per_row
 public|testtable|public|track_updates
 public|testtable|public|update_the_geom_webmercator_trigger
 
+{"ALTER TABLE public.testtable OWNER TO postgres","CREATE SEQUENCE public.testtable_cartodb_id_seq    START WITH 1    INCREMENT BY 1    NO MINVALUE    NO MAXVALUE    CACHE 1","ALTER TABLE public.testtable_cartodb_id_seq OWNER TO postgres","ALTER SEQUENCE public.testtable_cartodb_id_seq OWNED BY public.testtable.cartodb_id","ALTER TABLE ONLY public.testtable ALTER COLUMN cartodb_id SET DEFAULT nextval('public.testtable_cartodb_id_seq'::regclass)","ALTER TABLE ONLY public.testtable    ADD CONSTRAINT testtable_pkey PRIMARY KEY (cartodb_id)","CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)","CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)","CREATE TRIGGER test_quota BEFORE INSERT OR UPDATE ON public.testtable FOR EACH STATEMENT EXECUTE FUNCTION cartodb.cdb_checkquota('0.1', '-1', 'public')","CREATE TRIGGER test_quota_per_row BEFORE INSERT OR UPDATE ON public.testtable FOR EACH ROW EXECUTE FUNCTION cartodb.cdb_checkquota('0.001', '-1', 'public')","CREATE TRIGGER track_updates AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.testtable FOR EACH STATEMENT EXECUTE FUNCTION cartodb.cdb_tablemetadata_trigger()","CREATE TRIGGER update_the_geom_webmercator_trigger BEFORE INSERT OR UPDATE OF the_geom ON public.testtable FOR EACH ROW EXECUTE FUNCTION cartodb._cdb_update_the_geom_webmercator()"}
+{"ALTER TABLE public.testtable OWNER TO postgres"}
 cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)|plain||
 the_geom|geometry(Geometry,4326)||||main||
 the_geom_webmercator|geometry(Geometry,3857)||||main||
@@ -168,6 +176,7 @@ city_id|integer||not null|
 logdate|date||not null|
 peaktemp|integer|||
 unitsales|integer|||
+ERROR:  CDB_GetTableQueries does not support the parent of partitioned tables
 ## teardown
 DROP TABLE
 DROP TABLE
