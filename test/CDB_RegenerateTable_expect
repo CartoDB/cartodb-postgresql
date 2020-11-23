@@ -10,6 +10,7 @@ c4|integer||||plain||
 2|3|4|5|6
 3|4|5|6|7
 SELECT 1
+CREATE FUNCTION
 ## Run cartodb.CDB_RegenerateTable and confirm the data and columns are the same
 
 stable|integer||||plain||
@@ -182,3 +183,4 @@ DROP TABLE
 DROP TABLE
 REVOKE
 DROP ROLE
+DROP FUNCTION

@@ -12,6 +12,27 @@ INSERT INTO testtable(stable,c1,c2,c3,c4) VALUES (1,2,3,4,5), (2,3,4,5,6), (3,4,
 SELECT * FROM testtable ORDER BY stable ASC;
 SELECT 'testtable'::regclass::oid as id INTO temp table original_oid;
 
+CREATE FUNCTION cartodb.CDB_GetTableQueries_TestHelper(tableoid OID, ignore_cartodbfication BOOL DEFAULT false)
+RETURNS text[]
+AS
+$$
+DECLARE
+    queries TEXT[];
+BEGIN
+    -- In older version of PG (pre 11), the syntax when creating triggers was
+    -- CREATE TRIGGER ... EXECUTE PROCEDURE ...
+    -- But in new ones it is
+    -- CREATE TRIGGER ... EXECUTE FUNCTION ...
+    -- To uniformize the tests, we replace it in the output of CDB_RegenerateTable
+
+    EXECUTE FORMAT('
+        SELECT array_agg(REGEXP_REPLACE(a, ''EXECUTE PROCEDURE'', ''EXECUTE FUNCTION''))
+            FROM unnest(cartodb.CDB_GetTableQueries(%L, %L)) a;', tableoid, ignore_cartodbfication) INTO queries;
+    RETURN queries;
+END
+$$
+LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
+
 \echo '## Run cartodb.CDB_RegenerateTable and confirm the data and columns are the same'
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 \d+ testtable
@@ -81,12 +102,12 @@ ORDER BY table_schema,
 \echo '## Check Cartodbfycation'
 DROP INDEX testtable_stable_idx;
 DROP TRIGGER testtable_trigger_example ON testtable;
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := true);
 SELECT CDB_SetUserQuotaInBytes(0);
 SELECT CDB_CartodbfyTable('testtable'::regclass);
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := true);
 \d+ testtable
 SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
 SELECT event_object_schema as table_schema,
@@ -102,8 +123,8 @@ ORDER BY table_schema,
 
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := false);
-SELECT cartodb.CDB_GetTableQueries('testtable'::regclass::oid, ignore_cartodbfication := true);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('testtable'::regclass::oid, ignore_cartodbfication := true);
 
 \d+ testtable
 SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
@@ -194,7 +215,7 @@ ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_ca
 \d measurement_y2006m02
 \d measurement_y2006m03
 
-SELECT cartodb.CDB_GetTableQueries('measurement'::regclass::oid, ignore_cartodbfication := false);
+SELECT cartodb.CDB_GetTableQueries_TestHelper('measurement'::regclass::oid, ignore_cartodbfication := false);
 
 \echo '## teardown'
 
@@ -202,3 +223,4 @@ DROP TABLE measurement CASCADE;
 DROP TABLE testtable CASCADE;
 REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_regenerate_tester;
 DROP ROLE cdb_regenerate_tester;
+DROP FUNCTION cartodb.CDB_GetTableQueries_TestHelper;
