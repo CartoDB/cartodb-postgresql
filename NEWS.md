@@ -3,6 +3,7 @@
 * Add `CDB_RegenerateTable` function to regenerate a table.
 * Add `CDB_GetTableQueries` to get the queries of a table (constraints, indices, triggers...).
 * Deprecate creation of new overview tables.
+* _cdb_has_usable_geom_record: Check only the extension schema.
 
 0.36.0 (2020-02-13)
 * Make `_CDB_Group_API_Auth` python3 compatible by passing bytes representation instead of a string.
