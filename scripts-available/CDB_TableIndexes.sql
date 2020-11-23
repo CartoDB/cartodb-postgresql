@@ -16,7 +16,7 @@ AS $$
   JOIN pg_class
   ON pg_class.oid = idx.indexrelid 
   WHERE pg_indexes.tablename = '' || $1 || ''
-  AND '' || $1 || '' IN (SELECT CDB_UserTables())
+  AND '' || $1 || '' IN (SELECT @extschema@.CDB_UserTables())
   AND pg_class.relname=pg_indexes.indexname
   ;
 
