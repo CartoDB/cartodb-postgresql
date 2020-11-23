@@ -136,7 +136,40 @@ You are now connected to database "contrib_regression" as user "postgres".
 You are now connected to database "contrib_regression" as user "cdb_regenerate_tester".
 ERROR:  must be owner of table testtable
 You are now connected to database "contrib_regression" as user "postgres".
+## Test partitioned table
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+city_id|integer||not null|
+logdate|date||not null|
+peaktemp|integer|||
+unitsales|integer|||
+measurement_y2006m02|FOR VALUES FROM ('02-01-2006') TO ('03-01-2006')|p
+measurement_y2006m03|FOR VALUES FROM ('03-01-2006') TO ('04-01-2006')|r
+city_id|integer||not null|
+logdate|date||not null|
+peaktemp|integer|||
+unitsales|integer|||
+city_id|integer||not null|
+logdate|date||not null|
+peaktemp|integer|||
+unitsales|integer|||
+ERROR:  CDB_RegenerateTable does not support the parent of partitioned tables
+
+measurement_y2006m02|FOR VALUES FROM ('02-01-2006') TO ('03-01-2006')|p
+measurement_y2006m03|FOR VALUES FROM ('03-01-2006') TO ('04-01-2006')|r
+city_id|integer||not null|
+logdate|date||not null|
+peaktemp|integer|||
+unitsales|integer|||
+city_id|integer||not null|
+logdate|date||not null|
+peaktemp|integer|||
+unitsales|integer|||
 ## teardown
+DROP TABLE
 DROP TABLE
 REVOKE
 DROP ROLE

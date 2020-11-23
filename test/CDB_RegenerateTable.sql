@@ -145,8 +145,49 @@ SELECT * FROM testtable ORDER BY cartodb_id DESC;
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 \c contrib_regression postgres
 
+\echo '## Test partitioned table'
+CREATE TABLE measurement (
+    city_id         int not null,
+    logdate         date not null,
+    peaktemp        int,
+    unitsales       int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2006m02 PARTITION OF measurement
+    FOR VALUES FROM ('2006-02-01') TO ('2006-03-01')
+    PARTITION BY RANGE (peaktemp);
+
+CREATE TABLE measurement_y2006m03 PARTITION OF measurement
+    FOR VALUES FROM ('2006-03-01') TO ('2006-04-01');
+CREATE INDEX ON measurement_y2006m02 (logdate);
+CREATE INDEX ON measurement_y2006m03 (logdate);
+
+\d measurement
+SELECT  c.oid::pg_catalog.regclass,
+        pg_catalog.pg_get_expr(c.relpartbound, c.oid),
+        c.relkind
+FROM pg_catalog.pg_class c,
+     pg_catalog.pg_inherits i
+WHERE c.oid=i.inhrelid AND i.inhparent = 'measurement'::regclass::oid
+ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_catalog.regclass::pg_catalog.text;
+\d measurement_y2006m02
+\d measurement_y2006m03
+
+SELECT cartodb.CDB_RegenerateTable('measurement'::regclass::oid);
+SELECT cartodb.CDB_RegenerateTable('measurement_y2006m02'::regclass::oid);
+SELECT  c.oid::pg_catalog.regclass,
+        pg_catalog.pg_get_expr(c.relpartbound, c.oid),
+        c.relkind
+FROM pg_catalog.pg_class c,
+     pg_catalog.pg_inherits i
+WHERE c.oid=i.inhrelid AND i.inhparent = 'measurement'::regclass::oid
+ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_catalog.regclass::pg_catalog.text;
+\d measurement_y2006m02
+\d measurement_y2006m03
+
 \echo '## teardown'
 
+DROP TABLE measurement CASCADE;
 DROP TABLE testtable CASCADE;
 REVOKE CONNECT ON DATABASE contrib_regression FROM cdb_regenerate_tester;
 DROP ROLE cdb_regenerate_tester;

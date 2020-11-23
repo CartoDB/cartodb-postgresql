@@ -58,14 +58,21 @@ DECLARE
     table_name TEXT;
     queries TEXT[] := @extschema@.__CDB_RegenerateTable_Get_Commands(tableoid);
     i INTEGER;
+    children INTEGER;
 BEGIN
+    EXECUTE FORMAT ('SELECT count(*) FROM pg_catalog.pg_inherits WHERE inhparent =  %L', tableoid)
+            INTO children;
+    IF children > 0 THEN
+        RAISE EXCEPTION 'CDB_RegenerateTable does not support the parent of partitioned tables';
+    END IF;
+
     EXECUTE FORMAT('SELECT concat(quote_ident(nspname), ''.'', quote_ident(relname)) as quoted_name
                         FROM pg_catalog.pg_class AS c
                         JOIN pg_catalog.pg_namespace AS ns
                         ON c.relnamespace = ns.oid
                         WHERE c.oid = %L', tableoid) INTO table_name;
 
-    EXECUTE FORMAT('CREATE TEMPORARY TABLE %s  ON COMMIT DROP AS SELECT * FROM %s', temp_name, table_name);
+    EXECUTE FORMAT('CREATE TEMPORARY TABLE %s ON COMMIT DROP AS SELECT * FROM %s', temp_name, table_name);
     EXECUTE FORMAT('DROP TABLE %s', table_name);
 
     FOR i IN 1 .. array_upper(queries, 1)
