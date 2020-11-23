@@ -268,44 +268,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
-    -- TODO: compute fraction from tolerance_px if not NULL
-    fraction := power(2, 2*(overview_z - ref_z));
-
-    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
-
-    overview_table_name := Format('%I.%I', schema_name, overview_rel);
-    IF has_overview_created THEN
-      RAISE NOTICE 'Sampling reduce stategy deleting and inserting because % has overviews', overview_table_name;
-      EXECUTE Format('DELETE FROM %s;', overview_table_name);
-      creation_clause := Format('INSERT INTO %s', overview_table_name);
-    ELSE
-      RAISE NOTICE 'Sampling reduce stategy creating a new table overview %', overview_table_name;
-      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
-    END IF;
-
-    -- Estimate number of rows
-    SELECT reltuples, relpages FROM pg_class INTO STRICT class_info
-      WHERE oid = reloid::oid;
-
-    IF class_info.relpages < 2 OR fraction > 0.5 THEN
-      -- We'll avoid possible CDB_RandomTids problems
-      EXECUTE Format('
-        %s SELECT * FROM %s WHERE random() < %s;
-      ', creation_clause, reloid, fraction);
-    ELSE
-      num_samples := ceil(class_info.reltuples*fraction);
-      EXECUTE Format('
-        %1$s SELECT * FROM %2$s
-          WHERE ctid = ANY (
-            ARRAY[
-              (SELECT @extschema@.CDB_RandomTids(''%2$s'', %3$s))
-            ]
-          );
-      ', creation_clause, reloid, num_samples);
-    END IF;
-
-    RETURN Format('%s', overview_table_name)::regclass;
+    RAISE EXCEPTION 'Creating overviews is deprecated';
   END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
@@ -331,36 +294,7 @@ AS $$
     overview_scheme TEXT;
     overview_name TEXT;
   BEGIN
-    -- This function will only register a table as an overview table if it matches
-    -- the overviews naming scheme for the dataset and z level and the table belongs
-    -- to the same scheme as the the dataset
-    SELECT * FROM @extschema@._cdb_split_table_name(dataset) INTO dataset_scheme, dataset_name;
-    SELECT * FROM @extschema@._cdb_split_table_name(overview_table) INTO overview_scheme, overview_name;
-    IF dataset_scheme = overview_scheme AND
-       overview_name = @extschema@._CDB_OverviewTableName(dataset_name, overview_z) THEN
-
-      -- preserve the owner of the base table
-      SELECT u.usename
-        FROM pg_catalog.pg_class c
-          JOIN pg_catalog.pg_user u ON (c.relowner=u.usesysid)
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relname = dataset_name::text AND n.nspname = dataset_scheme
-        INTO table_owner;
-
-      EXECUTE Format('ALTER TABLE IF EXISTS %s OWNER TO %I;', overview_table::text, table_owner);
-
-      -- preserve the table privileges
-      UPDATE pg_class c_to
-        SET  relacl = c_from.relacl
-        FROM  pg_class c_from
-        WHERE c_from.oid  = dataset
-        AND   c_to.oid    = overview_table;
-
-      PERFORM @extschema@._CDB_Add_Indexes(overview_table);
-
-      -- TODO: If metadata about existing overviews is to be stored
-      -- it should be done here (CDB_Overviews would consume such metadata)
-    END IF;
+    RAISE EXCEPTION 'Creating overviews is deprecated';
   END
 $$  LANGUAGE PLPGSQL
     VOLATILE
@@ -617,105 +551,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    SELECT @extschema@._CDB_GeometryTypes(reloid) INTO gtypes;
-    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
-      -- This strategy only supports datasets with point geomety
-      RETURN NULL;
-    END IF;
-
-    --TODO: check applicability: geometry type, minimum number of points...
-
-    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
-
-    -- Grid size in pixels at Z level overview_z
-    IF grid_px IS NULL THEN
-      grid_px := 1.0;
-    END IF;
-
-    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
-
-    -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT @extschema@.CDB_XYZ_Resolution(overview_z) INTO pixel_m;
-    -- grid size in meters
-    grid_m = grid_px * pixel_m;
-
-    attributes := @extschema@._CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := @extschema@._CDB_Aggregated_Attributes_Expression(reloid);
-    IF attributes <> '' THEN
-      attributes := ', ' || attributes;
-    END IF;
-    IF aggr_attributes <> '' THEN
-      aggr_attributes := aggr_attributes || ', ';
-    END IF;
-
-    -- Center of each cell:
-    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
-    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
-
-    -- Displacement to the nearest pixel center:
-    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
-      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
-      offset_x := Format('%s', offset_m);
-      offset_y := Format('%s', offset_m);
-    ELSE
-      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
-      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
-    END IF;
-
-    point_geom := Format('@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
-
-    -- compute the resulting columns in the same order as in the base table
-    WITH cols AS (
-      SELECT
-        CASE c
-        WHEN 'cartodb_id' THEN 'cartodb_id'
-        WHEN 'the_geom' THEN
-          Format('@postgisschema@.ST_Transform(%s, 4326) AS the_geom', point_geom)
-        WHEN 'the_geom_webmercator' THEN
-           Format('%s AS the_geom_webmercator', point_geom)
-        ELSE c::text
-        END AS column
-        FROM @extschema@.CDB_ColumnNames(reloid) c
-    )
-    SELECT string_agg(s.column, ',') FROM (
-      SELECT * FROM cols
-    ) AS s INTO columns;
-
-    IF NOT columns LIKE '%_feature_count%' THEN
-      columns := columns || ', n AS _feature_count';
-    END IF;
-
-    overview_table_name := Format('%I.%I', schema_name, overview_rel);
-    IF has_overview_created THEN
-      RAISE NOTICE 'Grid cluster strategy deleting and inserting because % has overviews', overview_table_name;
-      EXECUTE Format('DELETE FROM %s;', overview_table_name);
-      creation_clause := Format('INSERT INTO %s', overview_table_name);
-    ELSE
-      RAISE NOTICE 'Grid cluster strategy creating a new table overview %', overview_table_name;
-      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
-    END IF;
-
-    -- Now we cluster the data using a grid of size grid_m
-    -- and selecte the centroid (average coordinates) of each cluster.
-    -- If we had a selected numeric attribute of interest we could use it
-    -- as a weight for the average coordinates.
-    EXECUTE Format('
-      %3$s
-         WITH clusters AS (
-           SELECT
-             %5$s
-             count(*) AS n,
-             Floor(@postgisschema@.ST_X(f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(@postgisschema@.ST_Y(f.the_geom_webmercator)/%2$s)::int AS gy,
-             MIN(cartodb_id) AS cartodb_id
-          FROM %1$s f
-          WHERE f.the_geom_webmercator IS NOT NULL
-          GROUP BY gx, gy
-         )
-         SELECT %6$s FROM clusters
-    ', reloid::text, grid_m, creation_clause, attributes, aggr_attributes, columns);
-
-    RETURN Format('%s', overview_table_name)::regclass;
+    RAISE EXCEPTION 'Creating overviews is deprecated';
   END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
@@ -872,104 +708,7 @@ AS $$
     overview_table_name TEXT;
     creation_clause TEXT;
   BEGIN
-    SELECT @extschema@._CDB_GeometryTypes(reloid) INTO gtypes;
-    IF gtypes IS NULL OR array_upper(gtypes, 1) <> 1 OR gtypes[1] <> 'ST_Point' THEN
-      -- This strategy only supports datasets with point geomety
-      RETURN NULL;
-    END IF;
-
-    --TODO: check applicability: geometry type, minimum number of points...
-
-    overview_rel := @extschema@._CDB_Overview_Name(reloid, ref_z, overview_z);
-
-    -- Grid size in pixels at Z level overview_z
-    IF grid_px IS NULL THEN
-      grid_px := 1.0;
-    END IF;
-
-    SELECT * FROM @extschema@._cdb_split_table_name(reloid) INTO schema_name, table_name;
-
-    -- pixel_m: size of a pixel in webmercator units (meters)
-    SELECT @extschema@.CDB_XYZ_Resolution(overview_z) INTO pixel_m;
-    -- grid size in meters
-    grid_m = grid_px * pixel_m;
-
-    attributes := @extschema@._CDB_Aggregable_Attributes_Expression(reloid);
-    aggr_attributes := @extschema@._CDB_Aggregated_Attributes_Expression(reloid);
-    IF attributes <> '' THEN
-      attributes := ', ' || attributes;
-    END IF;
-    IF aggr_attributes <> '' THEN
-      aggr_attributes := aggr_attributes || ', ';
-    END IF;
-
-    -- Center of each cell:
-    cell_x := Format('gx*%1$s + %2$s', grid_m, grid_m/2);
-    cell_y := Format('gy*%1$s + %2$s', grid_m, grid_m/2);
-
-    -- Displacement to the nearest pixel center:
-    IF MOD(grid_px::numeric, 1.0::numeric) = 0 THEN
-      offset_m := pixel_m/2 - MOD((grid_m/2)::numeric, pixel_m::numeric)::float8;
-      offset_x := Format('%s', offset_m);
-      offset_y := Format('%s', offset_m);
-    ELSE
-      offset_x := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_x, pixel_m);
-      offset_y := Format('%2$s/2 - MOD((%1$s)::numeric, (%2$s)::numeric)::float8', cell_y, pixel_m);
-    END IF;
-
-    point_geom := Format('@postgisschema@.ST_SetSRID(@postgisschema@.ST_MakePoint(%1$s + %3$s, %2$s + %4$s), 3857)', cell_x, cell_y, offset_x, offset_y);
-
-    -- compute the resulting columns in the same order as in the base table
-    WITH cols AS (
-      SELECT
-        CASE c
-        WHEN 'cartodb_id' THEN 'cartodb_id'
-        ELSE c::text
-        END AS column
-        FROM @extschema@.CDB_ColumnNames(reloid) c
-    )
-    SELECT string_agg(s.column, ',') FROM (
-      SELECT * FROM cols
-    ) AS s INTO columns;
-
-    IF NOT columns LIKE '%_feature_count%' THEN
-      columns := columns || ', n AS _feature_count';
-    END IF;
-
-    overview_table_name := Format('%I.%I', schema_name, overview_rel);
-    IF has_overview_created THEN
-      RAISE NOTICE 'Grid cluster sampling strategy deleting and inserting because % has overviews', overview_table_name;
-      EXECUTE Format('DELETE FROM %s;', overview_table_name);
-      creation_clause := Format('INSERT INTO %s', overview_table_name);
-    ELSE
-      RAISE NOTICE 'Grid cluster sampling strategy creating a new table overview %', overview_table_name;
-      creation_clause := Format('CREATE TABLE %s AS', overview_table_name);
-    END IF;
-
-    -- Now we cluster the data using a grid of size grid_m
-    -- and select the centroid (average coordinates) of each cluster.
-    -- If we had a selected numeric attribute of interest we could use it
-    -- as a weight for the average coordinates.
-    EXECUTE Format('
-       %3$s
-         WITH clusters AS (
-           SELECT
-             %5$s
-             count(*) AS n,
-             Floor(@postgisschema@.ST_X(_f.the_geom_webmercator)/%2$s)::int AS gx,
-             Floor(@postgisschema@.ST_Y(_f.the_geom_webmercator)/%2$s)::int AS gy,
-             MIN(cartodb_id) AS cartodb_id
-          FROM %1$s _f
-          GROUP BY gx, gy
-         ),
-         cluster_geom AS (
-           SELECT the_geom, the_geom_webmercator, clusters.*
-             FROM clusters INNER JOIN %1$s _g ON (clusters.cartodb_id = _g.cartodb_id)
-         )
-         SELECT %6$s FROM cluster_geom
-    ', reloid::text, grid_m, creation_clause, attributes, aggr_attributes, columns);
-
-    RETURN Format('%s', overview_table_name)::regclass;
+    RAISE EXCEPTION 'Creating overviews is deprecated';
   END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
@@ -990,9 +729,7 @@ AS $$
 DECLARE
   tolerance_px FLOAT8;
 BEGIN
-  -- Use the default tolerance
-  tolerance_px := 1.0;
-  RETURN @extschema@.CDB_CreateOverviewsWithToleranceInPixels(reloid, tolerance_px, refscale_strategy, reduce_strategy);
+  RAISE EXCEPTION 'Creating overviews is deprecated';
 END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
@@ -1011,54 +748,7 @@ DECLARE
   has_counter_column boolean;
   has_overviews_for_z boolean;
 BEGIN
-  -- Determine the referece zoom level
-  EXECUTE 'SELECT ' || quote_ident(refscale_strategy::text) || Format('(''%s'', %s);', reloid, tolerance_px) INTO ref_z;
-
-  IF ref_z < 0 OR ref_z IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  -- Determine overlay zoom levels
-  -- TODO: should be handled by the refscale_strategy?
-  overview_z := ref_z - 1;
-  WHILE overview_z >= 0 LOOP
-    SELECT array_append(overviews_z, overview_z) INTO overviews_z;
-    overview_z := overview_z - overviews_step;
-  END LOOP;
-
-  --  TODO Check for non-used overview to delete them but we have to be aware that the
-  --       current queries, for example from a tiler, are been used with the old overviews
-  --       so if we remove the overviews in the process this could lead to errors
-
-  -- Create or reganerate overlay tables
-  base_z := ref_z;
-  base_rel := reloid;
-  FOREACH overview_z IN ARRAY overviews_z LOOP
-    SELECT CASE WHEN count(*) > 0 THEN TRUE ELSE FALSE END from CDB_Overviews(reloid) WHERE z = overview_z INTO has_overviews_for_z;
-    EXECUTE 'SELECT ' || quote_ident(reduce_strategy::text) || Format('(''%s'', %s, %s, %s, ''%s'');', base_rel, base_z, overview_z, tolerance_px, has_overviews_for_z) INTO base_rel;
-    IF base_rel IS NULL THEN
-      EXIT;
-    END IF;
-    base_z := overview_z;
-    IF NOT has_overviews_for_z THEN
-      RAISE NOTICE 'Registering overview: %', base_rel;
-      PERFORM _CDB_Register_Overview(reloid, base_rel, base_z);
-    END IF;
-    SELECT array_append(overview_tables, base_rel) INTO overview_tables;
-  END LOOP;
-
-  IF overview_tables IS NOT NULL AND array_length(overview_tables, 1) > 0 THEN
-    SELECT EXISTS (
-      SELECT * FROM @extschema@.CDB_ColumnNames(reloid)  as colname WHERE colname = '_feature_count'
-    ) INTO has_counter_column;
-    IF NOT has_counter_column THEN
-      EXECUTE Format('
-        ALTER TABLE %s ADD COLUMN _feature_count integer DEFAULT 1;
-      ', reloid);
-    END IF;
-  END IF;
-
-  RETURN overview_tables;
+  RAISE EXCEPTION 'Creating overviews is deprecated';
 END;
 $$ LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 

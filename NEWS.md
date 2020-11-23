@@ -1,6 +1,7 @@
 0.37.0 (XXXX-XX-XX)
 * Raised minimum PG version to 11.
 * Add `CDB_RegenerateTable` to regenerate a table.
+* Deprecate creation of new overview tables.
 
 0.36.0 (2020-02-13)
 * Make `_CDB_Group_API_Auth` python3 compatible by passing bytes representation instead of a string.
