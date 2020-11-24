@@ -636,8 +636,7 @@ $$ LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
 
 DO $$
 BEGIN
-  SET search_path TO @extschema@;
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_cdb_has_usable_geom_record' AND typnamespace = '@extschema@'::regnamespace) THEN
     CREATE TYPE @extschema@._cdb_has_usable_geom_record
       AS (has_usable_geoms boolean,
         text_geom_column boolean,
@@ -846,7 +845,7 @@ BEGIN
   -- values. No usable pk implies has_usable_pk_sequence = false.
   has_usable_pk_sequence := false;
   IF has_usable_primary_key THEN
-    SELECT _CDB_Has_Usable_PK_Sequence(reloid)
+    SELECT @extschema@._CDB_Has_Usable_PK_Sequence(reloid)
     INTO STRICT has_usable_pk_sequence;
   END IF;
 

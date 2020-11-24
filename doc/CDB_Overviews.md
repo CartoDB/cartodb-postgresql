@@ -1,3 +1,8 @@
+
+============================ WARNING ===================================
+Creating overviews is no longer supported.
+============================ WARNING ===================================
+
 Overviews are tables that represent a *reduced* version of a dataset intended
 for efficient rendering at certain zoom levels while preserving the
 general visual appearance of the complete dataset.

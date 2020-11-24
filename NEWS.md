@@ -1,3 +1,11 @@
+0.37.0 (2020-11-13)
+* Raised minimum PG version to 11.
+* Add `CDB_RegenerateTable` function to regenerate a table.
+* Add `CDB_GetTableQueries` to get the queries of a table (constraints, indices, triggers...).
+* Add `CDB_ApplyQueriesSafe` to apply the queries of `CDB_GetTableQueries` discarding any exceptions.
+* Deprecate creation of new overview tables.
+* _cdb_has_usable_geom_record: Check only the extension schema.
+
 0.36.0 (2020-02-13)
 * Make `_CDB_Group_API_Auth` python3 compatible by passing bytes representation instead of a string.
 * Make `_CDB_Group_API_Request` python3 compatible by adapting the function signature of `HTTPConnection`.
