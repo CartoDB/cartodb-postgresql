@@ -845,7 +845,7 @@ BEGIN
   -- values. No usable pk implies has_usable_pk_sequence = false.
   has_usable_pk_sequence := false;
   IF has_usable_primary_key THEN
-    SELECT _CDB_Has_Usable_PK_Sequence(reloid)
+    SELECT @extschema@._CDB_Has_Usable_PK_Sequence(reloid)
     INTO STRICT has_usable_pk_sequence;
   END IF;
 
