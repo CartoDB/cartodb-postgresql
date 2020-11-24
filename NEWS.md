@@ -2,6 +2,7 @@
 * Raised minimum PG version to 11.
 * Add `CDB_RegenerateTable` function to regenerate a table.
 * Add `CDB_GetTableQueries` to get the queries of a table (constraints, indices, triggers...).
+* Add `CDB_ApplyQueriesSafe` to apply the queries of `CDB_GetTableQueries` discarding any exceptions.
 * Deprecate creation of new overview tables.
 * _cdb_has_usable_geom_record: Check only the extension schema.
 

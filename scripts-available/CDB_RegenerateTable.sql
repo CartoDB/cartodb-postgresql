@@ -88,6 +88,28 @@ END
 $$
 LANGUAGE PLPGSQL VOLATILE PARALLEL UNSAFE;
 
+-- Helper function to apply the result of CDB_GetTableQueries catching and discarding any exceptions
+CREATE OR REPLACE FUNCTION @extschema@.CDB_ApplyQueriesSafe(queries TEXT[])
+RETURNS void
+AS
+$$
+DECLARE
+    i INTEGER;
+BEGIN
+    IF array_length(queries, 1) > 0 THEN
+        FOR i IN 1 .. array_upper(queries, 1)
+        LOOP
+            BEGIN
+                EXECUTE queries[i];
+            EXCEPTION WHEN OTHERS THEN
+                CONTINUE;
+            END;
+        END LOOP;
+    END IF;
+END
+$$
+LANGUAGE PLPGSQL STRICT VOLATILE PARALLEL UNSAFE;
+
 -- Regenerates a table
 CREATE OR REPLACE FUNCTION @extschema@.CDB_RegenerateTable(tableoid OID)
 RETURNS void

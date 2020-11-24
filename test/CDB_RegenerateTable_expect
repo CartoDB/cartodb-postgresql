@@ -195,6 +195,30 @@ DELETE 3
 
 testtable
 COMMIT
+## Test replacement in import (drop c3 and c4 columns)
+CREATE INDEX
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)
+the_geom|geometry(Geometry,4326)|||
+the_geom_webmercator|geometry(Geometry,3857)|||
+stable|integer|||
+c1|integer|||
+c2|integer|||
+c3|integer|||
+c4|integer|||
+testtable|testtable_c4_idx|CREATE INDEX testtable_c4_idx ON public.testtable USING btree (c4 NULLS FIRST)
+testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
+testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
+testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
+DO
+cartodb_id|bigint||not null|nextval('testtable_cartodb_id_seq'::regclass)
+the_geom|geometry(Geometry,4326)|||
+the_geom_webmercator|geometry(Geometry,3857)|||
+stable|integer|||
+c1|integer|||
+c2|integer|||
+testtable|testtable_pkey|CREATE UNIQUE INDEX testtable_pkey ON public.testtable USING btree (cartodb_id)
+testtable|testtable_the_geom_idx|CREATE INDEX testtable_the_geom_idx ON public.testtable USING gist (the_geom)
+testtable|testtable_the_geom_webmercator_idx|CREATE INDEX testtable_the_geom_webmercator_idx ON public.testtable USING gist (the_geom_webmercator)
 ## teardown
 DROP TABLE
 DROP TABLE

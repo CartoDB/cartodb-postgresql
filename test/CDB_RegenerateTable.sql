@@ -251,17 +251,36 @@ COMMIT;
 
 \echo '## Test transaction with delete'
 BEGIN;
-    DELETE FROM testtable WHERE true;
+    DELETE FROM testtable;
     SELECT CDB_RegenerateTable('public.testtable'::regclass);
 COMMIT;
 
 \echo '## Test transaction with delete + cartodbfy'
 BEGIN;
     INSERT INTO testtable(stable,c1,c2,c3,c4) VALUES (1,2,3,4,5), (2,3,4,5,6), (3,4,5,6,7);
-    DELETE FROM testtable WHERE true;
+    DELETE FROM testtable;
     SELECT CDB_RegenerateTable('public.testtable'::regclass);
     SELECT CDB_CartodbfyTable('public'::TEXT, 'public.testtable'::REGCLASS);
 COMMIT;
+
+\echo '## Test replacement in import (drop c3 and c4 columns)'
+CREATE INDEX testtable_c4_idx ON testtable (c4 NULLS FIRST);
+
+\d testtable
+SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
+
+DO $$
+DECLARE
+    queries TEXT[] :=  CDB_GetTableQueries_TestHelper('testtable'::regclass, true);
+BEGIN
+    DROP TABLE testtable;
+    CREATE TABLE testtable (stable integer, c1 integer, c2 integer);
+    PERFORM CDB_CartodbfyTable('public.testtable');
+    PERFORM CDB_ApplyQueriesSafe(queries);
+END$$;
+
+\d testtable
+SELECT tablename, indexname, indexdef FROM pg_indexes WHERE tablename = 'testtable' ORDER BY tablename, indexname;
 
 \echo '## teardown'
 
