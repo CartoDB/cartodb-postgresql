@@ -119,8 +119,6 @@ UPGRADES = \
      $(SED) 's/$$/--$(EXTVERSION).sql/' | \
      $(SED) 's/ /--$(EXTVERSION).sql $(EXTENSION)--/g')
 
-GITDIR=$(shell test -d .git && echo '.git' || cat .git | $(SED) 's/^gitdir: //')
-
 DATA_built = \
   $(EXTENSION)--$(EXTVERSION).sql \
   $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql \
@@ -168,7 +166,7 @@ $(EXTENSION)--$(EXTVERSION)--$(EXTVERSION)next.sql: $(EXTENSION)--$(EXTVERSION).
 $(EXTENSION).control: $(EXTENSION).control.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/g' -e 's/@@plpythonu@@/$(PLPYTHONU)/g' $< > $@
 
-cartodb_version.sql: cartodb_version.sql.in Makefile $(GITDIR)/index
+cartodb_version.sql: cartodb_version.sql.in Makefile
 	$(SED) -e 's/@@VERSION@@/$(EXTVERSION)/' -e 's/@extschema@/cartodb/g' -e "s/@postgisschema@/public/g" -e 's/@@plpythonu@@/$(PLPYTHONU)/g' $< > $@
 
 # Needed for consistent `echo` results with backslashes
