@@ -22,12 +22,12 @@ AS $$
 
     # NOTE: We always use -s so data is never dumped!
     # That would be a security issue that we would need to deal with (and we currently do not need it)
-    process_parameters = ["pg_dump", "-s", "-t", full_tablename_string, database_name_string]
+    process_parameters = ["pg_dump", "-s", "--lock-wait-timeout", "1000", "-t", full_tablename_string, database_name_string]
 
     proc = subprocess.Popen(process_parameters, stdout=subprocess.PIPE, shell=False)
     (out, err) = proc.communicate()
-    if (err):
-        plpy.error(err)
+    if (err or not out):
+        plpy.error('Could not get table properties')
 
     line = out.decode("utf-8")
     lines = line.rsplit(";\n", -1)
@@ -38,9 +38,9 @@ AS $$
         sublines = [line.rstrip() for line in sublines]
         sublines = [line for line in sublines if line]
         sublines = [line for line in sublines if not line.startswith('--')]
-        # We need to force all setting changes to be local to keep the environment clean
-        sublines = [re.sub(r'^SET ', 'SET LOCAL ', line) for line in sublines]
-        sublines = [re.sub(r'(.*)(pg_catalog.set_config.*)(false)(.*)', r'\1\2true\4', line) for line in sublines]
+        sublines = [line for line in sublines if not line.lower().startswith('set ')]
+        sublines = [line for line in sublines if line.lower().find('pg_catalog.set_config(') == -1]
+
         if len(sublines):
             clean_lines.append("".join(sublines))
 
@@ -49,7 +49,7 @@ $$
 LANGUAGE @@plpythonu@@ VOLATILE PARALLEL UNSAFE;
 
 -- Returns a list of queries that can be used to regenerate the structure of a table
--- The query to create the table and the config set by pg_dump are removed
+-- The query to create the table is not included
 -- The optional parameter **ignore_cartodbfication** will remove queries related to the cartodbfication of the table
 CREATE OR REPLACE FUNCTION @extschema@.CDB_GetTableQueries(tableoid OID, ignore_cartodbfication BOOL DEFAULT false)
 RETURNS text[]
@@ -68,16 +68,12 @@ BEGIN
         EXECUTE FORMAT('
             SELECT array_agg(a)
                 FROM unnest(@extschema@.__CDB_RegenerateTable_Get_Commands(%L)) a
-                WHERE   a NOT SIMILAR TO ''CREATE TABLE%%'' AND
-                        a NOT SIMILAR TO ''SET%%'' AND
-                        a NOT SIMILAR TO (''%%pg_catalog.set_config%%'');', tableoid) INTO queries;
+                WHERE   a NOT SIMILAR TO ''CREATE TABLE%%'';', tableoid) INTO queries;
     ELSE
         EXECUTE FORMAT('
             SELECT array_agg(a)
                 FROM unnest(@extschema@.__CDB_RegenerateTable_Get_Commands(%L)) a
                 WHERE   a NOT SIMILAR TO ''CREATE TABLE%%'' AND
-                        a NOT SIMILAR TO ''SET%%'' AND
-                        a NOT SIMILAR TO (''%%pg_catalog.set_config%%'') AND
                         a NOT SIMILAR TO (''%%PRIMARY KEY \(cartodb_id\)%%'') AND
                         a NOT SIMILAR TO (''%%cartodb_id_seq%%'') AND
                         a NOT SIMILAR TO (''%%track_updates%%'') AND

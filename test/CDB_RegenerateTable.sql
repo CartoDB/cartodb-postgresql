@@ -160,20 +160,46 @@ SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 CREATE ROLE cdb_regenerate_tester LOGIN PASSWORD 'cdb_regenerate_pass';
 GRANT CONNECT ON DATABASE contrib_regression TO cdb_regenerate_tester;
 GRANT SELECT ON testtable TO cdb_regenerate_tester;
+
 \c contrib_regression cdb_regenerate_tester
+\set QUIET on
+SET client_min_messages TO error;
+\set VERBOSITY terse
+\set QUIET off
+
 SELECT * FROM testtable ORDER BY cartodb_id DESC;
+
 \c contrib_regression postgres
+\set QUIET on
+SET client_min_messages TO error;
+\set VERBOSITY terse
+\set QUIET off
 
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
 
 \c contrib_regression cdb_regenerate_tester
+\set QUIET on
+SET client_min_messages TO error;
+\set VERBOSITY terse
+\set QUIET off
+
 SELECT * FROM testtable ORDER BY cartodb_id DESC;
+
 \c contrib_regression postgres
+\set QUIET on
+SET client_min_messages TO error;
+\set VERBOSITY terse
+\set QUIET off
 
 \echo '## Test calling with read only access (should fail)'
 \c contrib_regression cdb_regenerate_tester
 SELECT cartodb.CDB_RegenerateTable('testtable'::regclass::oid);
+
 \c contrib_regression postgres
+\set QUIET on
+SET client_min_messages TO error;
+\set VERBOSITY terse
+\set QUIET off
 
 \echo '## Test partitioned table'
 CREATE TABLE measurement (
@@ -216,6 +242,26 @@ ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_ca
 \d measurement_y2006m03
 
 SELECT cartodb.CDB_GetTableQueries_TestHelper('measurement'::regclass::oid, ignore_cartodbfication := false);
+
+\echo '## Test transaction with truncate'
+BEGIN;
+    TRUNCATE TABLE testtable;
+    SELECT CDB_RegenerateTable('public.testtable'::regclass);
+COMMIT;
+
+\echo '## Test transaction with delete'
+BEGIN;
+    DELETE FROM testtable WHERE true;
+    SELECT CDB_RegenerateTable('public.testtable'::regclass);
+COMMIT;
+
+\echo '## Test transaction with delete + cartodbfy'
+BEGIN;
+    INSERT INTO testtable(stable,c1,c2,c3,c4) VALUES (1,2,3,4,5), (2,3,4,5,6), (3,4,5,6,7);
+    DELETE FROM testtable WHERE true;
+    SELECT CDB_RegenerateTable('public.testtable'::regclass);
+    SELECT CDB_CartodbfyTable('public'::TEXT, 'public.testtable'::REGCLASS);
+COMMIT;
 
 \echo '## teardown'
 

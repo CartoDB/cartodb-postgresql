@@ -178,6 +178,23 @@ logdate|date||not null|
 peaktemp|integer|||
 unitsales|integer|||
 ERROR:  CDB_GetTableQueries does not support the parent of partitioned tables
+## Test transaction with truncate
+BEGIN
+TRUNCATE TABLE
+ERROR:  plpy.Error: Could not get table properties
+ROLLBACK
+## Test transaction with delete
+BEGIN
+DELETE 3
+
+COMMIT
+## Test transaction with delete + cartodbfy
+BEGIN
+INSERT 0 3
+DELETE 3
+
+testtable
+COMMIT
 ## teardown
 DROP TABLE
 DROP TABLE
