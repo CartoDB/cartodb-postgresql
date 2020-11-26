@@ -1,4 +1,6 @@
-0.37.0 (2020-11-13)
+0.38.0 (XXXX-XX-XX)
+
+0.37.0 (2020-11-26)
 * Raised minimum PG version to 11.
 * Add `CDB_RegenerateTable` function to regenerate a table.
 * Add `CDB_GetTableQueries` to get the queries of a table (constraints, indices, triggers...).
