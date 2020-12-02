@@ -244,6 +244,7 @@ ORDER BY pg_catalog.pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT', c.oid::pg_ca
 SELECT cartodb.CDB_GetTableQueries_TestHelper('measurement'::regclass::oid, ignore_cartodbfication := false);
 
 \echo '## Test transaction with truncate'
+SET statement_timeout = 1000;
 BEGIN;
     TRUNCATE TABLE testtable;
     SELECT CDB_RegenerateTable('public.testtable'::regclass);
