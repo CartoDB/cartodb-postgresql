@@ -179,6 +179,7 @@ peaktemp|integer|||
 unitsales|integer|||
 ERROR:  CDB_GetTableQueries does not support the parent of partitioned tables
 ## Test transaction with truncate
+SET
 BEGIN
 TRUNCATE TABLE
 ERROR:  plpy.Error: Could not get table properties

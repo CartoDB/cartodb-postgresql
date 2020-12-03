@@ -8,6 +8,12 @@ AS $$
     import subprocess
     import re
 
+    query = "SELECT current_setting('statement_timeout') as t"
+    rv = plpy.execute(query, 1)
+    timeout_string = str(rv[0]['t'])
+    if timeout_string == "0":
+        timeout_string = "1min"
+
     query = "SELECT current_database()::text as dname"
     rv = plpy.execute(query, 1)
     database_name_string = str(rv[0]['dname'])
@@ -22,7 +28,7 @@ AS $$
 
     # NOTE: We always use -s so data is never dumped!
     # That would be a security issue that we would need to deal with (and we currently do not need it)
-    process_parameters = ["pg_dump", "-s", "--lock-wait-timeout", "1000", "-t", full_tablename_string, database_name_string]
+    process_parameters = ["pg_dump", "-s", "--lock-wait-timeout", timeout_string, "-t", full_tablename_string, database_name_string]
 
     proc = subprocess.Popen(process_parameters, stdout=subprocess.PIPE, shell=False)
     (out, err) = proc.communicate()
