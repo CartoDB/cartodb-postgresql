@@ -1,3 +1,6 @@
+0.37.2 (2021-09-27)
+* Change `CDB_TableMetadata_Trigger` to handle a race condition due to concurrent inserts.
+
 0.37.1 (2020-12-02)
 * Change `__CDB_RegenerateTable_Get_Commands` to use the caller timeout or '1min' if not set.
 

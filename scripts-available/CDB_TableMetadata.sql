@@ -42,16 +42,26 @@ BEGIN
     SELECT oid FROM pg_class WHERE oid = tabname
   );
 
-  WITH nv as (
-    SELECT TG_RELID as tabname, now() as t
-  ), updated as (
-    UPDATE @extschema@.CDB_TableMetadata x SET updated_at = nv.t
-    FROM nv WHERE x.tabname = nv.tabname
-    RETURNING x.tabname
-  )
-  INSERT INTO @extschema@.CDB_TableMetadata SELECT nv.*
-  FROM nv LEFT JOIN updated USING(tabname)
-  WHERE updated.tabname IS NULL;
+  BEGIN
+    WITH nv as (
+      SELECT TG_RELID as tabname, now() as t
+    ), updated as (
+      UPDATE @extschema@.CDB_TableMetadata x SET updated_at = nv.t
+      FROM nv WHERE x.tabname = nv.tabname
+      RETURNING x.tabname
+    )
+    INSERT INTO @extschema@.CDB_TableMetadata SELECT CONCAT(pg_sleep(2)::text, 'public.points'), nv.t
+    FROM nv LEFT JOIN updated USING(tabname)
+    WHERE updated.tabname IS NULL;
+  EXCEPTION
+    -- Managing race condition due to concurrent inserts
+    WHEN UNIQUE_VIOLATION THEN
+      WITH nv as (
+        SELECT TG_RELID as tabname, now() as t
+      )
+      UPDATE @extschema@.CDB_TableMetadata x SET updated_at = nv.t
+      FROM nv WHERE x.tabname = nv.tabname;
+  END;
 
   RETURN NULL;
 END;
