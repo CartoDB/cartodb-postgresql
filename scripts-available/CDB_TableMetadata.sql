@@ -50,7 +50,7 @@ BEGIN
       FROM nv WHERE x.tabname = nv.tabname
       RETURNING x.tabname
     )
-    INSERT INTO @extschema@.CDB_TableMetadata SELECT CONCAT(pg_sleep(2)::text, 'public.points'), nv.t
+    INSERT INTO @extschema@.CDB_TableMetadata SELECT nv.*
     FROM nv LEFT JOIN updated USING(tabname)
     WHERE updated.tabname IS NULL;
   EXCEPTION
