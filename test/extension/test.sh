@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 #
 # Tests for the extension since version 0.5.0. They don't replace SQL based ones, for now need to run both
@@ -6,181 +6,86 @@
 
 # It is expected that you run this script as a PostgreSQL superuser, for example:
 #
-#   PGUSER=postgres bash ./test.sh
+#   PGUSER=postgres ./test.sh
 #
 
 DATABASE=test_extension
-CMD='echo psql'
 CMD=psql
-SED=sed
 
 OK=0
 PARTIALOK=0
 
-function reset_default_database() {
+# Load common test helpers
+TESTSPATH="$( cd -- "$(dirname "$(dirname "$0")")" >/dev/null 2>&1 ; pwd -P )"
+. "${TESTSPATH}/helpers.sh"
+
+reset_default_database() {
     DATABASE=test_extension
 }
 
-function set_failed() {
-    OK=1
-    PARTIALOK=1
-}
-
-
-function clear_partial_result() {
-    PARTIALOK=0
-}
-
-
-function sql() {
-    local ROLE
-    local QUERY
-    if [[ $# -ge 2 ]]
+sql() {
+    sql_ROLE=""
+    if [ $# -ge 2 ]
     then
-        ROLE="$1"
-        QUERY="$2"
+        sql_ROLE="$1"
+        sql_QUERY="$2"
     else
-        QUERY="$1"
+        sql_QUERY="$1"
     fi
 
-    if [ -n "${ROLE}" ]; then
-      log_debug "Executing query '${QUERY}' as '${ROLE}' in '${DATABASE}'"
-      RESULT=`${CMD} -U "${ROLE}" ${DATABASE} -c "${QUERY}" -A -t`
+    if [ -n "${sql_ROLE}" ]; then
+      log_debug "Executing query '${sql_QUERY}' as '${sql_ROLE}' in '${DATABASE}'"
+      sql_RESULT=$(${CMD} -U "${sql_ROLE}" ${DATABASE} -c "${sql_QUERY}" -A -t)
     else
-      log_debug "Executing query '${QUERY}' in '${DATABASE}'"
-      RESULT=`${CMD} ${DATABASE} -c "${QUERY}" -A -t`
+      log_debug "Executing query '${sql_QUERY}' in '${DATABASE}'"
+      sql_RESULT=$(${CMD} ${DATABASE} -c "${sql_QUERY}" -A -t)
     fi
-    CODERESULT=$?
+    sql_CODERESULT=$?
 
-    echo ${RESULT}
-    echo
+    printf "%s\n\n" "${sql_RESULT}"
 
-    if [[ ${CODERESULT} -ne 0 ]]
+    if [ ${sql_CODERESULT} -ne 0 ]
     then
-        echo -n "FAILED TO EXECUTE QUERY: "
-        log_warning "${QUERY}"
-        if [[ "$3" != "fails" ]]
+        printf "FAILED TO EXECUTE QUERY: "
+        log_warning "${sql_QUERY}"
+        if [ "$3" != "fails" ]
         then
-            log_error "${QUERY}"
+            log_error "${sql_QUERY}"
             set_failed
         fi
     else
-        if [[ "$3" == "fails" ]]
+        if [ "$3" = "fails" ]
         then
-            log_error "QUERY: '${QUERY}' was expected to fail and it did not fail"
+            log_error "QUERY: '${sql_QUERY}' was expected to fail and it did not fail"
             set_failed
         fi
     fi
 
-    if [[ "$3" == "should" ]]
+    if [ "$3" = "should" ]
     then
-        if [[ "${RESULT}" != "$4" ]]
+        if [ "${sql_RESULT}" != "$4" ]
         then
-            log_error "QUERY '${QUERY}' expected result '${4}' but got '${RESULT}'"
+            log_error "QUERY '${sql_QUERY}' expected result '${4}' but got '${sql_RESULT}'"
             set_failed
         fi
     fi
 
-    if [[ "$3" == "should-not" ]]
+    if [ "$3" = "should-not" ]
     then
-        if [[ "${RESULT}" == "$4" ]]
+        if [ "${sql_RESULT}" = "$4" ]
         then
-            log_error "QUERY '${QUERY}' did not expect '${RESULT}'"
+            log_error "QUERY '${sql_QUERY}' did not expect '${sql_RESULT}'"
             set_failed
         fi
     fi
+
+    unset sql_ROLE
+    unset sql_QUERY
+    unset sql_RESULT
+    unset sql_CODERESULT
 }
 
-
-function log_info()
-{
-    echo
-    echo
-    echo
-    _log "1;34m" "$1"
-}
-
-function log_error() {
-    _log "1;31m" "$1"
-}
-
-function log_debug() {
-    _log "1;32m" "> $1"
-}
-
-function log_warning() {
-    _log "0;33m" "$1"
-}
-
-function _log() {
-    echo -e "\033[$1$2\033[0m"
-}
-
-# '############################ HELPERS #############################'
-function create_role_and_schema() {
-    local ROLE=$1
-    sql "CREATE ROLE ${ROLE} LOGIN;"
-    sql "GRANT CONNECT ON DATABASE \"${DATABASE}\" TO ${ROLE};"
-    sql "CREATE SCHEMA ${ROLE} AUTHORIZATION ${ROLE};"
-    sql "GRANT USAGE ON SCHEMA cartodb TO ${ROLE};"
-    sql "SELECT cartodb.CDB_Organization_Create_Member('${ROLE}');"
-    sql "ALTER ROLE ${ROLE} SET search_path TO ${ROLE},cartodb,public;"
-}
-
-
-function drop_role_and_schema() {
-    local ROLE=$1
-    sql "REVOKE USAGE ON SCHEMA cartodb FROM ${ROLE};"
-    sql "DROP SCHEMA \"${ROLE}\" CASCADE;"
-    sql "REVOKE CONNECT ON DATABASE \"${DATABASE}\" FROM \"${ROLE}\";"
-    sql "DROP ROLE \"${ROLE}\";"
-}
-
-
-function create_table() {
-    if [[ $# -ne 2 ]]
-    then
-        log_error "create_table requires two arguments: role and table_name"
-        exit 1
-    fi
-    local ROLE="$1"
-    local TABLENAME="$2"
-    sql ${ROLE} "CREATE TABLE ${ROLE}.${TABLENAME} ( a int );"
-}
-
-
-function create_raster_table() {
-    if [[ $# -ne 2 ]]
-    then
-        log_error "create_raster_table requires two arguments: role and table_name"
-        exit 1
-    fi
-    local RASTER_COL="the_raster_webmercator"
-    local ROLE="$1"
-    local TABLENAME="$2"
-    local OVERVIEW_TABLENAME="o_2_${TABLENAME}"
-    sql ${ROLE} "CREATE TABLE ${ROLE}.${TABLENAME} (rid serial PRIMARY KEY, ${RASTER_COL} raster);"
-
-    sql ${ROLE} "CREATE TABLE ${ROLE}.${OVERVIEW_TABLENAME} (rid serial PRIMARY KEY, ${RASTER_COL} raster);"
-
-    sql ${ROLE} "SELECT AddOverviewConstraints('${ROLE}','${OVERVIEW_TABLENAME}','${RASTER_COL}','${ROLE}','${TABLENAME}','${RASTER_COL}',2);"
-}
-
-function drop_raster_table() {
-    if [[ $# -ne 2 ]]
-    then
-        log_error "drop_raster_table requires two arguments: role and table_name"
-        exit 1
-    fi
-    local ROLE="$1"
-    local TABLENAME="$2"
-    local OVERVIEW_TABLENAME="o_2_${TABLENAME}"
-
-    sql ${ROLE} "DROP TABLE ${ROLE}.${OVERVIEW_TABLENAME};"
-    sql ${ROLE} "DROP TABLE ${ROLE}.${TABLENAME};"
-}
-
-function setup_database() {
+setup_database() {
     ${CMD} -c "CREATE DATABASE ${DATABASE}"
     sql "CREATE EXTENSION postgis;"
     sql postgres "DO
@@ -195,7 +100,7 @@ END
     ${CMD} -c "ALTER DATABASE ${DATABASE} SET search_path = public, cartodb;"
 }
 
-function setup() {
+setup() {
     setup_database
 
     log_info "############################# SETUP #############################"
@@ -212,10 +117,11 @@ function setup() {
 }
 
 
-function tear_down_database() {
+tear_down_database() {
     ${CMD} -c "DROP DATABASE ${DATABASE}"
 }
-function tear_down() {
+
+tear_down() {
     reset_default_database
 
     log_info "########################### USER TEAR DOWN ###########################"
@@ -241,52 +147,8 @@ function tear_down() {
 }
 
 
-function run_tests() {
-    local FAILED_TESTS=()
-
-    local TESTS
-    if [[ $# -ge 1 ]]
-    then
-        if [[ $# -eq 1 ]]
-        then
-            TESTS=`cat $0 | grep -o "$1[^\(]*"`
-        else
-            TESTS="$@"
-        fi
-    else
-        TESTS=`cat $0 | perl -n -e'/function (test.*)\(\)/ && print "$1\n"'`
-    fi
-    setup
-    for t in ${TESTS}
-    do
-        echo "####################################################################"
-        echo "#"
-        echo "# Running: ${t}"
-        echo "#"
-        echo "####################################################################"
-
-        clear_partial_result
-        eval ${t}
-        if [[ ${PARTIALOK} -ne 0 ]]
-        then
-            FAILED_TESTS+=(${t})
-        fi
-    done
-    tear_down
-    if [[ ${OK} -ne 0 ]]
-    then
-        echo
-        log_error "The following tests are failing:"
-        printf -- '\t%s\n' "${FAILED_TESTS[@]}"
-    fi
-}
-
-
-#################################################### TESTS GO HERE ####################################################
-
-
 # Tests quota checking taking into account both geom and raster tables
-function test_quota_for_each_user() {
+test_quota_for_each_user() {
     # Normal tables add 4096 bytes
     # Raster tables no longer add anything so also count as 4096
 
@@ -312,7 +174,7 @@ function test_quota_for_each_user() {
     sql cdb_testmember_2 "SELECT cartodb.CDB_UserDataSize('cdb_testmember_2'::TEXT);" should 4096
 }
 
-function test_cdb_tablemetadatatouch() {
+test_cdb_tablemetadatatouch() {
     sql postgres "CREATE TABLE touch_example (a int)"
     sql postgres "SELECT updated_at FROM CDB_TableMetadata WHERE tabname = 'touch_example'::regclass;" should ''
     sql postgres "SELECT CDB_TableMetadataTouch('touch_example');"
@@ -331,7 +193,7 @@ function test_cdb_tablemetadatatouch() {
     # Works with OID
     sql postgres "SELECT tabname from CDB_TableMetadata;" should 'touch_example'
     sql postgres "SELECT count(*) from CDB_TableMetadata;" should 1
-    TABLE_OID=`${CMD} -U postgres ${DATABASE} -c "SELECT attrelid FROM pg_attribute WHERE attrelid = 'touch_example'::regclass limit 1;" -A -t`
+    TABLE_OID=$(${CMD} -U postgres ${DATABASE} -c "SELECT attrelid FROM pg_attribute WHERE attrelid = 'touch_example'::regclass limit 1;" -A -t)
 
     # quoted OID works
     sql postgres "SELECT CDB_TableMetadataTouch('${TABLE_OID}');"
@@ -347,11 +209,11 @@ function test_cdb_tablemetadatatouch() {
     sql postgres 'DROP TABLE touch_example;'
 }
 
-function test_cdb_tablemetadatatouch_fails_for_unexistent_table() {
+test_cdb_tablemetadatatouch_fails_for_unexistent_table() {
     sql cdb_testmember_1 "SELECT CDB_TableMetadataTouch('unexistent_example');" fails
 }
 
-function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
+test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
     sql postgres "CREATE TABLE touch_example (a int);"
     sql postgres "SELECT CDB_TableMetadataTouch('touch_example');"
 
@@ -366,7 +228,7 @@ function test_cdb_tablemetadatatouch_fails_from_user_without_permission() {
     sql postgres 'DROP TABLE touch_example;'
 }
 
-function test_cdb_tablemetadatatouch_fully_qualifies_names() {
+test_cdb_tablemetadatatouch_fully_qualifies_names() {
     sql postgres "CREATE TABLE touch_invalidations (table_name text);"
     sql postgres "create or replace function cartodb.cdb_invalidate_varnish(table_name text) returns void as \$\$ begin insert into public.touch_invalidations select table_name; end; \$\$ language 'plpgsql';"
 
@@ -401,7 +263,7 @@ function test_cdb_tablemetadatatouch_fully_qualifies_names() {
     sql postgres 'DROP TABLE touch_invalidations'
 }
 
-function test_cdb_tablemetadata_text() {
+test_cdb_tablemetadata_text() {
 
     #create and touch tables
     sql postgres "CREATE TABLE touch_ex_a (id int);"
@@ -412,26 +274,26 @@ function test_cdb_tablemetadata_text() {
     sql postgres "SELECT CDB_TableMetadataTouch('touch_ex_c');"
 
     #ensure there is 1 record per table
-    QUERY="SELECT COUNT(1) FROM (SELECT 1 FROM cdb_tablemetadata_text "
-    QUERY+="GROUP BY tabname HAVING COUNT(1) > 1) s;"
-    sql postgres "$QUERY" should "0"
+    test_cdb_tablemetadata_text_QUERY="SELECT COUNT(1) FROM (SELECT 1 FROM cdb_tablemetadata_text
+        GROUP BY tabname HAVING COUNT(1) > 1) s;"
+    sql postgres "$test_cdb_tablemetadata_text_QUERY" should "0"
 
     #ensure timestamps are distinct and properly ordered
-    QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_a')"
-    QUERY+="    < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b');"
-    sql postgres "$QUERY" should "t"
-    QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b')"
-    QUERY+="    < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_c');"
-    sql postgres "$QUERY" should "t"
+    test_cdb_tablemetadata_text_QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_a')
+        < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b');"
+    sql postgres "$test_cdb_tablemetadata_text_QUERY" should "t"
+    test_cdb_tablemetadata_text_QUERY="SELECT (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_b')
+        < (SELECT updated_at FROM CDB_TableMetadata_Text WHERE tabname='public.touch_ex_c');"
+    sql postgres "$test_cdb_tablemetadata_text_QUERY" should "t"
 
     #cleanup
     sql postgres "DROP TABLE touch_ex_a;"
     sql postgres "DROP TABLE touch_ex_b;"
     sql postgres "DROP TABLE touch_ex_c;"
-
+    unset test_cdb_tablemetadata_text_QUERY
 }
 
-function test_cdb_column_names() {
+test_cdb_column_names() {
     sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_cnames(c int, a int, r int, t int, o int);'
     sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_cnames(d int, b int);'
 
@@ -451,7 +313,7 @@ function test_cdb_column_names() {
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_cnames'
 }
 
-function test_cdb_column_type() {
+test_cdb_column_type() {
     sql cdb_testmember_1 'CREATE TABLE cdb_testmember_1.table_ctype(c int, a int, r int, t int, o int);'
     sql cdb_testmember_2 'CREATE TABLE cdb_testmember_2.table_ctype(c text, a text, r text, t text, o text);'
 
@@ -465,7 +327,7 @@ function test_cdb_column_type() {
     sql cdb_testmember_2 'DROP TABLE cdb_testmember_2.table_ctype'
 }
 
-function test_cdb_querytables_schema_and_table_names_with_dots() {
+test_cdb_querytables_schema_and_table_names_with_dots() {
     sql postgres 'CREATE SCHEMA "foo.bar";'
     sql postgres 'CREATE TABLE "foo.bar"."c.a.r.t.o.d.b" (a int);'
     sql postgres 'INSERT INTO "foo.bar"."c.a.r.t.o.d.b" values (1);'
@@ -478,7 +340,7 @@ function test_cdb_querytables_schema_and_table_names_with_dots() {
     sql postgres 'DROP SCHEMA "foo.bar";'
 }
 
-function test_cdb_querytables_table_name_with_dots() {
+test_cdb_querytables_table_name_with_dots() {
     sql postgres 'CREATE TABLE "w.a.d.u.s" (a int);';
 
     sql postgres 'SELECT CDB_QueryTablesText($q$select * from "w.a.d.u.s"$q$);' should '{"public.\"w.a.d.u.s\""}'
@@ -487,7 +349,7 @@ function test_cdb_querytables_table_name_with_dots() {
     sql postgres 'DROP TABLE "w.a.d.u.s";';
 }
 
-function test_cdb_querytables_happy_cases() {
+test_cdb_querytables_happy_cases() {
     sql postgres 'CREATE TABLE wadus (a int);';
     sql postgres 'CREATE TABLE "FOOBAR" (a int);';
     sql postgres 'CREATE SCHEMA foo;'
@@ -508,7 +370,7 @@ function test_cdb_querytables_happy_cases() {
     sql postgres 'DROP SCHEMA foo;'
 }
 
-function test_foreign_tables() {
+test_foreign_tables() {
 
     DATABASE=fdw_target setup_database
     DATABASE=fdw_target sql postgres "DO
@@ -542,7 +404,7 @@ END
 
     # Add PGPORT to conf if it is set
     PORT_SPEC=""
-    if [[ "$PGPORT" != "" ]] ; then
+    if [ "$PGPORT" != "" ]; then
         PORT_SPEC=", \"port\": \"$PGPORT\""
     fi
     sql postgres "SELECT cartodb.CDB_Conf_SetConf('fdws', '{\"test_fdw\": {\"server\": {\"host\": \"localhost\", \"dbname\": \"fdw_target\" $PORT_SPEC },
@@ -571,10 +433,10 @@ test_fdw|foo|test_fdw"
     sql postgres 'CREATE TABLE local (b int);'
     sql postgres 'INSERT INTO local (b) VALUES (43);'
     sql postgres "SELECT cdb_tablemetadatatouch('public.local'::regclass);"
-    local query='$query$ SELECT * FROM test_fdw.foo, local $query$::text'
-    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) ORDER BY dbname;" should 'fdw_target|test_fdw|foo
+    test_foreign_tables_QUERY='$query$ SELECT * FROM test_fdw.foo, local $query$::text'
+    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${test_foreign_tables_QUERY}) ORDER BY dbname;" should 'fdw_target|test_fdw|foo
 test_extension|public|local'
-    sql postgres "SELECT table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) order by updated_at;" should 'foo
+    sql postgres "SELECT table_name FROM cartodb.CDB_QueryTables_Updated_At(${test_foreign_tables_QUERY}) order by updated_at;" should 'foo
 local'
 
     # Check function CDB_Last_Updated_Time
@@ -585,8 +447,8 @@ local'
     sql postgres 'CREATE TABLE "local-table-with-dashes" (c int)';
     sql postgres 'INSERT INTO "local-table-with-dashes" (c) VALUES (44)';
     sql postgres "SELECT cdb_tablemetadatatouch('public.local-table-with-dashes'::regclass);"
-    query='$query$ SELECT * FROM test_fdw.foo, local, public."local-table-with-dashes" $query$::text'
-    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${query}) ORDER BY dbname, schema_name, table_name;" should 'fdw_target|test_fdw|foo
+    test_foreign_tables_QUERY='$query$ SELECT * FROM test_fdw.foo, local, public."local-table-with-dashes" $query$::text'
+    sql postgres "SELECT dbname, schema_name, table_name FROM cartodb.CDB_QueryTables_Updated_At(${test_foreign_tables_QUERY}) ORDER BY dbname, schema_name, table_name;" should 'fdw_target|test_fdw|foo
 test_extension|public|local
 test_extension|public|"local-table-with-dashes"'
 
@@ -609,17 +471,17 @@ test_extension|public|"local-table-with-dashes"'
     sql postgres "select pg_terminate_backend(pid) from pg_stat_activity where datname='fdw_target';"
     DATABASE=fdw_target tear_down_database
     reset_default_database
+
+    unset test_foreign_tables_QUERY
 }
 
-function test_cdb_catalog_basic_node() {
+test_cdb_catalog_basic_node() {
     DEF="'{\"type\":\"buffer\",\"source\":\"b2db66bc7ac02e135fd20bbfef0fdd81b2d15fad\",\"radio\":10000}'"
     sql postgres "INSERT INTO cartodb.cdb_analysis_catalog (node_id, analysis_def) VALUES ('1bbc4c41ea7c9d3a7dc1509727f698b7', ${DEF}::json)"
     sql postgres "SELECT status from cartodb.cdb_analysis_catalog where node_id = '1bbc4c41ea7c9d3a7dc1509727f698b7'" should 'pending'
     sql postgres "DELETE FROM cartodb.cdb_analysis_catalog"
 }
 
-#################################################### TESTS END HERE ####################################################
-
-run_tests $@
+run_tests "$@"
 
 exit ${OK}
