@@ -209,10 +209,10 @@ legacy_regress: $(REGRESS_OLD) Makefile
 	done
 
 test_organization:
-	bash test/organization/test.sh
+	sh test/organization/test.sh
 
 test_extension_new:
-	bash test/extension/test.sh
+	sh test/extension/test.sh
 
 legacy_tests: legacy_regress $(EXTENSION)--unpackaged--$(EXTVERSION).sql
 
