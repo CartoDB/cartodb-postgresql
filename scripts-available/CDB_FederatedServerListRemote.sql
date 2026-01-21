@@ -159,7 +159,7 @@ BEGIN
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
         AND relname = remote_geometry_view
     ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I, %I) FROM SERVER %I INTO %I',
+        EXECUTE format(E'IMPORT FOREIGN SCHEMA %I LIMIT TO (%I, %I) FROM SERVER %I INTO %I OPTIONS (import_collate \'false\')',
                     postgis_schema, remote_geometry_view, remote_geography_view, server_internal, local_schema);
     END IF;
 

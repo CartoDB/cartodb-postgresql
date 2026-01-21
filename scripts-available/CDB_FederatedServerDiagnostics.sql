@@ -16,7 +16,7 @@ BEGIN
         WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = local_schema)
         AND relname = remote_table
     ) THEN
-        EXECUTE format('IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I',
+        EXECUTE format(E'IMPORT FOREIGN SCHEMA %I LIMIT TO (%I) FROM SERVER %I INTO %I OPTIONS (import_collate \'false\')',
                     remote_schema, remote_table, server_internal, local_schema);
     END IF;
 END
